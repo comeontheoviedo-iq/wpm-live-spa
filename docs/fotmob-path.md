@@ -2,7 +2,7 @@
 
 **Product:** WPM LIVE · https://live.worldpickleballmagazine.com  
 **Not:** PickleLive  
-**Slice date:** 2026-09-17 · JS `wpm-20260917b` · SW `20260917n`
+**Slice date:** 2026-09-17 · JS `wpm-20260917b` · git `wpm-live-spa`
 
 WPM LIVE should feel like FotMob for pickleball: live truth first, then identity (player/team pages you can follow), then richer competition surfaces. Rankings stay **labelled** (GPA vs Pro ELO vs PPA World) — never one fake world #1. Shop stays Coming soon until tags/disclosure are ready.
 
@@ -16,7 +16,7 @@ WPM LIVE should feel like FotMob for pickleball: live truth first, then identity
 | 4 | **PickleWave ingest** | ✓ Done | `wavePlayers` on `/api/rankings` — identity + recent tour cards + watch from public PW HTML. Restyled in-app (no iframe). Snap refresh script. See `docs/picklewave-ingest.md`. |
 | 5 | **Draw QF / SF / F** | ✓ Done | Knockout clarity on `/draw` for PPA + WC; R64/R32/R16/QF/SF/F/Bronze; hide junk Round dumps; deep links. See `docs/draw-polish.md`. |
 | 6 | **Notifications** | ✓ Done | Safe SW + in-app/PWA LIVE alerts on follow. See `docs/follow-notifications.md`. Residual: needs open tab (no push server yet). |
-| 7 | **Shop** | Later | Affiliate SKUs closed until ready. Keep Coming soon. |
+| 7 | **Shop** | Locked · Coming soon (see docs/shop-disclosure.md) | Affiliate SKUs closed until ready. Keep Coming soon. |
 
 ## Identity layer (current)
 
