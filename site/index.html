@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WPM LIVE</title>
+  <meta name="theme-color" content="#0c0a2e">
+  <meta name="description" content="WPM LIVE — World Pickleball Magazine live scores, courts and magazine.">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/app.css?v=20260917b">
+</head>
+<body>
+  <div id="app"></div>
+  <script>
+/* Register only the safe SW (v=20260917n). One-time migration: unregister any
+   worker whose scriptURL is not this safe build — old cache SWs poisoned boards. */
+(function () {
+  if (!("serviceWorker" in navigator)) return;
+  var SAFE = "/sw.js?v=20260917n";
+  var MARK = "20260917n";
+  navigator.serviceWorker.getRegistrations().then(function (rs) {
+    return Promise.all(rs.map(function (r) {
+      var sw = r.active || r.waiting || r.installing;
+      var url = (sw && sw.scriptURL) || "";
+      if (url.indexOf(MARK) !== -1) return null;
+      return r.unregister();
+    }));
+  }).then(function () {
+    return navigator.serviceWorker.register(SAFE);
+  }).catch(function () {});
+})();
+</script>
+<script src="/js/wpm-20260917b.js"></script>
+</body>
+</html>

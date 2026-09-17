@@ -1,0 +1,592 @@
+{
+  "updated": "2026-09-04T11:51:00Z",
+  "heroByDate": {
+    "2026-09-03": "PPA Nationals R16 in Cary: Johns out of men's singles to Goins. Waters whitewashed her R16. Sewing, 46th seed, still in. World Cup Open pools closed in Da Nang \u2014 Vietnam 18-0, India 17-1.",
+    "2026-09-04": "World Cup Mixed Team sessions in Da Nang: Tuyen Son B 16:00\u201318:00 and Tien Son from 18:00 local. Snapshot from Sporttora live. PPA Nationals QFs in Cary from 9am ET.",
+    "2026-09-05": "PPA Nationals semifinals in Cary. World Cup Open QF/SF window in Da Nang. Fields fill as Friday quarterfinals land."
+  },
+  "matches": [
+    {
+      "id": "ppa-ws-waters-r16",
+      "date": "2026-09-03",
+      "tour": "ppa",
+      "comp": "PPA Nationals \u00b7 Cary",
+      "div": "Women's Singles R16",
+      "a": "A. Waters",
+      "b": "R16 opponent",
+      "tags": [
+        "Waters"
+      ],
+      "status": "FT",
+      "start": "2026-09-03T15:00:00Z",
+      "score": "2-0",
+      "games": "11-0, 11-0",
+      "note": "Waters through without conceding a point in the R16.",
+      "watch": "pbtv"
+    },
+    {
+      "id": "ppa-ms-johns-r32",
+      "date": "2026-09-03",
+      "tour": "ppa",
+      "comp": "PPA Nationals \u00b7 Cary",
+      "div": "Men's Singles R32",
+      "a": "B. Johns",
+      "b": "J.L. Goins",
+      "tags": [
+        "Johns"
+      ],
+      "status": "FT",
+      "start": "2026-09-03T16:00:00Z",
+      "score": "1-2",
+      "games": "0-11, 11-6, 0-11",
+      "note": "Johns out of singles. Still in mixed and men's doubles Friday.",
+      "watch": "pbtv"
+    },
+    {
+      "id": "ppa-ws-sewing-r16",
+      "date": "2026-09-03",
+      "tour": "ppa",
+      "comp": "PPA Nationals \u00b7 Cary",
+      "div": "Women's Singles R16",
+      "a": "S. Sewing",
+      "b": "Top-10 seed",
+      "tags": [],
+      "status": "FT",
+      "start": "2026-09-03T17:30:00Z",
+      "score": "2-0",
+      "games": "11-7, 11-5",
+      "note": "46th seed into the quarterfinals without dropping a game this week.",
+      "watch": "streamed"
+    },
+    {
+      "id": "wc-vie-chi",
+      "date": "2026-09-03",
+      "tour": "wc",
+      "comp": "World Cup \u00b7 Da Nang",
+      "div": "Open pool",
+      "a": "Vietnam",
+      "b": "Chile",
+      "tags": [
+        "Vietnam"
+      ],
+      "status": "FT",
+      "start": "2026-09-03T02:00:00Z",
+      "score": "6-0",
+      "games": "WD 21-3 \u00b7 MD 21-5 \u00b7 XD 21-7 \u00b7 XD 21-8 \u00b7 WS 21-2 \u00b7 MS 21-8",
+      "watch": "wcyoutube"
+    },
+    {
+      "id": "wc-vie-cay",
+      "date": "2026-09-03",
+      "tour": "wc",
+      "comp": "World Cup \u00b7 Da Nang",
+      "div": "Open pool",
+      "a": "Vietnam",
+      "b": "Cayman Islands",
+      "tags": [
+        "Vietnam"
+      ],
+      "status": "FT",
+      "start": "2026-09-03T04:30:00Z",
+      "score": "6-0",
+      "games": "WD 21-4 \u00b7 MD 21-10 \u00b7 XD 21-10 \u00b7 XD 21-9 \u00b7 WS 21-9 \u00b7 MS 21-7",
+      "watch": "wcyoutube"
+    },
+    {
+      "id": "wc-vie-col",
+      "date": "2026-09-03",
+      "tour": "wc",
+      "comp": "World Cup \u00b7 Da Nang",
+      "div": "Open pool",
+      "a": "Vietnam",
+      "b": "Colombia",
+      "tags": [
+        "Vietnam"
+      ],
+      "status": "FT",
+      "start": "2026-09-03T07:00:00Z",
+      "score": "6-0",
+      "games": "WD 21-12 \u00b7 MD 21-9 \u00b7 XD 21-16 \u00b7 XD 21-9 \u00b7 WS 21-10 \u00b7 MS 21-15",
+      "note": "Vietnam finish the pool 18-0 in matches.",
+      "watch": "wcyoutube"
+    },
+    {
+      "id": "wc-ind-aab",
+      "date": "2026-09-03",
+      "tour": "wc",
+      "comp": "World Cup \u00b7 Da Nang",
+      "div": "Open pool",
+      "a": "India",
+      "b": "Antigua and Barbuda",
+      "tags": [
+        "India"
+      ],
+      "status": "FT",
+      "start": "2026-09-03T03:00:00Z",
+      "score": "6-0",
+      "watch": "wcyoutube"
+    },
+    {
+      "id": "wc-ind-isr",
+      "date": "2026-09-03",
+      "tour": "wc",
+      "comp": "World Cup \u00b7 Da Nang",
+      "div": "Open pool",
+      "a": "India",
+      "b": "Israel",
+      "tags": [
+        "India"
+      ],
+      "status": "FT",
+      "start": "2026-09-03T05:30:00Z",
+      "score": "6-0",
+      "watch": "wcyoutube"
+    },
+    {
+      "id": "wc-ind-cze",
+      "date": "2026-09-03",
+      "tour": "wc",
+      "comp": "World Cup \u00b7 Da Nang",
+      "div": "Open pool",
+      "a": "India",
+      "b": "Czech Republic",
+      "tags": [
+        "India"
+      ],
+      "status": "FT",
+      "start": "2026-09-03T08:00:00Z",
+      "score": "5-1",
+      "games": "India 17-1 across the pool.",
+      "watch": "wcyoutube"
+    },
+    {
+      "id": "wc-aus-bel",
+      "date": "2026-09-03",
+      "tour": "wc",
+      "comp": "World Cup \u00b7 Da Nang",
+      "div": "Open pool",
+      "a": "Australia",
+      "b": "Belgium",
+      "tags": [],
+      "status": "FT",
+      "start": "2026-09-03T06:00:00Z",
+      "score": "4-2",
+      "games": "WD 21-10 \u00b7 MD 21-13 \u00b7 XD 20-22 \u00b7 XD 21-15 \u00b7 WS 18-21 \u00b7 MS 21-7",
+      "watch": "wcyoutube"
+    },
+    {
+      "id": "ppa-ws-waters",
+      "date": "2026-09-04",
+      "tour": "ppa",
+      "comp": "PPA Nationals \u00b7 Cary",
+      "div": "Women's Singles QF",
+      "a": "A. Waters",
+      "b": "J. Castillo",
+      "tags": [
+        "Waters"
+      ],
+      "status": "NEXT",
+      "start": "2026-09-04T13:00:00Z",
+      "end": "2026-09-04T16:00:00Z",
+      "note": "Morning window, Humana / Grandstand.",
+      "watch": "pbtv",
+      "court": "Humana"
+    },
+    {
+      "id": "ppa-ws-christian",
+      "date": "2026-09-04",
+      "tour": "ppa",
+      "comp": "PPA Nationals \u00b7 Cary",
+      "div": "Women's Singles QF",
+      "a": "K. Christian",
+      "b": "C. Parenteau",
+      "tags": [],
+      "status": "NEXT",
+      "start": "2026-09-04T13:20:00Z",
+      "end": "2026-09-04T16:00:00Z",
+      "watch": "pbtv",
+      "court": "Grandstand"
+    },
+    {
+      "id": "ppa-ws-buckner",
+      "date": "2026-09-04",
+      "tour": "ppa",
+      "comp": "PPA Nationals \u00b7 Cary",
+      "div": "Women's Singles QF",
+      "a": "B. Buckner",
+      "b": "K. Ulery",
+      "tags": [],
+      "status": "NEXT",
+      "start": "2026-09-04T13:40:00Z",
+      "end": "2026-09-04T16:00:00Z",
+      "watch": "streamed"
+    },
+    {
+      "id": "ppa-ws-fahey",
+      "date": "2026-09-04",
+      "tour": "ppa",
+      "comp": "PPA Nationals \u00b7 Cary",
+      "div": "Women's Singles QF",
+      "a": "K. Fahey",
+      "b": "S. Sewing",
+      "tags": [],
+      "status": "NEXT",
+      "start": "2026-09-04T14:00:00Z",
+      "end": "2026-09-04T16:00:00Z",
+      "note": "Sewing into a QF as 46th seed.",
+      "watch": "streamed"
+    },
+    {
+      "id": "ppa-ms-alshon",
+      "date": "2026-09-04",
+      "tour": "ppa",
+      "comp": "PPA Nationals \u00b7 Cary",
+      "div": "Men's Singles QF",
+      "a": "C. Alshon",
+      "b": "J. Johnson",
+      "tags": [],
+      "status": "NEXT",
+      "start": "2026-09-04T14:20:00Z",
+      "end": "2026-09-04T16:00:00Z",
+      "watch": "pbtv"
+    },
+    {
+      "id": "ppa-ms-staksrud",
+      "date": "2026-09-04",
+      "tour": "ppa",
+      "comp": "PPA Nationals \u00b7 Cary",
+      "div": "Men's Singles QF",
+      "a": "F. Staksrud",
+      "b": "J. Martinez Vich",
+      "tags": [],
+      "status": "NEXT",
+      "start": "2026-09-04T14:40:00Z",
+      "end": "2026-09-04T16:00:00Z",
+      "watch": "streamed"
+    },
+    {
+      "id": "ppa-ms-hjohnson",
+      "date": "2026-09-04",
+      "tour": "ppa",
+      "comp": "PPA Nationals \u00b7 Cary",
+      "div": "Men's Singles QF",
+      "a": "H. Johnson",
+      "b": "N. Khlif",
+      "tags": [],
+      "status": "NEXT",
+      "start": "2026-09-04T15:00:00Z",
+      "end": "2026-09-04T16:00:00Z",
+      "note": "Khlif is in singles and doubles QFs today.",
+      "watch": "streamed"
+    },
+    {
+      "id": "ppa-xd-johns-waters",
+      "date": "2026-09-04",
+      "tour": "ppa",
+      "comp": "PPA Nationals \u00b7 Cary",
+      "div": "Mixed Doubles QF",
+      "a": "B. Johns / A. Waters",
+      "b": "K. Fahey / F. Staksrud",
+      "tags": [
+        "Johns",
+        "Waters"
+      ],
+      "status": "NEXT",
+      "start": "2026-09-04T20:30:00Z",
+      "end": "2026-09-05T01:00:00Z",
+      "note": "Evening window on PBTV and Tennis Channel.",
+      "watch": "pbtv",
+      "court": "Championship"
+    },
+    {
+      "id": "ppa-xd-bright",
+      "date": "2026-09-04",
+      "tour": "ppa",
+      "comp": "PPA Nationals \u00b7 Cary",
+      "div": "Mixed Doubles QF",
+      "a": "A. Bright / H. Patriquin",
+      "b": "C. Parenteau / R. Newman",
+      "tags": [
+        "Bright"
+      ],
+      "status": "NEXT",
+      "start": "2026-09-04T20:50:00Z",
+      "end": "2026-09-05T01:00:00Z",
+      "watch": "pbtv"
+    },
+    {
+      "id": "ppa-wd-bright-waters",
+      "date": "2026-09-04",
+      "tour": "ppa",
+      "comp": "PPA Nationals \u00b7 Cary",
+      "div": "Women's Doubles QF",
+      "a": "A. Bright / A. Waters",
+      "b": "A. Truong / L. Sleeth",
+      "tags": [
+        "Bright",
+        "Waters"
+      ],
+      "status": "NEXT",
+      "start": "2026-09-04T21:10:00Z",
+      "end": "2026-09-05T01:00:00Z",
+      "watch": "pbtv"
+    },
+    {
+      "id": "ppa-md-johns-tardio",
+      "date": "2026-09-04",
+      "tour": "ppa",
+      "comp": "PPA Nationals \u00b7 Cary",
+      "div": "Men's Doubles QF",
+      "a": "B. Johns / G. Tardio",
+      "b": "C. Klinger / W. Howells",
+      "tags": [
+        "Johns"
+      ],
+      "status": "NEXT",
+      "start": "2026-09-04T21:30:00Z",
+      "end": "2026-09-05T01:00:00Z",
+      "watch": "pbtv"
+    },
+    {
+      "id": "ppa-md-staksrud",
+      "date": "2026-09-04",
+      "tour": "ppa",
+      "comp": "PPA Nationals \u00b7 Cary",
+      "div": "Men's Doubles QF",
+      "a": "F. Staksrud / H. Patriquin",
+      "b": "E. Oncins / N. Khlif",
+      "tags": [],
+      "status": "NEXT",
+      "start": "2026-09-04T21:50:00Z",
+      "end": "2026-09-05T01:00:00Z",
+      "watch": "streamed"
+    },
+    {
+      "id": "ppa-sf-ws",
+      "date": "2026-09-05",
+      "tour": "ppa",
+      "comp": "PPA Nationals \u00b7 Cary",
+      "div": "Women's Singles SF",
+      "a": "QF winners",
+      "b": "QF winners",
+      "tags": [
+        "Waters"
+      ],
+      "status": "NEXT",
+      "start": "2026-09-05T15:00:00Z",
+      "note": "Draw locks when Friday QFs finish.",
+      "watch": "pbtv"
+    },
+    {
+      "id": "ppa-sf-ms",
+      "date": "2026-09-05",
+      "tour": "ppa",
+      "comp": "PPA Nationals \u00b7 Cary",
+      "div": "Men's Singles SF",
+      "a": "QF winners",
+      "b": "QF winners",
+      "tags": [],
+      "status": "NEXT",
+      "start": "2026-09-05T16:00:00Z",
+      "watch": "pbtv"
+    },
+    {
+      "id": "ppa-sf-xd",
+      "date": "2026-09-05",
+      "tour": "ppa",
+      "comp": "PPA Nationals \u00b7 Cary",
+      "div": "Mixed Doubles SF",
+      "a": "QF winners",
+      "b": "QF winners",
+      "tags": [
+        "Waters",
+        "Johns",
+        "Bright"
+      ],
+      "status": "NEXT",
+      "start": "2026-09-05T20:30:00Z",
+      "note": "Evening window. Tags include Friday QF names until the field is set.",
+      "watch": "pbtv"
+    },
+    {
+      "id": "wc-open-qf",
+      "date": "2026-09-05",
+      "tour": "wc",
+      "comp": "World Cup \u00b7 Da Nang",
+      "div": "Open QF / SF window",
+      "a": "Knockout winners",
+      "b": "Knockout winners",
+      "tags": [
+        "Vietnam",
+        "USA",
+        "India"
+      ],
+      "status": "NEXT",
+      "start": "2026-09-05T03:00:00Z",
+      "note": "National-team knockout continues.",
+      "watch": "wcyoutube"
+    },
+    {
+      "id": "wc-ind-phi-b",
+      "date": "2026-09-04",
+      "tour": "wc",
+      "comp": "World Cup \u00b7 Da Nang",
+      "div": "Mixed Team",
+      "session": "Tuyen Son B \u00b7 16:00 GMT+7",
+      "a": "India",
+      "b": "Philippines",
+      "tags": [
+        "India"
+      ],
+      "status": "LIVE",
+      "start": "2026-09-04T09:00:00Z",
+      "end": "2026-09-04T11:00:00Z",
+      "score": "0-0",
+      "games": "WD 13-14 B2",
+      "note": "Sporttora live. Women's doubles on B2.",
+      "watch": "wcyoutube",
+      "source": "https://www.sporttora.com/pwc2026/live"
+    },
+    {
+      "id": "wc-vie-ned",
+      "date": "2026-09-04",
+      "tour": "wc",
+      "comp": "World Cup \u00b7 Da Nang",
+      "div": "Mixed Team",
+      "session": "Tien Son Center \u00b7 from 18:00 GMT+7",
+      "a": "Vietnam",
+      "b": "Netherlands",
+      "tags": [
+        "Vietnam"
+      ],
+      "status": "LIVE",
+      "start": "2026-09-04T11:00:00Z",
+      "end": "2026-09-04T16:00:00Z",
+      "score": "1-1",
+      "games": "MD Vietnam \u00b7 WD Netherlands \u00b7 XD 11-4 CC",
+      "note": "Championship Court mixed doubles.",
+      "watch": "wcyoutube",
+      "source": "https://www.sporttora.com/pwc2026/live"
+    },
+    {
+      "id": "wc-aus-kor",
+      "date": "2026-09-04",
+      "tour": "wc",
+      "comp": "World Cup \u00b7 Da Nang",
+      "div": "Mixed Team",
+      "session": "Tien Son Center \u00b7 from 18:00 GMT+7",
+      "a": "Australia",
+      "b": "South Korea",
+      "tags": [],
+      "status": "LIVE",
+      "start": "2026-09-04T11:00:00Z",
+      "end": "2026-09-04T16:00:00Z",
+      "score": "1-0",
+      "games": "WD Australia \u00b7 MD 3-3 GS",
+      "note": "Men's doubles on Grandstand.",
+      "watch": "wcyoutube",
+      "source": "https://www.sporttora.com/pwc2026/live"
+    },
+    {
+      "id": "wc-eng-can",
+      "date": "2026-09-04",
+      "tour": "wc",
+      "comp": "World Cup \u00b7 Da Nang",
+      "div": "Mixed Team",
+      "session": "Tien Son Center \u00b7 from 18:00 GMT+7",
+      "a": "England",
+      "b": "Canada",
+      "tags": [],
+      "status": "LIVE",
+      "start": "2026-09-04T11:00:00Z",
+      "end": "2026-09-04T16:00:00Z",
+      "score": "0-1",
+      "games": "WD Canada \u00b7 MD 19-16 Court 3",
+      "note": "Men's doubles Court 3.",
+      "watch": "wcyoutube",
+      "source": "https://www.sporttora.com/pwc2026/live"
+    },
+    {
+      "id": "wc-usa-nzl",
+      "date": "2026-09-04",
+      "tour": "wc",
+      "comp": "World Cup \u00b7 Da Nang",
+      "div": "Mixed Team",
+      "session": "Tien Son Center \u00b7 from 18:00 GMT+7",
+      "a": "USA",
+      "b": "New Zealand",
+      "tags": [
+        "USA"
+      ],
+      "status": "LIVE",
+      "start": "2026-09-04T11:00:00Z",
+      "end": "2026-09-04T16:00:00Z",
+      "score": "1-1",
+      "games": "MD USA \u00b7 WD USA \u00b7 XD 17-9 Court 1",
+      "note": "Mixed doubles Court 1.",
+      "watch": "wcyoutube",
+      "source": "https://www.sporttora.com/pwc2026/live"
+    },
+    {
+      "id": "wc-ind-phi-c",
+      "date": "2026-09-04",
+      "tour": "wc",
+      "comp": "World Cup \u00b7 Da Nang",
+      "div": "Mixed Team",
+      "session": "Tien Son Center \u00b7 from 18:00 GMT+7",
+      "a": "India",
+      "b": "Philippines",
+      "tags": [
+        "India"
+      ],
+      "status": "LIVE",
+      "start": "2026-09-04T11:00:00Z",
+      "end": "2026-09-04T16:00:00Z",
+      "score": "0-0",
+      "games": "WD 6-4 Court 4",
+      "note": "Second India\u2013Philippines tie on the live board (separate session/court).",
+      "watch": "wcyoutube",
+      "source": "https://www.sporttora.com/pwc2026/live"
+    },
+    {
+      "id": "wc-esp-hkg",
+      "date": "2026-09-04",
+      "tour": "wc",
+      "comp": "World Cup \u00b7 Da Nang",
+      "div": "Mixed Team",
+      "session": "Tien Son Center \u00b7 from 18:00 GMT+7",
+      "a": "Spain",
+      "b": "Hong Kong, China",
+      "tags": [],
+      "status": "LIVE",
+      "start": "2026-09-04T11:00:00Z",
+      "end": "2026-09-04T16:00:00Z",
+      "score": "1-1",
+      "games": "MD Hong Kong",
+      "note": "Sporttora live.",
+      "watch": "wcyoutube",
+      "source": "https://www.sporttora.com/pwc2026/live"
+    },
+    {
+      "id": "wc-vie-mas",
+      "date": "2026-09-04",
+      "tour": "wc",
+      "comp": "World Cup \u00b7 Da Nang",
+      "div": "Mixed Team",
+      "session": "Tuyen Son B \u00b7 16:00 GMT+7",
+      "a": "Vietnam",
+      "b": "Malaysia",
+      "tags": [
+        "Vietnam"
+      ],
+      "status": "LIVE",
+      "start": "2026-09-04T09:00:00Z",
+      "end": "2026-09-04T11:00:00Z",
+      "score": "2-0",
+      "games": "WD Vietnam \u00b7 MD Vietnam",
+      "note": "Two disciplines in. Still on the live board so not marked FT.",
+      "watch": "wcyoutube",
+      "source": "https://www.sporttora.com/pwc2026/live"
+    }
+  ]
+}

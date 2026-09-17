@@ -1,0 +1,54 @@
+[build]
+  publish = "site"
+  functions = "netlify/functions"
+  command = "echo no-build"
+
+[functions]
+  node_bundler = "esbuild"
+  included_files = [
+    "netlify/functions/wc-parse.mjs",
+    "netlify/functions/wave-parse.mjs",
+    "netlify/functions/wave-snap-build.mjs",
+    "netlify/functions/wave-snap.json"
+  ]
+
+[functions.rankings]
+  timeout = 26
+
+[functions."wave-snap-refresh"]
+  timeout = 26
+
+[[redirects]]
+  from = "/api/worldcup"
+  to = "/.netlify/functions/worldcup"
+  status = 200
+
+[[redirects]]
+  from = "/api/ppa"
+  to = "/.netlify/functions/ppa"
+  status = 200
+
+[[redirects]]
+  from = "/api/scores"
+  to = "/.netlify/functions/scores"
+  status = 200
+
+[[redirects]]
+  from = "/api/magazine"
+  to = "/.netlify/functions/magazine"
+  status = 200
+
+[[redirects]]
+  from = "/api/rankings"
+  to = "/.netlify/functions/rankings"
+  status = 200
+
+[[redirects]]
+  from = "/api/history"
+  to = "/.netlify/functions/history"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Netlify local / link state (keep site id via docs; CLI recreates)
+.netlify/
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.log
+
+# Secrets / env
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+secrets/
