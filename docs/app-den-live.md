@@ -51,3 +51,26 @@ WPM uses the **Den Live proxies only** (stable, keyless from our egress).
 ## Browse URL (ops)
 
 https://denlive.pickleballden.com/?tournamentId=18453&homeView=day&browseDate=2026-09-18
+
+
+## Ship note — 2026-09-18 (BST)
+
+**Miss owned:** APP was live on Den and absent from WPM LIVE; connector shipped same day.
+
+| | |
+|--|--|
+| Event | APP Dillons Overland Park Open (Den `18453`) |
+| Venue / tz | AdventHealth Sports Park at Bluhawk · `America/Chicago` |
+| Deploy | `6aace76d39613170516c43d9` · `wpm-20260918a.js` |
+| Verify | `/api/app` → 256 matches (55 on 2026-09-18 NEXT, 201 FT 2026-09-17); 0 phantom 0–0; PPA/WC unchanged |
+
+**Sample lines (FT):** Brooker def Roberson 15–8 · Shackelford lost to Price 5–15 · Price def Brooker 15–4  
+
+**Sample today (NEXT / on deck):** Men's Pro Singles waiting on court (Wazir/Dussault, Bower/Camron); Mixed Pro Doubles Gibson/Gibson vs Rivas/Goodburn scheduled.
+
+### Residual risks
+- Den bracket list is large (~50); function fans out in parallel — watch Netlify duration if Den slows.
+- Timezone is **derived** from venue city (no IANA on Den info payload).
+- No LIVE rows at verify time (early CT); LIVE path is unproven until a RUNNING match appears — status map covers Den live tokens.
+- Amateur + pro share one tour chip; board can be noisy on All / APP filter.
+- Direct `api.pickleballden.com` may 403 without key; we rely on Den Live proxies only.
