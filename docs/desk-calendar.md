@@ -70,10 +70,12 @@ Public JSON: GPA events merged with armed flags (`armed`, `onLive`, `status`, `c
 
 ## Residual
 
-- **APP Japan – Sendai** (Sep 19–20) — still needs Den `tournamentId` + timezone smoke before live-path.
-- **APP Columbus / Chongqing / …** — same; calendar shows results-only until desk arms with a path.
-- Arming does **not** auto-rewire `/api/app` or `/api/ppa` event ids — connector functions remain code-owned; calendar records desk intent + intake status for chrome and ops.
+- **APP Japan – Sendai** — **no Den id** (Tournated / JPA). Cannot live-path via `/api/app`. See `docs/app-den-ids.md`.
+- **APP Columbus** — Den **registration** `external-tournament/8057937` only; Den Live scoring id not published yet.
+- **APP Asia Chongqing** — no Den link found.
+- **`/api/app` now follows** Blobs `calendar-armed` / `wpm-app` `active-tournament` / env / query (fallback 18453). Arming an APP row with `denTournamentId` drives the live connector when intake passes.
 - D-Joy Leg 3 still awaits a published live URL (`connector: djoy`).
+- Cross-link: [`app-den-ids.md`](./app-den-ids.md)
 
 ## Cross-links
 

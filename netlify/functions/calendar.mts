@@ -12,6 +12,21 @@ const KNOWN = {
     denTournamentId: "18453",
     scorePath: "/api/app",
     timezone: "America/Chicago",
+    name: "APP Dillons Overland Park Open",
+  },
+  app18442: {
+    type: "app",
+    denTournamentId: "18442",
+    scorePath: "/api/app",
+    timezone: "America/Detroit",
+    name: "APP Detroit Open",
+  },
+  app18454: {
+    type: "app",
+    denTournamentId: "18454",
+    scorePath: "/api/app",
+    timezone: "America/New_York",
+    name: "Humana APP Louisville Open",
   },
   ppaMesa: {
     type: "ppa",
@@ -191,9 +206,21 @@ function mergeCalendar(gpaRows: any[], armed: ArmedEvent[]) {
     } else {
       // Soft hints for known wired events (not persisted until desk arms)
       if (/Overland Park/i.test(name) && tour === "app") {
-        note = "Known Den id 18453 — arm via desk to mark on WPM LIVE";
+        note = "Known Den id 18453 — arm via desk; /api/app reads calendar-armed";
+      } else if (/Louisville/i.test(name) && tour === "app") {
+        note = "Known Den id 18454 — arm when week-of (tz America/New_York)";
+      } else if (/Detroit/i.test(name) && tour === "app") {
+        note = "Known Den id 18442 (past) — Den Live brackets verified";
       } else if (/Sendai/i.test(name)) {
-        note = "Needs Den tournamentId + timezone before live path";
+        note =
+          "No Den Live tournamentId — hosted on Tournated/Japan pickleball (games.japanpickleball.org/11359), not Den";
+        status = "results-only";
+      } else if (/Columbus/i.test(name) && tour === "app") {
+        note =
+          "Den registration external-tournament/8057937 exists; Den Live tournamentId not published yet (no denlive link on APP page)";
+        status = "results-only";
+      } else if (/Chongqing/i.test(name)) {
+        note = "No Den Live / registration Den link found on APP page — score path unknown";
         status = "results-only";
       }
     }

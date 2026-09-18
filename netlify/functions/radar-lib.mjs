@@ -38,7 +38,7 @@ export const WIRED = {
   },
 };
 
-export const KNOWN_APP_DEN_IDS = ["18453"];
+export const KNOWN_APP_DEN_IDS = ["18453", "18442", "18454"];
 
 const HORIZON_DAYS = 14;
 const LOOKBACK_DAYS = 2;

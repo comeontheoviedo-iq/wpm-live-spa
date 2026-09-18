@@ -124,3 +124,8 @@ Server tags each match `tier: "pro" | "amateur"` from bracket name (`\bPro\b` �
 - LIVE path still waiting on first Den `RUNNING` row today (CT morning / early session); mapping matches Den Live SPA.
 - Blobs cache needs prod Netlify Blobs; cold local has no store — fetches still fail soft.
 - Web Push + APP Pro chips merged into the same client bust `wpm-20260918b.js` (2026-09-18).
+
+
+## Configurable tournamentId (2026-09-18)
+
+`/api/app` no longer hardcodes only `18453`. Resolution order: query `tournamentId` → env `APP_DEN_TOURNAMENT_ID` → Blobs `wpm-app`/`active-tournament` → Blobs `wpm-desk`/`calendar-armed` (APP connector) → fallback `18453`. See [`app-den-ids.md`](./app-den-ids.md).

@@ -1,13 +1,187 @@
-import type { Config } from "@netlify/functions";
+import type { Config, Context } from "@netlify/functions";
 import { getStore } from "@netlify/blobs";
 
 /** APP (Association of Pickleball Professionals) via Den Live proxies. */
-const TOURNAMENT_ID = "18453";
 const DEN = "https://denlive.pickleballden.com";
-const TZ = "America/Chicago"; // Overland Park, KS — AdventHealth Sports Park at Bluhawk
-const COMP = "APP Dillons Overland Park Open";
-const VENUE = "AdventHealth Sports Park at Bluhawk, Overland Park, KS";
+const FALLBACK_ID = "18453"; // APP Dillons Overland Park Open — last known live stop
 const UA = { "User-Agent": "WPM-LIVE/1.0", Accept: "application/json" };
+const BLOB_STORE = "wpm-app";
+const DESK_STORE = "wpm-desk";
+
+/** Static intake profiles for known Den tournamentIds (tz derived — Den info has no IANA). */
+const PROFILES: Record<
+  string,
+  { name: string; venue: string; tz: string }
+> = {
+  "18453": {
+    name: "APP Dillons Overland Park Open",
+    venue: "AdventHealth Sports Park at Bluhawk, Overland Park, KS",
+    tz: "America/Chicago",
+  },
+  "18442": {
+    name: "APP Detroit Open",
+    venue: "Detroit, MI",
+    tz: "America/Detroit",
+  },
+  "18454": {
+    name: "Humana APP Louisville Open",
+    venue: "Louisville, KY",
+    tz: "America/New_York",
+  },
+};
+
+type ActiveEvent = {
+  id: string;
+  name: string;
+  venue: string;
+  tz: string;
+  source: string;
+};
+
+function envGet(key: string): string {
+  try {
+    if (typeof Netlify !== "undefined" && Netlify.env?.get) {
+      const v = Netlify.env.get(key);
+      if (v) return String(v);
+    }
+  } catch {
+    /* ignore */
+  }
+  return String(process.env[key] || "");
+}
+
+function ymdToday(tz: string): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz || "UTC",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+function inWindow(start: string, end: string, today: string, padDays = 1): boolean {
+  if (!start) return false;
+  const e = end || start;
+  // pad: arm a day early / keep a day after
+  const padStart = (() => {
+    const [y, m, d] = start.split("-").map(Number);
+    return new Date(Date.UTC(y, m - 1, d - padDays)).toISOString().slice(0, 10);
+  })();
+  const padEnd = (() => {
+    const [y, m, d] = e.split("-").map(Number);
+    return new Date(Date.UTC(y, m - 1, d + padDays)).toISOString().slice(0, 10);
+  })();
+  return today >= padStart && today <= padEnd;
+}
+
+function profileFor(id: string, armed?: { name?: string; venue?: string; timezone?: string }): ActiveEvent {
+  const p = PROFILES[id];
+  return {
+    id,
+    name: (armed?.name || p?.name || `APP tournament ${id}`).trim(),
+    venue: (armed?.venue || p?.venue || "").trim() || p?.venue || "",
+    tz: (armed?.timezone || p?.tz || "UTC").trim() || "UTC",
+    source: "profile",
+  };
+}
+
+async function readAppConfig(): Promise<ActiveEvent | null> {
+  try {
+    const store = getStore({ name: BLOB_STORE, consistency: "strong" });
+    const cfg = (await store.get("active-tournament", { type: "json" })) as {
+      tournamentId?: string;
+      denTournamentId?: string;
+      name?: string;
+      venue?: string;
+      timezone?: string;
+      tz?: string;
+    } | null;
+    const id = String(cfg?.tournamentId || cfg?.denTournamentId || "").replace(/\D/g, "");
+    if (!id) return null;
+    const base = profileFor(id, {
+      name: cfg?.name,
+      venue: cfg?.venue,
+      timezone: cfg?.timezone || cfg?.tz,
+    });
+    return { ...base, source: "wpm-app:active-tournament" };
+  } catch {
+    return null;
+  }
+}
+
+async function readCalendarArmed(): Promise<ActiveEvent | null> {
+  try {
+    const store = getStore({ name: DESK_STORE, consistency: "strong" });
+    const data = (await store.get("calendar-armed", { type: "json" })) as {
+      events?: Array<{
+        name?: string;
+        venue?: string;
+        timezone?: string;
+        start?: string;
+        end?: string;
+        onLive?: boolean;
+        status?: string;
+        connector?: { type?: string; denTournamentId?: string };
+      }>;
+    } | null;
+    const events = Array.isArray(data?.events) ? data!.events! : [];
+    const appRows = events.filter(
+      (e) =>
+        e?.connector?.type === "app" &&
+        String(e?.connector?.denTournamentId || "").replace(/\D/g, "")
+    );
+    if (!appRows.length) return null;
+
+    // Prefer in-window live-path / onLive, else any live-path, else first with den id
+    const ranked = [...appRows].sort((a, b) => {
+      const idA = String(a.connector?.denTournamentId || "");
+      const tzA = a.timezone || PROFILES[idA]?.tz || "UTC";
+      const today = ymdToday(tzA);
+      const score = (e: typeof a) => {
+        const id = String(e.connector?.denTournamentId || "");
+        const tz = e.timezone || PROFILES[id]?.tz || "UTC";
+        const t = ymdToday(tz);
+        let s = 0;
+        if (e.onLive || e.status === "live-path") s += 10;
+        if (inWindow(String(e.start || ""), String(e.end || ""), t, 1)) s += 20;
+        return s;
+      };
+      return score(b) - score(a);
+    });
+
+    const best = ranked[0];
+    const id = String(best.connector!.denTournamentId!).replace(/\D/g, "");
+    const base = profileFor(id, {
+      name: best.name,
+      venue: best.venue,
+      timezone: best.timezone,
+    });
+    return { ...base, source: "calendar-armed" };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Resolve active Den tournamentId.
+ * Priority: ?tournamentId= → env APP_DEN_TOURNAMENT_ID → Blobs wpm-app active-tournament
+ * → Blobs wpm-desk calendar-armed (APP connector) → fallback 18453.
+ */
+async function resolveActive(req?: Request): Promise<ActiveEvent> {
+  const q = req ? new URL(req.url).searchParams.get("tournamentId") : null;
+  if (q && /^\d+$/.test(q)) {
+    return { ...profileFor(q), source: "query" };
+  }
+  const envId = envGet("APP_DEN_TOURNAMENT_ID") || envGet("DEN_TOURNAMENT_ID");
+  if (envId && /^\d+$/.test(envId.trim())) {
+    return { ...profileFor(envId.trim()), source: "env" };
+  }
+  const fromApp = await readAppConfig();
+  if (fromApp) return fromApp;
+  const fromCal = await readCalendarArmed();
+  if (fromCal) return fromCal;
+  return { ...profileFor(FALLBACK_ID), source: "fallback" };
+}
 
 /** Align with Den Live isRunningMatch — never clock-promote. */
 const LIVE_STATUSES = new Set(["RUNNING", "IN_PROGRESS", "INPROGRESS", "STARTED", "PLAYING"]);
@@ -15,7 +189,6 @@ const SKIP_STATUSES = new Set(["BYE", "WAITING_FOR_OPPONENT", "WAITINGFOROPPONEN
 const BRACKET_FETCH_CONCURRENCY = 6;
 const BRACKET_FETCH_MS = 8000;
 const BLOB_TTL_MS = 45_000;
-const BLOB_STORE = "wpm-app";
 
 function ymdInTz(d: Date, tz: string): string {
   return new Intl.DateTimeFormat("en-CA", {
@@ -81,8 +254,8 @@ function blobStore() {
   }
 }
 
-async function cachedBracketMatches(bracketId: string): Promise<{ content: any[]; fromCache: boolean; error?: string }> {
-  const key = `bracket-matches:${TOURNAMENT_ID}:${bracketId}`;
+async function cachedBracketMatches(tournamentId: string, bracketId: string): Promise<{ content: any[]; fromCache: boolean; error?: string }> {
+  const key = `bracket-matches:${tournamentId}:${bracketId}`;
   const store = blobStore();
   if (store) {
     try {
@@ -237,7 +410,7 @@ function matchDate(m: any, bracketDate: string, st: string, todayTz: string): st
   return bracketDate || todayTz;
 }
 
-function toMatch(m: any, bracket: any, todayTz: string) {
+function toMatch(m: any, bracket: any, todayTz: string, ev: ActiveEvent) {
   const a = sideName(m.team1);
   const b = sideName(m.team2);
   if (a === "TBD" || b === "TBD" || a === "BYE" || b === "BYE") return null;
@@ -246,9 +419,9 @@ function toMatch(m: any, bracket: any, todayTz: string) {
   const st = mapStatus(raw, !!m.completed);
   const date = matchDate(m, bracket.startDate, st, todayTz);
   const start =
-    localArrayToIso(m.startTime, TZ) ||
-    localArrayToIso(m.scheduledTime, TZ) ||
-    bracketStartIso(bracket.startDate || date, bracket.startTime || null, TZ);
+    localArrayToIso(m.startTime, ev.tz) ||
+    localArrayToIso(m.scheduledTime, ev.tz) ||
+    bracketStartIso(bracket.startDate || date, bracket.startTime || null, ev.tz);
   const lines = linesFrom(m, a, b, st);
   const w0 = lines.filter((l) => l.winner === a).length;
   const w1 = lines.filter((l) => l.winner === b).length;
@@ -262,7 +435,7 @@ function toMatch(m: any, bracket: any, todayTz: string) {
     date,
     tour: "app",
     tier,
-    comp: COMP,
+    comp: ev.name,
     div: [bracket.bracketName, round].filter(Boolean).join(" · "),
     round,
     session: court ? court : "",
@@ -282,8 +455,8 @@ function toMatch(m: any, bracket: any, todayTz: string) {
         ? "Result recorded (no game scores)"
         : court || "",
     watch: "", // stay in-app — no bounce to Den/APPTV as product path
-    venue: VENUE,
-    tz: TZ,
+    venue: ev.venue,
+    tz: ev.tz,
   };
 }
 
@@ -304,14 +477,25 @@ function keepMatch(m: any, todayTz: string) {
   return false;
 }
 
-export default async () => {
+export default async (req: Request, _context?: Context) => {
   const degraded: string[] = [];
+  const active = await resolveActive(req);
+  const TOURNAMENT_ID = active.id;
+  let COMP = active.name;
+  let VENUE = active.venue;
+  let TZ = active.tz;
   try {
     const [infoRes, brRes] = await Promise.all([
       fetchJson(`${DEN}/api/tournament-info?tournamentId=${TOURNAMENT_ID}`, 10000),
       fetchJson(`${DEN}/api/tournament-brackets?tournamentId=${TOURNAMENT_ID}`, 10000),
     ]);
+    const denName = brRes?.tournament?.name;
+    if (denName) COMP = denName;
     const venueName = infoRes?.info?.venue?.name || VENUE;
+    if (venueName) VENUE = venueName;
+    // refresh active snapshot used by toMatch
+    active.name = COMP;
+    active.venue = VENUE;
     const brackets: any[] = brRes?.brackets?.content || [];
     if (!brackets.length) {
       return Response.json(
@@ -341,7 +525,7 @@ export default async () => {
       .sort((a, b) => Number(b.status === "Running") - Number(a.status === "Running"));
 
     const settled = await mapPool(selected, BRACKET_FETCH_CONCURRENCY, async (b) => {
-      const { content, fromCache, error } = await cachedBracketMatches(String(b.bracketId));
+      const { content, fromCache, error } = await cachedBracketMatches(TOURNAMENT_ID, String(b.bracketId));
       if (error) degraded.push(`bracket:${b.bracketId}:${content.length ? "stale" : "fail"}`);
       return { bracket: b, matches: content, error: error || null, fromCache };
     });
@@ -354,7 +538,7 @@ export default async () => {
     const failNotes = degraded.slice();
 
     const all = settled
-      .flatMap(({ bracket, matches }) => matches.map((m: any) => toMatch(m, bracket, todayTz)))
+      .flatMap(({ bracket, matches }) => matches.map((m: any) => toMatch(m, bracket, todayTz, active)))
       .filter(Boolean) as any[];
 
     const matches = all
@@ -398,6 +582,7 @@ export default async () => {
           tz: TZ,
           startDate: brRes?.tournament?.startDate,
           endDate: brRes?.tournament?.endDate,
+          idSource: active.source,
         },
       },
       { headers: { "Cache-Control": "public, max-age=15" } }

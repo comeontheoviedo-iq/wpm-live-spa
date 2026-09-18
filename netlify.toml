@@ -23,6 +23,7 @@
 [functions.app]
   timeout = 26
 
+
 [functions."push-live-check"]
   timeout = 26
 
@@ -70,6 +71,7 @@
   from = "/api/push-subscribe"
   to = "/.netlify/functions/push-subscribe"
   status = 200
+
 
 
 [[redirects]]

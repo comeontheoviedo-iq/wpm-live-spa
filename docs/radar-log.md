@@ -18,3 +18,12 @@
 - **P0** app APP Columbus Open — APP on GPA calendar — need Den tournamentId + tz + score smoke before live board
 - **P0** app APP Asia Chongqing Open — APP on GPA calendar — need Den tournamentId + tz + score smoke before live board
 - Shop locked.
+
+## 2026-09-18 ~09:30 BST — APP Den id hunt
+
+- Overland Park **18453** — still the only blocked-window event with a published Den Live id.
+- Sendai — **not found** on Den (Tournated 11359).
+- Columbus — registration external **8057937**; Den Live id **not found**.
+- Chongqing — **not found**.
+- Side finds: Detroit **18442**, Louisville **18454**.
+- `/api/app` made configurable (calendar-armed / wpm-app blob / env / query). Details: `docs/app-den-ids.md`.
