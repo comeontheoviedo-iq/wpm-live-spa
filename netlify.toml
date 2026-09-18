@@ -13,6 +13,7 @@
     "netlify/functions/push-lib.mjs",
     "netlify/functions/follow-tags.mjs",
     "netlify/functions/app-rounds.mjs",
+    "netlify/functions/app-dates.mjs",
     "netlify/functions/radar-lib.mjs",
     "netlify/functions/slate-events.mjs"
   ]

@@ -46,7 +46,7 @@ WPM uses the **Den Live proxies only** (stable, keyless from our egress).
 - Stay in-app — `watch` left empty (no bounce to Den / APPTV as the product path)
 - Shop stays closed
 - Do not regress WC / PPA overlays
-- LIVE only from Den running statuses (RUNNING / IN_PROGRESS / STARTED / PLAYING). WAITING_FOR_COURT is dated onto venue-today but stays NEXT. Never clock-promote NEXT→LIVE.
+- LIVE only from Den running statuses (RUNNING / IN_PROGRESS / STARTED / PLAYING). WAITING_FOR_COURT stays NEXT on its **Den scheduled local day** (not rolled onto venue-today). Never clock-promote NEXT→LIVE.
 - Knockout round labels: [`app-rounds.md`](./app-rounds.md) — Final/SF/QF from `matchType` + `totalRounds`, never a global “Round 6 = Final”.
 
 ## Browse URL (ops)
@@ -84,7 +84,7 @@ Den Live `isRunningMatch`: `!completed && status ∈ {RUNNING, IN_PROGRESS, INPR
 |------------|-----|-------|
 | RUNNING / IN_PROGRESS / STARTED / PLAYING | **LIVE** | Only when `completed` is false |
 | COMPLETED / COMPLETE / FINISHED | **FT** | Walkover / empty `scores` → score-blank (no phantom 0–0) |
-| WAITING_FOR_COURT | **NEXT** | Date rolled to venue-today so on-deck shows on the desk |
+| WAITING_FOR_COURT | **NEXT** | Date from `startTime` / `scheduledTime`. Medal matches with no clock use `tournament.endDate` (Overland Finals → Sunday). Never roll onto venue-today. |
 | SCHEDULED / PENDING | **NEXT** | |
 | BYE / WAITING_FOR_OPPONENT | skipped | |
 
@@ -118,7 +118,7 @@ Server tags each match `tier: "pro" | "amateur"` from bracket name (`\bPro\b` �
 | Deploy | `6aace96a4f95d1b5fc52fc9b` (client chip sync; prior `6aace91a3a7df1388e2c671a` had API harden) |
 | Verify (prod `/api/app`) | 256 matches · liveCount 0 · tier pro 87 / amateur 169 · FT 201 / NEXT 55 · 0 phantom 0–0 · coordinated with Web Push on same `b` hash |
 | Verify (pre-deploy Den scan) | 256 keepable rows · **0 LIVE** (no RUNNING yet) · 201 FT · 55 NEXT today (27 pro / 28 am) · 0 phantom 0–0 game lines · 6 score-blank FT (walkover OK) |
-| Sample NEXT (pro on deck) | Wazir vs Dussault · Bower vs Camron (Men's Pro Singles, WAITING_FOR_COURT) · Stewart vs Turkovic · Policare vs Mendez (Women's Pro Singles) |
+| Sample NEXT (pro on deck) | Mixed Pro Doubles Gibson/Gibson vs Rivas/Goodburn (Friday bracket). Men's Pro Singles Final/Bronze are **Sunday** — see day-truth ship. |
 | Sample FT | Hastings def Murphy 15–7 · Ball lost to Chapman 11–15 |
 
 ### Residual
@@ -130,3 +130,16 @@ Server tags each match `tier: "pro" | "amateur"` from bracket name (`\bPro\b` �
 ## Configurable tournamentId (2026-09-18)
 
 `/api/app` no longer hardcodes only `18453`. Resolution order: query `tournamentId` → env `APP_DEN_TOURNAMENT_ID` → Blobs `wpm-app`/`active-tournament` → Blobs `wpm-desk`/`calendar-armed` (APP connector) → fallback `18453`. See [`app-den-ids.md`](./app-den-ids.md).
+
+## Ship note — APP day truth · 2026-09-18 (h)
+
+**Miss:** Men's/Women's Pro Singles Final/Bronze are **Sunday 20 Sep 2026** (Den `tournament.endDate`, America/Chicago). Prod dated WAITING_FOR_COURT onto Friday, so Wazir–Dussault / Bower–Camron sat on today's board as NEXT with blank scores.
+
+| | |
+|--|--|
+| Client | `wpm-20260918h.js` · SW `20260918h` |
+| Helper | `netlify/functions/app-dates.mjs` |
+| Policy | Match `startTime`/`scheduledTime` local Y-M-D. Medal matches with no clock → `tournament.endDate`. Do **not** roll WAITING_FOR_COURT to today. Do **not** inherit Thursday bracket 09:00 as the Final start. LIVE/RUNNING still always on the default today tab. |
+| Board | Day tabs use event tz. Sunday Finals park on **Sun 20**. Date chip (`Sun 20 Sep`) if a future NEXT is visible off today. Draw wall still lists Final slots. |
+| Verify | `node scripts/test-app-dates.mjs` · `node scripts/verify-app-day-truth.mjs` |
+| Residual | Den **429** soft-fail unchanged (concurrency 6, per-bracket fail). Scores never invented. Shop still Coming soon. |

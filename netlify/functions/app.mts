@@ -1,6 +1,7 @@
 import type { Config, Context } from "@netlify/functions";
 import { tagsFor } from "./follow-tags.mjs";
 import { discFromAppBracket, isKnockoutBracket, polishAppRound } from "./app-rounds.mjs";
+import { addDays, keepAppMatch, matchBoardDate, ymdInTz as ymdInTzShared } from "./app-dates.mjs";
 import { getStore } from "@netlify/blobs";
 
 /** APP (Association of Pickleball Professionals) via Den Live proxies. */
@@ -38,6 +39,8 @@ type ActiveEvent = {
   venue: string;
   tz: string;
   source: string;
+  startDate?: string;
+  endDate?: string;
 };
 
 function envGet(key: string): string {
@@ -193,18 +196,7 @@ const BRACKET_FETCH_MS = 8000;
 const BLOB_TTL_MS = 45_000;
 
 function ymdInTz(d: Date, tz: string): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: tz,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(d); // YYYY-MM-DD
-}
-
-function addDays(iso: string, n: number): string {
-  const [y, m, d] = iso.split("-").map(Number);
-  const dt = new Date(Date.UTC(y, m - 1, d + n));
-  return dt.toISOString().slice(0, 10);
+  return ymdInTzShared(d, tz);
 }
 
 function statusToken(raw: any): string {
@@ -392,29 +384,23 @@ function courtLabel(m: any): string {
   return n || (num ? "Court " + num : "");
 }
 
-function matchDate(m: any, bracketDate: string, st: string, todayTz: string): string {
-  // Rolling: live / on-deck sit on "today" so the desk sees them without flipping dates.
-  if (st === "LIVE" || statusToken(m.status || m.matchStatus || m.state) === "WAITING_FOR_COURT") return todayTz;
-  const arr = m.startTime || m.endTime;
-  if (Array.isArray(arr) && arr.length >= 3) {
-    const [y, mo, d] = arr;
-    return `${y}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-  }
-  return bracketDate || todayTz;
-}
-
-function toMatch(m: any, bracket: any, todayTz: string, ev: ActiveEvent) {
+function toMatch(m: any, bracket: any, ev: ActiveEvent) {
   const a = sideName(m.team1);
   const b = sideName(m.team2);
   if (a === "TBD" || b === "TBD" || a === "BYE" || b === "BYE") return null;
   const raw = m.status || m.matchStatus || m.state || "";
   if (SKIP_STATUSES.has(statusToken(raw))) return null;
   const st = mapStatus(raw, !!m.completed);
-  const date = matchDate(m, bracket.startDate, st, todayTz);
+  // Day truth: Den match clock, else medal → tournament.endDate. Never roll WAITING_FOR_COURT to today.
+  const date = matchBoardDate(m, { bracketDate: bracket.startDate, eventEndDate: ev.endDate }) || ev.startDate || "";
+  const matchStart = localArrayToIso(m.startTime, ev.tz) || localArrayToIso(m.scheduledTime, ev.tz);
+  // Bracket session start is a real Den field only when the match sits on that same local day.
+  // Sunday Finals in a Thursday-started singles draw must not inherit Thursday 09:00.
   const start =
-    localArrayToIso(m.startTime, ev.tz) ||
-    localArrayToIso(m.scheduledTime, ev.tz) ||
-    bracketStartIso(bracket.startDate || date, bracket.startTime || null, ev.tz);
+    matchStart ||
+    (date && date === bracket.startDate
+      ? bracketStartIso(bracket.startDate || date, bracket.startTime || null, ev.tz)
+      : "");
   const lines = linesFrom(m, a, b, st);
   const w0 = lines.filter((l) => l.winner === a).length;
   const w1 = lines.filter((l) => l.winner === b).length;
@@ -464,23 +450,6 @@ function toMatch(m: any, bracket: any, todayTz: string, ev: ActiveEvent) {
   };
 }
 
-function keepMatch(m: any, todayTz: string) {
-  if (m.status === "LIVE" || m.status === "FT") {
-    const y = addDays(todayTz, -1);
-    return !m.date || m.date >= y;
-  }
-  // NEXT: today ± 1 day
-  const y = addDays(todayTz, -1);
-  const t = addDays(todayTz, 1);
-  if (m.date && m.date >= y && m.date <= t) return true;
-  const start = m.start ? new Date(m.start) : null;
-  if (start && !Number.isNaN(start.getTime())) {
-    const ageMs = Date.now() - start.getTime();
-    return ageMs <= 48 * 3600000;
-  }
-  return false;
-}
-
 export default async (req: Request, _context?: Context) => {
   const degraded: string[] = [];
   const active = await resolveActive(req);
@@ -500,6 +469,8 @@ export default async (req: Request, _context?: Context) => {
     // refresh active snapshot used by toMatch
     active.name = COMP;
     active.venue = VENUE;
+    active.startDate = brRes?.tournament?.startDate || active.startDate || "";
+    active.endDate = brRes?.tournament?.endDate || active.endDate || "";
     const brackets: any[] = brRes?.brackets?.content || [];
     if (!brackets.length) {
       return Response.json(
@@ -542,11 +513,11 @@ export default async (req: Request, _context?: Context) => {
     const failNotes = degraded.slice();
 
     const all = settled
-      .flatMap(({ bracket, matches }) => matches.map((m: any) => toMatch(m, bracket, todayTz, active)))
+      .flatMap(({ bracket, matches }) => matches.map((m: any) => toMatch(m, bracket, active)))
       .filter(Boolean) as any[];
 
     const matches = all
-      .filter((m) => keepMatch(m, todayTz))
+      .filter((m) => keepAppMatch(m, todayTz, active.endDate))
       .sort((a, b) => Number(b.status === "LIVE") - Number(a.status === "LIVE"));
 
     const bracketsOut: Record<string, any> = {};
