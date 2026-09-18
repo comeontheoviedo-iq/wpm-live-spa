@@ -84,8 +84,8 @@ if ("Notification" in window && Notification.permission === "granted") {
   setTimeout(() => { syncPushSubscription(); }, 2500);
 }
 
-const SAFE_SW = "/sw.js?v=20260918f";
-const SAFE_SW_MARK = "20260918f";
+const SAFE_SW = "/sw.js?v=20260918h";
+const SAFE_SW_MARK = "20260918h";
 /** Application-server VAPID public key (safe to embed). Private stays in Netlify env. */
 const VAPID_PUBLIC_KEY = "BEuWn2rcxKeLXPFa3KJzys7rLOtFX8GUZ9ckfFhsqEVO0Y2PE3WfnOivmFJV3EUVCf1c1g31qSiVoNDbcJQO8GQ";
 
@@ -207,6 +207,50 @@ function ymd(d){
   const y=d.getFullYear(), m=d.getMonth()+1, day=d.getDate();
   return `${y}-${m<10?"0"+m:m}-${day<10?"0"+day:day}`;
 }
+function ymdInTz(d, tz){
+  if (!tz) return ymd(d instanceof Date ? d : new Date(d));
+  try {
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: tz,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    }).format(d instanceof Date ? d : new Date(d));
+  } catch(e) {
+    return ymd(d instanceof Date ? d : new Date(d));
+  }
+}
+function addDaysIso(iso, n){
+  if (!iso) return "";
+  const [y,m,d] = String(iso).split("-").map(Number);
+  if (!y || !m || !d) return "";
+  return new Date(Date.UTC(y, m-1, d+n)).toISOString().slice(0,10);
+}
+/** Prefer APP event tz (Overland America/Chicago) so "today" matches Den's calendar day. */
+function boardTz(){
+  const ev = state.appEvent || {};
+  if (ev.tz) return ev.tz;
+  const app = (state.matches||[]).find(m => m.tour === "app" && m.tz);
+  if (app && app.tz) return app.tz;
+  const any = (state.matches||[]).find(m => m.tz);
+  return (any && any.tz) || "";
+}
+function boardToday(){
+  return ymdInTz(new Date(), boardTz());
+}
+function dateChip(iso){
+  if (!iso) return "";
+  const [Y,M,D] = String(iso).split("-").map(Number);
+  if (!Y || !M || !D) return "";
+  const d = new Date(Y, M-1, D);
+  const wd = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][d.getDay()];
+  const mon = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()];
+  return `${wd} ${D} ${mon}`;
+}
+function startLocalYmd(m){
+  if (!m || !m.start) return "";
+  return ymdInTz(parseUtc(m.start), m.tz || boardTz());
+}
 function parseUtc(s){ return s ? new Date(s) : null; }
 function localTime(iso){
   if(!iso) return "";
@@ -315,9 +359,9 @@ function deskClock(){
 function dayMeta(iso){
   const [Y,M,D] = iso.split("-").map(Number);
   const d = new Date(Y, M-1, D);
-  const today = ymd(new Date());
-  const yest = ymd(new Date(Date.now()-86400000));
-  const tom = ymd(new Date(Date.now()+86400000));
+  const today = boardToday();
+  const yest = addDaysIso(today, -1);
+  const tom = addDaysIso(today, 1);
   const wd = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][d.getDay()];
   const tag = iso===today?"Today":iso===yest?"Yest":iso===tom?"Tom":"";
   return {wd, num:d.getDate(), tag};
@@ -325,12 +369,15 @@ function dayMeta(iso){
 
 function datesAvailable(){
   const set = {};
-  state.matches.forEach(m => set[m.date]=1);
-  const today = ymd(new Date());
+  state.matches.forEach(m => { if (m.date) set[m.date]=1; });
+  const today = boardToday();
   set[today]=1;
-  set[ymd(new Date(Date.now()-86400000))]=1;
-  set[ymd(new Date(Date.now()+86400000))]=1;
-  return Object.keys(set).sort();
+  set[addDaysIso(today, -1)]=1;
+  set[addDaysIso(today, 1)]=1;
+  const ev = state.appEvent || {};
+  if (ev.endDate) set[ev.endDate]=1;
+  if (ev.startDate) set[ev.startDate]=1;
+  return Object.keys(set).filter(Boolean).sort();
 }
 
 
@@ -455,8 +502,11 @@ function followingRail(){
 }
 
 function filteredList(){
+  const today = boardToday();
   return state.matches.filter(m => {
-    if (m.date !== state.date) return false;
+    const live = effectiveStatus(m) === "LIVE";
+    // Default today: that calendar day in event tz, plus LIVE/RUNNING always.
+    if (m.date !== state.date && !(live && state.date === today)) return false;
     if (state.filter === "ppa" && m.tour !== "ppa") return false;
     if (state.filter === "app-pro") {
       if (m.tour !== "app" || appTier(m) !== "pro") return false;
@@ -601,14 +651,25 @@ function entityPath(name){
   if (resolveTeamKey(name)) return teamPath(name);
   return playerPath(name);
 }
+function nextWhenLabel(m){
+  const today = boardToday();
+  const chip = dateChip(m.date);
+  const clockDay = startLocalYmd(m);
+  const time = (m.start && clockDay === m.date) ? localTime(m.start) : "";
+  // Off today's slate (Sunday Finals on a Friday board, or LIVE overlay): show the date chip.
+  if (m.date && m.date !== today) return chip || time || "NEXT";
+  return time || "NEXT";
+}
 function matchRow(raw){
   const m = cleanLines(raw);
   const st = effectiveStatus(m);
-  const when = st==="LIVE" ? "LIVE" : st==="FT" ? "FT" : (localTime(m.start)||"NEXT");
+  const when = st==="LIVE" ? "LIVE" : st==="FT" ? "FT" : nextWhenLabel(m);
   const sc = (centerScore(m)||"vs").split("-");
   const sa = sc[0] || "";
   const sb = sc[1] != null ? sc[1] : "";
   const linePreview = (m.lines||[]).slice(0,4).map(l => l.score ? `${l.disc} ${l.score}` : l.disc).join(" · ") || (m.games||"").split(" · ").slice(0,3).join(" · ");
+  const today = boardToday();
+  const chip = (st==="NEXT" && m.date && m.date !== today) ? `<em class="date-chip">${dateChip(m.date)}</em>` : "";
   return `<div class="match">
     <div class="line">
       <a class="statuscol st ${st}" href="/match/${m.id}">${st==="LIVE"?"<span class='dot'></span>":""}${when}</a>
@@ -618,7 +679,7 @@ function matchRow(raw){
       </div>
       <a class="scorecol" href="/match/${m.id}">${st==="NEXT" && !m.score ? "<span class='kick'>vs</span>" : `<div>${sa}</div><div>${sb}</div>`}</a>
     </div>
-    <a class="games" href="/match/${m.id}"><b>${m.div||m.round||m.comp||""}</b>${linePreview?" · "+linePreview:""}</a>
+    <a class="games" href="/match/${m.id}"><b>${m.div||m.round||m.comp||""}</b>${linePreview?" · "+linePreview:""}${chip}</a>
   </div>`;
 }
 
@@ -647,7 +708,7 @@ function chrome(inner, title){
 }
 
 function viewHome(){
-  if (!state.date) state.date = ymd(new Date());
+  if (!state.date) state.date = boardToday();
   const days = datesAvailable().map(dt => {
     const L = dayMeta(dt);
     return `<button class="day ${dt===state.date?"on":""}" data-day="${dt}"><span>${L.wd}</span><b>${L.num}</b>${L.tag?`<em>${L.tag}</em>`:""}</button>`;
@@ -1070,7 +1131,7 @@ function viewPerson(kind, id){
   if (!rec) return `<div class="wrap"><p class="empty">Not found.</p></div>`;
   const followKey = rec.followKey || id;
   const list = matchesForPerson(kind, id, rec);
-  const todayStr = ymd(new Date());
+  const todayStr = boardToday();
   const today = list.filter(m => m.date === todayStr).sort((a,b)=>(parseUtc(a.start)?.getTime()||0)-(parseUtc(b.start)?.getTime()||0));
   const recent = list.filter(m => m.date !== todayStr || effectiveStatus(m) === "FT").slice(0, 12);
   const stories = storiesForPerson(rec, followKey);
@@ -1677,7 +1738,7 @@ function maybeNotify(m){
 }
 
 function render(){
-  if (!state.date) state.date = ymd(new Date());
+  if (!state.date) state.date = boardToday();
   const p = path();
   let inner = "";
   let m;
@@ -1895,6 +1956,7 @@ async function pull(){
       if (tour === "ppa" && data.brackets) state.brackets = data.brackets;
       if (tour === "wc" && data.brackets) state.wcBrackets = data.brackets;
       if (tour === "app" && data.brackets) state.appBrackets = data.brackets;
+      if (tour === "app" && data.event) state.appEvent = data.event;
     } catch(e) {}
   }
   await overlay("/api/worldcup", "wc");
@@ -1905,7 +1967,7 @@ async function pull(){
   const todayLine = liveN
     ? liveN + " live now across the board."
     : "No live ties on the feed this minute. GPA rankings and the week calendar are below.";
-  state.heroByDate[ymd(new Date())] = todayLine;
+  state.heroByDate[boardToday()] = todayLine;
 }
 
 async function pullHistory(){

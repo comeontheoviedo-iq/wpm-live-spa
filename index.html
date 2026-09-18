@@ -10,17 +10,17 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/app.css?v=20260918g">
+  <link rel="stylesheet" href="/css/app.css?v=20260918h">
 </head>
 <body>
   <div id="app"></div>
   <script>
-/* Register only the safe SW (v=20260918f). One-time migration: unregister any
+/* Register only the safe SW (v=20260918h). One-time migration: unregister any
    worker whose scriptURL is not this safe build — old cache SWs poisoned boards. */
 (function () {
   if (!("serviceWorker" in navigator)) return;
-  var SAFE = "/sw.js?v=20260918f";
-  var MARK = "20260918f";
+  var SAFE = "/sw.js?v=20260918h";
+  var MARK = "20260918h";
   navigator.serviceWorker.getRegistrations().then(function (rs) {
     return Promise.all(rs.map(function (r) {
       var sw = r.active || r.waiting || r.installing;
@@ -33,6 +33,6 @@
   }).catch(function () {});
 })();
 </script>
-<script src="/js/wpm-20260918g.js"></script>
+<script src="/js/wpm-20260918h.js"></script>
 </body>
 </html>

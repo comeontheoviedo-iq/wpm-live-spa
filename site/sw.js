@@ -1,9 +1,9 @@
-/* WPM LIVE safe SW (20260918f)
+/* WPM LIVE safe SW (20260918h)
  * Never caches boards, HTML, JS, API, or JSON — those always hit network no-store.
  * Optional network-first cache only for inert static assets (icon/manifest/css).
  * Handles push + notificationclick for follow LIVE alerts (closed-tab Web Push).
  */
-const STATIC_CACHE = "wpm-static-20260918f";
+const STATIC_CACHE = "wpm-static-20260918h";
 const STATIC_PATHS = new Set(["/icon.svg", "/manifest.json", "/css/app.css"]);
 
 self.addEventListener("install", (e) => {
