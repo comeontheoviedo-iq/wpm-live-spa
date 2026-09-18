@@ -1,7 +1,7 @@
 # APP day truth (Overland Park)
 
 **Date:** 2026-09-18  
-**Slice:** `wpm-20260918h` · `app-dates.mjs` + client day tabs
+**Slice:** `wpm-20260918h` day-filter · `wpm-20260918i` court/local time on cards · `app-dates.mjs`
 
 ## Why Friday looked like finals day
 
@@ -19,6 +19,8 @@ Chris / Den: **finals are Sunday 20 Sep 2026** (`America/Chicago`). Den `tournam
 | Other NEXT with no clock | bracket `startDate` | bracket session time only if same local day |
 
 WAITING_FOR_COURT is **not** dated onto today.
+
+APP board cards show **court** and **scheduled local time** (`America/Chicago` for Overland) only when Den supplies `courtName`/`courtNumber` and `startTime`/`scheduledTime`. `hasClock` is false when those clocks are null — never paint Thursday 09:00 as a Final start. PPA cards use the same pattern (court + ticker `7:15 PM MST` / `America/Phoenix`).
 
 Default **Today** tab = calendar day in event tz, plus LIVE always. Future Finals sit on the Sunday day tab (PPA-style rolling dates). Draw wall still shows Final slots from `/api/app` `brackets`.
 

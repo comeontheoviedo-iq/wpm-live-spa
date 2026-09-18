@@ -64,7 +64,9 @@ const state = {
   wcBrackets: {},
   appBrackets: {},
   drawTour: "ppa",
-  drawDiv: ""
+  drawDiv: "",
+  appEvent: null,
+  ppaEvent: null
 };
 try { state.selected = JSON.parse(localStorage.getItem("wpm-follows") || "{}"); } catch(e) { state.selected = {}; }
 try { state.notified = JSON.parse(sessionStorage.getItem("wpm-notified-live") || "{}"); } catch(e) { state.notified = {}; }
@@ -84,8 +86,9 @@ if ("Notification" in window && Notification.permission === "granted") {
   setTimeout(() => { syncPushSubscription(); }, 2500);
 }
 
-const SAFE_SW = "/sw.js?v=20260918h";
-const SAFE_SW_MARK = "20260918h";
+const SAFE_SW = "/sw.js?v=20260918i";
+const SAFE_SW_MARK = "20260918i";
+const GIJON_DRAW_URL = "https://toppickleballtour.com/wp-content/uploads/2026/09/TOP-PICKLEBALL-TOUR-GIJON-GRUPOS.pdf";
 /** Application-server VAPID public key (safe to embed). Private stays in Netlify env. */
 const VAPID_PUBLIC_KEY = "BEuWn2rcxKeLXPFa3KJzys7rLOtFX8GUZ9ckfFhsqEVO0Y2PE3WfnOivmFJV3EUVCf1c1g31qSiVoNDbcJQO8GQ";
 
@@ -97,9 +100,12 @@ function urlBase64ToUint8Array(base64String){
   for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
   return out;
 }
+function isEventFollowKey(k){
+  return String(k || "").indexOf("ev:") === 0;
+}
 function followTagsList(){
   // Player/team keys only — event keys (ev:) stay in localStorage but never go to Web Push.
-  return Object.keys(state.selected || {}).filter(k => state.selected[k] && String(k).indexOf("ev:") !== 0);
+  return Object.keys(state.selected || {}).filter(k => state.selected[k] && !isEventFollowKey(k));
 }
 async function fetchPushPublicKey(){
   try {
@@ -170,6 +176,7 @@ function matchedFollowsFor(m){
   const hayLower = hay.toLowerCase();
   const hit = [];
   for (const k of keys) {
+    if (isEventFollowKey(k)) continue;
     if (tagSet.has(k)) { hit.push(k); continue; }
     const kl = String(k).toLowerCase();
     if (!kl) continue;
@@ -232,6 +239,8 @@ function boardTz(){
   if (ev.tz) return ev.tz;
   const app = (state.matches||[]).find(m => m.tour === "app" && m.tz);
   if (app && app.tz) return app.tz;
+  const ppa = state.ppaEvent || {};
+  if (ppa.tz) return ppa.tz;
   const any = (state.matches||[]).find(m => m.tz);
   return (any && any.tz) || "";
 }
@@ -252,9 +261,15 @@ function startLocalYmd(m){
   return ymdInTz(parseUtc(m.start), m.tz || boardTz());
 }
 function parseUtc(s){ return s ? new Date(s) : null; }
-function localTime(iso){
+function localTime(iso, tz){
   if(!iso) return "";
-  return parseUtc(iso).toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"});
+  const d = parseUtc(iso);
+  if (!d || Number.isNaN(d.getTime())) return "";
+  const opts = { hour:"numeric", minute:"2-digit" };
+  if (tz) opts.timeZone = tz;
+  try { return d.toLocaleTimeString(undefined, opts); } catch(e) {
+    return d.toLocaleTimeString(undefined, {hour:"numeric", minute:"2-digit"});
+  }
 }
 function relTime(iso){
   if(!iso) return "";
@@ -282,6 +297,13 @@ function effectiveStatus(m){
 }
 function followsMatch(m){
   return matchedFollowsFor(m).length > 0;
+}
+function followsEventMatch(m){
+  const k = eventFollowKey(m);
+  return !!(k && state.selected && state.selected[k]);
+}
+function followsBoardMatch(m){
+  return followsMatch(m) || followsEventMatch(m);
 }
 function anyFollows(){
   return Object.values(state.selected).some(Boolean);
@@ -382,14 +404,26 @@ function datesAvailable(){
 
 
 function competition(m){
-  const d = ((m.div||"")+" "+(m.cat||"")).toLowerCase();
-  if (m.tour === "ppa") return {id:"ppa", title:"PPA Nationals", place:"Cary, NC", rank:1};
-  if (m.tour === "app") {
-    const pro = appTier(m) === "pro";
-    return pro
-      ? {id:"app-pro", title:"APP Pro · Overland Park", place:"Overland Park, KS", rank:1}
-      : {id:"app", title:"APP · Overland Park", place:"Overland Park, KS", rank:2};
+  if (m.tour === "ppa") {
+    const ev = state.ppaEvent || {};
+    return {
+      id:"ppa",
+      title: "PPA · "+shortEventLabel(ev.name || m.comp, eventFollowKey(m)),
+      place: ev.venue || m.venue || "Mesa, AZ",
+      rank:1,
+      eventKey: eventFollowKey(m)
+    };
   }
+  if (m.tour === "app") {
+    const ev = state.appEvent || {};
+    const pro = appTier(m) === "pro";
+    const name = ev.name || m.comp || "APP";
+    const place = ev.venue || m.venue || "Overland Park, KS";
+    return pro
+      ? {id:"app-pro", title:"APP Pro · "+shortEventLabel(name, eventFollowKey(m)), place, rank:1, eventKey: eventFollowKey(m)}
+      : {id:"app", title:"APP · "+shortEventLabel(name, eventFollowKey(m)), place, rank:2, eventKey: eventFollowKey(m)};
+  }
+  const d = ((m.div||"")+" "+(m.cat||"")).toLowerCase();
   if (d.includes("open")) return {id:"wc-open", title:"World Cup · Open", place:"Da Nang", rank:2};
   if (d.includes("junior")) return {id:"wc-jr", title:"World Cup · Juniors", place:"Da Nang", rank:3};
   if (d.includes("kid")) return {id:"wc-kids", title:"World Cup · Kids", place:"Da Nang", rank:4};
@@ -442,12 +476,39 @@ function persistResultCat(){
   const next = location.pathname + location.search + hash;
   if ((location.pathname + location.search + location.hash) !== next) history.replaceState({}, "", next);
 }
+function calendarFollowKey(id){
+  const s = String(id || "").trim();
+  if (!s) return "";
+  return s.indexOf("ev:") === 0 ? s : "ev:" + s;
+}
 function eventFollowKey(m){
+  if (m && m.eventKey) return m.eventKey;
   if (!m || !m.tour) return "";
-  if (m.tour === "ppa") return "ev:ppa";
-  if (m.tour === "app") return "ev:app";
+  if (m.tour === "ppa") return (state.ppaEvent && state.ppaEvent.eventKey) || "ev:ppa";
+  if (m.tour === "app") return (state.appEvent && state.appEvent.eventKey) || "ev:app";
   if (m.tour === "wc") return "ev:wc";
   return "ev:" + m.tour;
+}
+function shortEventLabel(name, key){
+  const n = String(name || "");
+  const k = String(key || "");
+  const blob = n + " " + k;
+  if (/overland/i.test(blob) || /18453/.test(k)) return "Overland";
+  if (/arizona|mesa/i.test(n) || /62c01642/i.test(k) || k === "ev:ppa") return "Arizona";
+  if (/gij/i.test(blob)) return "Gijón";
+  if (/barcelona/i.test(blob)) return "Barcelona";
+  if (/world cup|^ev:wc$/i.test(blob)) return "World Cup";
+  const first = n.split("·")[0].trim();
+  return first || k.replace(/^ev:/, "");
+}
+function eventFilterForKey(k, cal){
+  if (/ev:app/.test(k)) return "app-pro";
+  if (/ev:ppa:/.test(k) || k === "ev:ppa") return "ppa";
+  if (/gijon|tpb/i.test(k) || (cal && cal.tour === "tpb")) return "tpb";
+  if (/barcelona|ppa-eu/i.test(k) || (cal && cal.tour === "ppa-eu")) return "ppa-eu";
+  if (/ev:wc/.test(k)) return "wc";
+  if (cal && cal.tour) return cal.tour;
+  return "all";
 }
 function followPersonLabel(k){
   if (PLAYERS[k]) return {Waters:"A. Waters",Johns:"B. Johns",Bright:"A. Bright"}[k] || PLAYERS[k].name;
@@ -457,26 +518,23 @@ function followPersonLabel(k){
 function followingEvents(){
   const out = [];
   const seen = new Set();
-  const labels = { "ev:ppa":"PPA Tour (US)", "ev:app":"APP", "ev:wc":"World Cup" };
-  Object.keys(state.selected || {}).filter(k => state.selected[k] && String(k).indexOf("ev:")===0).forEach(k => {
+  const calEvents = (state.calendar && state.calendar.events) || [];
+  Object.keys(state.selected || {}).filter(k => state.selected[k] && isEventFollowKey(k)).forEach(k => {
     if (seen.has(k)) return;
     seen.add(k);
     const sample = (state.matches||[]).find(m => eventFollowKey(m)===k);
-    const tour = k.slice(3);
+    const cal = calEvents.find(e => calendarFollowKey(e.id)===k);
+    const name = (sample && sample.comp)
+      || (cal && cal.name)
+      || (state.appEvent && state.appEvent.eventKey===k && state.appEvent.name)
+      || (state.ppaEvent && state.ppaEvent.eventKey===k && state.ppaEvent.name)
+      || "";
     out.push({
       key: k,
-      label: (sample && sample.comp) || labels[k] || tour.toUpperCase(),
-      filter: tour === "app" ? "app-pro" : tour
-    });
-  });
-  (state.matches||[]).filter(followsMatch).forEach(m => {
-    const k = eventFollowKey(m);
-    if (!k || seen.has(k)) return;
-    seen.add(k);
-    out.push({
-      key: k,
-      label: m.comp || m.tour,
-      filter: m.tour === "app" ? (appTier(m)==="pro" ? "app-pro" : "app") : m.tour
+      label: shortEventLabel(name, k),
+      full: name || shortEventLabel(name, k),
+      filter: eventFilterForKey(k, cal),
+      drawUrl: (cal && cal.drawUrl) || (/gij/i.test(k+name) ? GIJON_DRAW_URL : "")
     });
   });
   return out;
@@ -489,14 +547,14 @@ function followingRail(){
         const href = TEAMS[k] ? "/team/"+encodeURIComponent(k) : "/player/"+encodeURIComponent(k);
         return `<a class="follow-item" href="${href}">${esc(followPersonLabel(k))}</a>`;
       }).join("")
-    : `<p class="empty rail-empty">Follow a player on a match or profile — they land here.</p>`;
+    : (events.length ? "" : `<p class="empty rail-empty">Follow a player or an event — they land here.</p>`);
   const eventsHtml = events.length
     ? events.map(e => `<button class="league ${state.filter===e.filter?"on":""}" data-f="${e.filter}">${esc(e.label)}</button>`).join("")
-    : (people.length ? `<p class="empty rail-empty">No followed event in this board window.</p>` : "");
+    : (people.length ? `<p class="empty rail-empty">Follow Overland, Arizona or a slate event from its card.</p>` : "");
   return `<div class="panel rail-card follow-box">
     <div class="kicker">Following</div>
     <div class="follow-people">${peopleHtml}</div>
-    ${eventsHtml?`<div class="kicker" style="margin-top:10px">Events</div>${eventsHtml}`:""}
+    ${eventsHtml?`<div class="kicker" style="margin-top:10px">Events</div><div class="follow-events">${eventsHtml}</div>`:""}
     <a class="chip" href="/following">Open following</a>
   </div>`;
 }
@@ -518,7 +576,7 @@ function filteredList(){
     if (state.filter === "wc" && m.tour !== "wc") return false;
     if (state.filter === "npl" && m.tour !== "npl") return false;
     if (state.filter === "asia" && m.tour !== "asia") return false;
-    if (state.filter === "following" && !followsMatch(m)) return false;
+    if (state.filter === "following" && !followsBoardMatch(m)) return false;
     if (state.boardMode === "results" && state.resultCat && state.resultCat !== "all") {
       if (matchDisc(m) !== state.resultCat) return false;
     }
@@ -651,13 +709,24 @@ function entityPath(name){
   if (resolveTeamKey(name)) return teamPath(name);
   return playerPath(name);
 }
+function courtOnCard(m){
+  return String((m && m.court) || "").trim();
+}
+/** Scheduled local clock only when Den/PPA supplied it. Never invent bracket 09:00. */
+function scheduledLocalLabel(m){
+  if (!m) return "";
+  const note = String(m.note || "").trim();
+  if (m.tour === "ppa" && note && !/^In play/i.test(note) && /\d/.test(note) && /(AM|PM|MST|MDT|CST|CDT|EST|EDT)/i.test(note)) {
+    return note;
+  }
+  if (m.hasClock !== true || !m.start) return "";
+  return localTime(m.start, m.tz || boardTz()) || "";
+}
 function nextWhenLabel(m){
   const today = boardToday();
   const chip = dateChip(m.date);
-  const clockDay = startLocalYmd(m);
-  const time = (m.start && clockDay === m.date) ? localTime(m.start) : "";
-  // Off today's slate (Sunday Finals on a Friday board, or LIVE overlay): show the date chip.
-  if (m.date && m.date !== today) return chip || time || "NEXT";
+  const time = scheduledLocalLabel(m);
+  if (m.date && m.date !== today) return time ? `${chip} ${time}`.trim() : (chip || "NEXT");
   return time || "NEXT";
 }
 function matchRow(raw){
@@ -670,6 +739,10 @@ function matchRow(raw){
   const linePreview = (m.lines||[]).slice(0,4).map(l => l.score ? `${l.disc} ${l.score}` : l.disc).join(" · ") || (m.games||"").split(" · ").slice(0,3).join(" · ");
   const today = boardToday();
   const chip = (st==="NEXT" && m.date && m.date !== today) ? `<em class="date-chip">${dateChip(m.date)}</em>` : "";
+  const court = courtOnCard(m);
+  const clock = st==="NEXT" ? "" : scheduledLocalLabel(m);
+  const metaBits = [court, clock].filter(Boolean);
+  const meta = metaBits.length ? " · " + metaBits.join(" · ") : "";
   return `<div class="match">
     <div class="line">
       <a class="statuscol st ${st}" href="/match/${m.id}">${st==="LIVE"?"<span class='dot'></span>":""}${when}</a>
@@ -679,7 +752,7 @@ function matchRow(raw){
       </div>
       <a class="scorecol" href="/match/${m.id}">${st==="NEXT" && !m.score ? "<span class='kick'>vs</span>" : `<div>${sa}</div><div>${sb}</div>`}</a>
     </div>
-    <a class="games" href="/match/${m.id}"><b>${m.div||m.round||m.comp||""}</b>${linePreview?" · "+linePreview:""}${chip}</a>
+    <a class="games" href="/match/${m.id}"><b>${m.div||m.round||m.comp||""}</b>${linePreview?" · "+linePreview:""}${meta}${chip}</a>
   </div>`;
 }
 
@@ -745,10 +818,13 @@ function viewHome(){
     const key = c.meta.id;
     const showAll = state.more[key];
     const ftShow = showAll ? ft : ft.slice(0,4);
+    const ek = c.meta.eventKey || eventFollowKey(c.items[0]);
+    const followingEv = ek && state.selected[ek];
+    const followBtn = ek ? `<button class="chip ${followingEv?"on":""}" data-follow="${esc(ek)}">${followingEv?"Following":"Follow"}</button>` : "";
     return `<section class="comp-card">
       <div class="comp-head">
         <div><h3>${c.meta.title}</h3><span>${c.meta.place} · ${c.items.length} ties</span></div>
-        ${liveN?`<div class="livecount"><span class="dot"></span>${liveN} LIVE</div>`:""}
+        <div class="comp-actions">${liveN?`<div class="livecount"><span class="dot"></span>${liveN} LIVE</div>`:""}${followBtn}</div>
       </div>
       ${live.map(matchRow).join("")}
       ${next.map(matchRow).join("")}
@@ -848,14 +924,21 @@ function statusChip(st, onLive){
   if(st==='delayed') return '<span class="cal-status delayed">scores delayed</span>';
   return '<span class="cal-status results-only">results-only</span>';
 }
+function officialDrawCta(url, label){
+  if (!url) return "";
+  return `<a class="btn gold draw-cta" href="${esc(url)}" target="_blank" rel="noopener">${esc(label || "Official draw")}</a>`;
+}
 function calEventRow(e){
   const start=(e.start||e.tournament_date||'').toString().slice(0,10);
   const end=(e.end||e.end_date||start).toString().slice(0,10);
   const dates=end&&end!==start?`${start} → ${end}`:start;
   const venue=e.venue||e.location||'';
   const id=e.id||('gpa:'+encodeURIComponent(String(e.name||'').toLowerCase())+':'+start);
-  const draw=e.drawUrl?`<a class="chip" href="${esc(e.drawUrl)}" target="_blank" rel="noopener">Draw PDF</a>`:"";
+  const fk=calendarFollowKey(id);
+  const following=!!state.selected[fk];
+  const draw=officialDrawCta(e.drawUrl);
   const official=e.officialUrl?`<a class="chip" href="${esc(e.officialUrl)}" target="_blank" rel="noopener">Official</a>`:"";
+  const follow=`<button class="chip ${following?"on":""}" data-follow="${esc(fk)}">${following?"Following":"Follow"}</button>`;
   const hint=e.note?`<span class="games">${esc(e.note)}</span>`:"";
   return `<div class="rank-row cal-row">
     <b></b>
@@ -864,7 +947,8 @@ function calEventRow(e){
       <span>${dates} · ${esc(venue)} · ${esc(e.tier||'')}</span>
       <span class="cal-meta">${statusChip(e.status,e.onLive)}${e.armed?' <em class="cal-armed">armed</em>':''}${e.onLive?' <em class="cal-onlive">on WPM LIVE</em>':''}${e.seeded?' <em class="cal-armed">slate</em>':''}</span>
       ${hint}
-      ${draw||official?`<span class="cal-meta">${draw}${official}</span>`:""}
+      <span class="cal-meta">${follow}${official}</span>
+      ${draw}
     </div>
     <em>${esc(e.host||e.tour||'')}</em>
     <a class="chip cal-add" href="/calendar?add=${encodeURIComponent(id)}">Add</a>
@@ -886,10 +970,13 @@ function slateEmpty(filter){
   const today=ymd(new Date());
   const cal=(state.calendar&&state.calendar.events)||[];
   const rows=cal.filter(e => meta.match(e) && (e.end||e.start||"")>=today).slice(0,8);
+  const drawUrl = (rows.find(e => e.drawUrl)||{}).drawUrl || (filter==="tpb" ? GIJON_DRAW_URL : "");
+  const draw = officialDrawCta(drawUrl, filter==="tpb" ? "Official draw" : "Draw PDF");
   return `<section class="comp-card">
     <div class="comp-head"><div><h3>${meta.title}</h3><span>upcoming / scores delayed</span></div></div>
     <p class="games">${meta.copy}</p>
     ${rows.length?rows.map(calEventRow).join(""):`<p class="empty">${meta.copy}</p>`}
+    ${draw}
     <a class="chip" href="/calendar">Calendar</a>
   </section>`;
 }
@@ -961,7 +1048,7 @@ function viewMatch(id){
         const pts=String(l.score||"").split("–");
         return `<tr class="${l.live?"live":""}"><td>${l.disc}${l.live?" · LIVE":""}</td><td>${pts[0]||""}</td><td>${pts[1]||""}</td><td>${l.winner||l.court||""}</td></tr>`;
       }).join("")}</tbody></table>`:""}
-      <p class="updated">${m.start?localTime(m.start)+" local":""}${m.court?" · "+m.court:""}${state.updated?" · Updated "+new Date(state.updated).toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"}):""}</p>
+      <p class="updated">${scheduledLocalLabel(m)?scheduledLocalLabel(m)+(m.tz?" "+String(m.tz).split("/").pop():"")+" local":""}${courtOnCard(m)?" · "+courtOnCard(m):""}${state.updated?" · Updated "+new Date(state.updated).toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"}):""}</p>
       <p class="games">${m.note||""}</p>
       <div class="watchbar">
         ${w?`<a class="btn gold" href="${w.href}">${w.label}</a>`:""}
@@ -1190,19 +1277,38 @@ function alertsCta(){
 }
 
 function viewFollowing(){
-  const list = state.matches.filter(followsMatch).sort((a,b)=>{
+  const list = state.matches.filter(followsBoardMatch).sort((a,b)=>{
     const ra={LIVE:0,NEXT:1,FT:2}[effectiveStatus(a)];
     const rb={LIVE:0,NEXT:1,FT:2}[effectiveStatus(b)];
     if(ra!==rb) return ra-rb;
     return (parseUtc(a.start)?.getTime()||0)-(parseUtc(b.start)?.getTime()||0);
   });
+  const events = followingEvents();
   const shop = PRODUCTS.filter(p => (p.tags||[]).some(t => state.selected[t]));
+  const eventCards = events.length
+    ? `<div class="panel"><div class="kicker">Events</div>${events.map(e => {
+        const following = !!state.selected[e.key];
+        return `<div class="rank-row">
+          <b></b>
+          <div>
+            <strong>${esc(e.full || e.label)}</strong>
+            <span>${esc(e.label)}</span>
+            <span class="cal-meta">
+              <button class="chip ${following?"on":""}" data-follow="${esc(e.key)}">${following?"Following":"Follow"}</button>
+              <a class="chip" href="/" data-f="${esc(e.filter)}">Open board</a>
+              ${e.drawUrl?officialDrawCta(e.drawUrl):""}
+            </span>
+          </div>
+        </div>`;
+      }).join("")}</div>`
+    : "";
   return `<div class="wrap">
     <h2 style="font-family:Syne,sans-serif;font-size:32px">Following</h2>
-    <p class="games">Your players, countries and the matches they are in.</p>
+    <p class="games">Players, countries and events you follow. Event keys stay on-device — Web Push still uses player tags only.</p>
     ${alertsCta()}
+    ${eventCards}
     <div class="chips" style="margin:14px 0">${followChips()}</div>
-    <div class="panel">${list.length?list.map(matchRow).join(""):"<p class='empty'>Follow someone on Live. This tab then becomes your board.</p>"}</div>
+    <div class="panel">${list.length?list.map(matchRow).join(""):"<p class='empty'>Follow a player or tap Follow on Overland / Arizona / Gijón. This tab then becomes your board.</p>"}</div>
     ${shop.length?`<div class="panel"><div class="kicker">On court with your follows</div>${shop.map(productCard).join("")}</div>`:""}
     <div class="panel">
       <div class="kicker">Watch</div>
@@ -1949,6 +2055,8 @@ async function pull(){
       const res = await fetch(url+"?t="+Date.now(), {cache:"no-store"});
       if (!res.ok) return;
       const data = await res.json();
+      if (tour === "app" && data && data.event) state.appEvent = data.event;
+      if (tour === "ppa" && data && data.event) state.ppaEvent = data.event;
       if (!data || !Array.isArray(data.matches) || !data.matches.length) return;
       const ids = new Set(data.matches.map(m => m.id));
       state.matches = (state.matches || []).filter(m => m.tour !== tour && !ids.has(m.id)).concat(data.matches);
@@ -1956,7 +2064,6 @@ async function pull(){
       if (tour === "ppa" && data.brackets) state.brackets = data.brackets;
       if (tour === "wc" && data.brackets) state.wcBrackets = data.brackets;
       if (tour === "app" && data.brackets) state.appBrackets = data.brackets;
-      if (tour === "app" && data.event) state.appEvent = data.event;
     } catch(e) {}
   }
   await overlay("/api/worldcup", "wc");

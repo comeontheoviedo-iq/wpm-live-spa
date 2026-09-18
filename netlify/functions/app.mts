@@ -1,7 +1,7 @@
 import type { Config, Context } from "@netlify/functions";
 import { tagsFor } from "./follow-tags.mjs";
 import { discFromAppBracket, isKnockoutBracket, polishAppRound } from "./app-rounds.mjs";
-import { addDays, keepAppMatch, matchBoardDate, ymdInTz as ymdInTzShared } from "./app-dates.mjs";
+import { addDays, keepAppMatch, matchBoardDate, matchHasClock, ymdInTz as ymdInTzShared } from "./app-dates.mjs";
 import { getStore } from "@netlify/blobs";
 
 /** APP (Association of Pickleball Professionals) via Den Live proxies. */
@@ -394,8 +394,10 @@ function toMatch(m: any, bracket: any, ev: ActiveEvent) {
   // Day truth: Den match clock, else medal → tournament.endDate. Never roll WAITING_FOR_COURT to today.
   const date = matchBoardDate(m, { bracketDate: bracket.startDate, eventEndDate: ev.endDate }) || ev.startDate || "";
   const matchStart = localArrayToIso(m.startTime, ev.tz) || localArrayToIso(m.scheduledTime, ev.tz);
+  const hasClock = matchHasClock(m) && !!matchStart;
   // Bracket session start is a real Den field only when the match sits on that same local day.
   // Sunday Finals in a Thursday-started singles draw must not inherit Thursday 09:00.
+  // Client only paints local time when hasClock — never invent a scheduled clock.
   const start =
     matchStart ||
     (date && date === bracket.startDate
@@ -439,6 +441,8 @@ function toMatch(m: any, bracket: any, ev: ActiveEvent) {
     games,
     lines,
     court,
+    hasClock,
+    eventKey: ev.id ? "ev:app:" + ev.id : "ev:app",
     note: liveLine
       ? `In play ${liveLine.disc}${liveLine.score && liveLine.score !== "–" ? " " + liveLine.score : ""}`
       : st === "FT" && !lines.length
@@ -481,7 +485,7 @@ export default async (req: Request, _context?: Context) => {
           message: "scores delayed",
           matches: [],
           degraded: ["brackets:empty"],
-          event: { id: TOURNAMENT_ID, name: COMP, venue: venueName, tz: TZ },
+          event: { id: TOURNAMENT_ID, name: COMP, venue: venueName, tz: TZ, eventKey: "ev:app:" + TOURNAMENT_ID },
         },
         { headers: { "Cache-Control": "public, max-age=15" } }
       );
@@ -560,6 +564,7 @@ export default async (req: Request, _context?: Context) => {
           startDate: brRes?.tournament?.startDate,
           endDate: brRes?.tournament?.endDate,
           idSource: active.source,
+          eventKey: "ev:app:" + TOURNAMENT_ID,
         },
       },
       { headers: { "Cache-Control": "public, max-age=15" } }

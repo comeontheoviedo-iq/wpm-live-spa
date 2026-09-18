@@ -17,7 +17,7 @@ Gijón and Barcelona have **no working live score path** on WPM LIVE yet. They a
 | Status | **scores delayed** / results-only |
 | Live id | **None** — no Den Live `tournamentId`, no Tournated, no live API found |
 
-Tour chip is **TOP Pickleball (`tpb`)**, not APP Den. Powered-by-APP is sponsorship, not `/api/app`. Groups are the official PDF only (not parsed into fake match scores).
+Tour chip is **TOP Pickleball (`tpb`)**, not APP Den. Powered-by-APP is sponsorship, not `/api/app`. Groups are the official PDF only (not parsed into fake match scores). Competitions / scores-delayed card has a one-tap **Official draw** CTA to that PDF (`wpm-20260918i.js`).
 
 ## PPA Tour Europe · P250 Barcelona Open
 
@@ -43,6 +43,6 @@ When the official ticker title is Barcelona, radar raises **P0** to cut `EVENT` 
 - Seed: `netlify/functions/slate-events.mjs`
 - Calendar merge: `netlify/functions/calendar.mts`
 - Radar: `netlify/functions/radar-lib.mjs`
-- UI: competitions empty cards + calendar draw/official chips (`wpm-20260918g.js`)
+- UI: competitions empty cards + **Official draw** CTA + calendar follow (`wpm-20260918i.js`)
 
 Intake rule unchanged: name + venue + timezone + **working** score path. A parked UUID is not a working path.
