@@ -178,13 +178,14 @@ function toMatch(m: any, bracket: any, todayTz: string) {
     tags: tagsFor(a, b),
     status: st,
     start,
-    score: st === "NEXT" && !w0 && !w1 && !liveLine ? "" : `${w0}-${w1}`,
+    // Never emit phantom 0-0: FT with no played games (walkover/empty Den row) stays score-blank.
+    score: (!w0 && !w1 && !liveLine) ? "" : `${w0}-${w1}`,
     games,
     lines,
     court,
     note: liveLine
       ? `In play ${liveLine.disc}${liveLine.score && liveLine.score !== "–" ? " " + liveLine.score : ""}`
-      : court || "",
+      : (st === "FT" && !lines.length ? "Result recorded (no game scores)" : court || ""),
     watch: "", // stay in-app — no bounce to Den/APPTV as product path
     venue: VENUE,
     tz: TZ,
