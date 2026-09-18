@@ -17,6 +17,17 @@ Every weekday (desk TZ `Europe/London`), produce a short **radar brief**: what�
 
 Optional later: MLP, PPA Asia, club opens — **results_only** until intake passes.
 
+**Do not merge labels:** MLP Asia (PPA/MLP franchise) ≠ APP Asia Tour ≠ PPA Asia.
+
+## Watched without a live path (2026-09-18)
+
+| Event | Dates | Status | What radar watches |
+|-------|-------|--------|--------------------|
+| **TPB Gijón 2026** | 18–20 Sep · Europe/Madrid | scores delayed / results_only | Official page for Den/Tournated; draw PDF is the only published groups |
+| **PPA P250 Barcelona Open** | 23–27 Sep · Europe/Madrid | results_only · UUID `1655a7c9-904a-44c9-aa29-b279fca900e8` **parked** | Ticker title becoming Barcelona → P0 cut `ppa.mts` EVENT. Until then Arizona stays `/api/ppa` |
+
+See [`slate-europe.md`](./slate-europe.md). Seeded in `netlify/functions/slate-events.mjs`.
+
 ## Intake checklist (gate = `coverage-intake.md`)
 
 An event is **on the live board** only with:
@@ -40,12 +51,14 @@ Desk tick boxes before shipping a tour chip:
 
 1. Run radar: `node scripts/event-radar.mjs --pretty` **or** `curl -sS https://live.worldpickleballmagazine.com/api/radar | jq`.
 2. Read `summary` + `actions` only — ignore quiet `results_only` rows unless owner asks.
-3. **P0** (`blocked_by_intake` on PPA/APP):
+3. **P0** (`blocked_by_intake` on PPA/APP/PPA Europe):
    - PPA ticker title ≠ wired EVENT → cut `EVENT` in `ppa.mts` same day (see radar-log 2026-09-18).
+   - Ticker title is **Barcelona** → cut EVENT to parked UUID `1655a7c9-904a-44c9-aa29-b279fca900e8` (not while Arizona is still the ticker).
    - New APP on GPA without Den id → find `tournamentId` on Den Live → fill intake → ship `/api/app` id.
 4. **P1** (`missing`): connector/feed down — note residual, do not invent lines.
-5. Append a one-liner to `docs/radar-log.md` when something changed; skip if no P0/P1.
-6. Do **not** open shop; do **not** regress APP / Web Push.
+5. Quiet **results_only**: Gijón (scores delayed + draw PDF), Barcelona parked UUID, MLP Asia label guard. Watch; do not invent LIVE.
+6. Append a one-liner to `docs/radar-log.md` when something changed; skip if no P0/P1.
+7. Do **not** open shop; do **not** regress APP / Web Push. **MLP Asia ≠ APP.**
 
 ## Board statuses (script / API)
 
@@ -61,7 +74,7 @@ Desk tick boxes before shipping a tour chip:
 - SPA rankings panel already surfaces GPA `events` from `/api/rankings` (week calendar).
 - Desk calendar UI: `/calendar` + `/api/calendar` (Blobs `calendar-armed`) — see `docs/desk-calendar.md`.
 - Desk depth is `/api/radar` (JSON report, Blobs cache ~30 min; `?refresh=1` to bypass).
-- Wired ids live in `netlify/functions/radar-lib.mjs` `WIRED` — keep in sync when cutting PPA/APP events.
+- Wired ids live in `netlify/functions/radar-lib.mjs` `WIRED` — keep in sync when cutting PPA/APP events. Parked Barcelona UUID lives in `slate-events.mjs` until cutover.
 
 ## Anti-patterns
 
@@ -69,6 +82,8 @@ Desk tick boxes before shipping a tour chip:
 - Shipping a tour chip before the score path returns real lines
 - Linking out to Den/APPTV as the product experience
 - Merging APP into PPA/WC filters or draws
+- Chipping **MLP Asia** as APP, or APP Asia Tour as MLP
+- Pointing `/api/ppa` at a parked Europe UUID while the US ticker is still live
 
 ## Commands
 

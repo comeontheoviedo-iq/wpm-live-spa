@@ -4,7 +4,7 @@
 **API:** `GET|POST /api/calendar`  
 **Store:** Netlify Blobs `wpm-desk` / key `calendar-armed`  
 **Auth (mutations):** `DESK_KEY` (same as `/api/scores`)  
-**JS:** `wpm-20260918d`  
+**JS:** `wpm-20260918g` (calendar draw chips + competitions upcoming cards)  
 **Intake gate:** [`coverage-intake.md`](./coverage-intake.md)
 
 ## Product
@@ -72,7 +72,9 @@ Public JSON: GPA events merged with armed flags (`armed`, `onLive`, `status`, `c
 
 - **APP Japan – Sendai** — **no Den id** (Tournated / JPA). Cannot live-path via `/api/app`. See `docs/app-den-ids.md`.
 - **APP Columbus** — Den **registration** `external-tournament/8057937` only; Den Live scoring id not published yet.
-- **APP Asia Chongqing** — no Den link found.
+- **APP Asia Chongqing** — no Den link found. APP Asia Tour, **not** MLP Asia.
+- **TPB Gijón 2026** — seeded slate, scores delayed, official draw PDF. No Den id. See `docs/slate-europe.md`.
+- **PPA Barcelona Open** — UUID parked `1655a7c9-904a-44c9-aa29-b279fca900e8`. `/api/ppa` stays Arizona until ticker cutover.
 - **`/api/app` now follows** Blobs `calendar-armed` / `wpm-app` `active-tournament` / env / query (fallback 18453). Arming an APP row with `denTournamentId` drives the live connector when intake passes.
 - D-Joy Leg 3 still awaits a published live URL (`connector: djoy`).
 - Cross-link: [`app-den-ids.md`](./app-den-ids.md)

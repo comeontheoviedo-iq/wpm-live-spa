@@ -247,6 +247,7 @@ nav.tabbar a.on{color:var(--gold)}
 .cal-onlive{color:var(--live)}
 .cal-row{grid-template-columns:36px 1fr auto auto;gap:8px}
 .cal-row .cal-add{justify-self:end}
+.cal-row .games{display:block;margin-top:4px;font-size:12px}
 .cal-form label{display:block;margin:8px 0}
 .cal-dates{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
 .cal-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px}
