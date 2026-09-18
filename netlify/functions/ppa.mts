@@ -1,6 +1,6 @@
 import type { Config } from "@netlify/functions";
 
-const EVENT = "b177c3be-53a6-4df8-b1cb-94cb5b0f97d1";
+const EVENT = "62c01642-1bb2-4f9a-9998-599f8fdefe5c"; // Veolia Arizona Open 2026-09-14..20
 
 function sideName(team: any) {
   if (!team) return "TBD";
@@ -94,7 +94,7 @@ function toMatch(m: any) {
     id: "ppa-" + m.id,
     date,
     tour: "ppa",
-    comp: "PPA Nationals · Cary",
+    comp: "PPA Veolia Arizona Open · Mesa",
     div: [m.division || m.divisionLabel, m.round || m.roundLabel].filter(Boolean).join(" · "),
     round: m.round || m.roundLabel || "",
     session: m.court ? "Court " + m.court : "",
