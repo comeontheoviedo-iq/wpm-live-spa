@@ -1,44 +1,66 @@
 # Event radar — keep the owner off the calendar beat
 
-WPM LIVE should **discover** weekly events before they go live, not rely on Chris spotting a Den/PPA link in the morning. This doc is the operating pattern; automation can grow into scripts/cron later.
+WPM LIVE should **discover** weekly events before they go live, not rely on Chris spotting a Den/PPA link in the morning. This doc is the operating pattern; automation lives in `scripts/event-radar.mjs` and `GET /api/radar`.
 
 ## Goal
 
 Every weekday (desk TZ `Europe/London`), produce a short **radar brief**: what’s on this week, intake status (pass/fail), and whether a live connector exists. Owner reviews exceptions only.
 
-## Sources to watch (weekly)
+## Concrete weekly sources
 
-| Source | What to scrape / poll | Typical lead time |
-|--------|----------------------|-------------------|
-| **GPA calendar** | GPA / rankings event list + medal history already in `/api/history` & wave snap | Days–weeks |
-| **PPA** | `ppatour.com` schedule + `/api/ticker/` + `/api/scores/?event=` event UUID | Confirmed week-of |
-| **APP / Den Live** | Den Live tournament picker / known APP schedule pages; `tournament-info` + `tournament-brackets` once an id is known | Week-of; ids appear when Den publishes |
-| **Sporttora** | World Cup / multi-sport OOP + live RSC feeds (existing WC path) | Event window |
+| Source | Probe | How radar uses it | Typical lead |
+|--------|-------|-------------------|--------------|
+| **GPA calendar** | Supabase `tournaments` (same as `/api/rankings` events) | Horizon −2…+14 days. APP rows → live candidates; other hosts → `results_only` until intake | Days–weeks |
+| **PPA ticker** | `ppatour.com/api/ticker/` + `scores/?event=` wired UUID | Title must align with wired `EVENT` in `ppa.mts`; mismatch = P0 cut | Week-of |
+| **APP / Den Live** | `denlive.pickleballden.com` `tournament-info` + `tournament-brackets` for known ids; GPA APP names without Den id = blocked | Id discovery is still manual (Den picker / tour week) | Week-of |
+| **Sporttora WC** | Prod `/api/worldcup` | On board while feed returns matches (LIVE/NEXT/FT) | Event window |
 
-Optional later: MLP, PPA Asia, club opens — **results-only** until intake passes.
+Optional later: MLP, PPA Asia, club opens — **results_only** until intake passes.
 
-## Intake gate (same as `coverage-intake.md`)
+## Intake checklist (gate = `coverage-intake.md`)
 
 An event is **on the live board** only with:
 
-1. **Name**
-2. **Venue**
-3. **Timezone** (IANA or clear offset)
-4. **One working score path** smoke-tested once
+1. **Name** — public title
+2. **Venue** — city / venue string
+3. **Timezone** — IANA (or clear offset)
+4. **One working score path** — smoke-tested once (ticker, Den proxies, Sporttora, …)
 
-Fail → calendar stub / “scores delayed” only. Never fake 0–0.
+Fail → calendar stub / “scores delayed” only. **Never** invent scores or fake 0–0.
 
-## Suggested weekly loop
+Desk tick boxes before shipping a tour chip:
 
-1. **Monday radar** — list events with start dates in the next 10 days from GPA + PPA schedule + APP tour page + Sporttora.
-2. **Per event row** — fill name / venue / tz / candidate score URL; mark `intake: pass|fail|unknown`.
-3. **Connector check** — if pass and no `/api/{tour}` yet, open a ship task (clone PPA/APP pattern).
-4. **Day-before** — re-smoke the score path; confirm tour chip label; shop stays closed.
-5. **Live day** — overlay in `pull()`; verify prod curl; note residual risks in the ship note.
+- [ ] Display name
+- [ ] Venue + timezone
+- [ ] Score connector smoke (URL or function)
+- [ ] Tour chip label (PPA / APP / WC / GPA — not merged)
+- [ ] Watch deep link optional; shop stays closed
 
-## Where APP fits
+## 08:30 Europe/London routine (Grok Bot + desk)
 
-APP events are scored on **Den Live** (`denlive.pickleballden.com`) with stable JSON proxies (see `docs/app-den-live.md`). Once a `tournamentId` is known, intake is usually fast: info → venue, brackets → score path, KS/venue city → `America/Chicago` (or local IANA).
+1. Run radar: `node scripts/event-radar.mjs --pretty` **or** `curl -sS https://live.worldpickleballmagazine.com/api/radar | jq`.
+2. Read `summary` + `actions` only — ignore quiet `results_only` rows unless owner asks.
+3. **P0** (`blocked_by_intake` on PPA/APP):
+   - PPA ticker title ≠ wired EVENT → cut `EVENT` in `ppa.mts` same day (see radar-log 2026-09-18).
+   - New APP on GPA without Den id → find `tournamentId` on Den Live → fill intake → ship `/api/app` id.
+4. **P1** (`missing`): connector/feed down — note residual, do not invent lines.
+5. Append a one-liner to `docs/radar-log.md` when something changed; skip if no P0/P1.
+6. Do **not** open shop; do **not** regress APP / Web Push.
+
+## Board statuses (script / API)
+
+| Status | Meaning |
+|--------|---------|
+| `on_board` | Intake pass + live connector healthy |
+| `blocked_by_intake` | Seen on calendar/ticker but missing name/venue/tz/path or id |
+| `missing` | Expected feed unreachable / empty |
+| `results_only` | GPA (or similar) calendar row — no live path by design yet |
+
+## Product / calendar awareness
+
+- SPA rankings panel already surfaces GPA `events` from `/api/rankings` (week calendar).
+- Desk depth is `/api/radar` (JSON report, Blobs cache ~30 min; `?refresh=1` to bypass).
+- Wired ids live in `netlify/functions/radar-lib.mjs` `WIRED` — keep in sync when cutting PPA/APP events.
 
 ## Anti-patterns
 
@@ -47,14 +69,12 @@ APP events are scored on **Den Live** (`denlive.pickleballden.com`) with stable 
 - Linking out to Den/APPTV as the product experience
 - Merging APP into PPA/WC filters or draws
 
-## Output artifact (lightweight)
+## Commands
 
-Keep a running `docs/radar-log.md` (optional) or Slack/desk note:
+```bash
+# Local / box
+node scripts/event-radar.mjs --pretty --out docs/radar-latest.json
 
-```
-YYYY-MM-DD radar
-- PPA … intake pass · /api/ppa
-- APP Overland Park (18453) … /api/app · APP Pro/APP chips · LIVE harden `wpm-20260918b`
-- GPA … results-only
-- WC … /api/worldcup
+# Prod desk
+curl -sS 'https://live.worldpickleballmagazine.com/api/radar' | jq '.summary,.actions'
 ```

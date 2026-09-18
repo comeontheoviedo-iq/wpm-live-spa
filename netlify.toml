@@ -10,7 +10,8 @@
     "netlify/functions/wave-parse.mjs",
     "netlify/functions/wave-snap-build.mjs",
     "netlify/functions/wave-snap.json",
-    "netlify/functions/push-lib.mjs"
+    "netlify/functions/push-lib.mjs",
+    "netlify/functions/radar-lib.mjs"
   ]
 
 [functions.rankings]
@@ -58,6 +59,11 @@
 [[redirects]]
   from = "/api/history"
   to = "/.netlify/functions/history"
+  status = 200
+
+[[redirects]]
+  from = "/api/radar"
+  to = "/.netlify/functions/radar"
   status = 200
 
 [[redirects]]
