@@ -4,7 +4,7 @@
 **Not:** PickleLive  
 **Slice date:** 2026-09-17 · JS `wpm-20260917b` · git `wpm-live-spa`
 
-WPM LIVE should feel like FotMob for pickleball: live truth first, then identity (player/team pages you can follow), then richer competition surfaces. Rankings stay **labelled** (GPA vs Pro ELO vs PPA World) — never one fake world #1. Shop stays Coming soon until tags/disclosure are ready.
+WPM LIVE should feel like FotMob for pickleball: live truth first, then identity (player/team pages you can follow), then richer competition surfaces. Rankings stay **labelled** (GPA vs WPR vs PPA World) — never one fake world #1. Shop stays Coming soon until tags/disclosure are ready.
 
 ## Ordered roadmap
 

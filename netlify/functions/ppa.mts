@@ -1,5 +1,6 @@
 import type { Config } from "@netlify/functions";
 import { tagsFor } from "./follow-tags.mjs";
+import { discFromDivName } from "./app-rounds.mjs";
 
 const EVENT = "62c01642-1bb2-4f9a-9998-599f8fdefe5c"; // Veolia Arizona Open 2026-09-14..20
 
@@ -89,6 +90,7 @@ function toMatch(m: any) {
     comp: "PPA Veolia Arizona Open · Mesa",
     div: [m.division || m.divisionLabel, m.round || m.roundLabel].filter(Boolean).join(" · "),
     round: m.round || m.roundLabel || "",
+    disc: discFromDivName(m.division || m.divisionLabel || ""),
     session: m.court ? "Court " + m.court : "",
     a,
     b,
@@ -148,6 +150,7 @@ export default async () => {
       status: m.status,
       games: m.games,
       date: m.date,
+      disc: m.disc,
     });
   }
   return Response.json(

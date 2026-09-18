@@ -102,9 +102,9 @@ img{max-width:100%;display:block}
 nav.tabbar{
   position:fixed;left:0;right:0;bottom:0;z-index:20;
   background:var(--navy);border-top:3px solid var(--gold);
-  display:grid;grid-template-columns:repeat(5,1fr);
+  display:grid;grid-template-columns:repeat(6,minmax(0,1fr));
 }
-nav.tabbar a{color:#8b88a8;text-align:center;padding:10px 2px 12px;font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+nav.tabbar a{color:#8b88a8;text-align:center;padding:10px 1px 12px;font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
 nav.tabbar a.on{color:var(--gold)}
 
 .match-hero{padding:28px 8px 8px;text-align:center}
@@ -208,12 +208,18 @@ nav.tabbar a.on{color:var(--gold)}
 .live-card{background:#fff5f5}
 
 .wrap.fot{max-width:1180px;display:grid;grid-template-columns:210px minmax(0,1fr) 260px;gap:14px;align-items:start}
-.rail-card{position:sticky;top:76px}
+.rail-left,.rail-right{position:sticky;top:76px;align-self:start}
+.rail-card{position:static}
 .league{display:block;width:100%;text-align:left;padding:10px 8px;border-radius:10px;font-size:14px;font-weight:650;color:#222}
 .league.on{background:var(--navy);color:#fff}
+.follow-box .follow-people{display:flex;flex-direction:column;gap:2px}
+.follow-item{display:block;padding:8px;border-radius:10px;font-size:14px;font-weight:650}
+.follow-item:hover{background:#f7f4ee}
+.rail-empty{padding:8px 0;font-size:12px}
+.cat-chips{margin-top:10px}
 @media (max-width: 960px){
   .wrap.fot{grid-template-columns:1fr}
-  .rail-left,.rail-right{display:none}
+  .rail-left,.rail-right{display:none;position:static}
 }
 .pair .a,.pair .b{display:block}
 .pair a:hover{color:var(--navy);text-decoration:underline}

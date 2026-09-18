@@ -57,22 +57,35 @@ const state = {
   history: null,
   rankBoard: "gpa",
   rankCat: "mens_singles",
+  resultCat: "all",
   calendar: null,
   calAddId: "",
   brackets: {},
   wcBrackets: {},
+  appBrackets: {},
   drawTour: "ppa",
   drawDiv: ""
 };
 try { state.selected = JSON.parse(localStorage.getItem("wpm-follows") || "{}"); } catch(e) { state.selected = {}; }
 try { state.notified = JSON.parse(sessionStorage.getItem("wpm-notified-live") || "{}"); } catch(e) { state.notified = {}; }
+try {
+  const savedCat = sessionStorage.getItem("wpm-result-cat") || "";
+  if (/^(all|MS|WS|MD|WD|XD)$/.test(savedCat)) state.resultCat = savedCat;
+} catch(e) {}
+(function applyCatHash(){
+  const h = String(location.hash || "").replace(/^#/, "");
+  const m = h.match(/(?:^|&)cat=([A-Za-z]+)/i);
+  if (!m) return;
+  const cat = m[1].toUpperCase() === "ALL" ? "all" : m[1].toUpperCase();
+  if (/^(all|MS|WS|MD|WD|XD)$/.test(cat)) state.resultCat = cat;
+})();
 // Re-sync push subscription if alerts already granted (follows may have changed offline).
 if ("Notification" in window && Notification.permission === "granted") {
   setTimeout(() => { syncPushSubscription(); }, 2500);
 }
 
-const SAFE_SW = "/sw.js?v=20260918e";
-const SAFE_SW_MARK = "20260918e";
+const SAFE_SW = "/sw.js?v=20260918f";
+const SAFE_SW_MARK = "20260918f";
 /** Application-server VAPID public key (safe to embed). Private stays in Netlify env. */
 const VAPID_PUBLIC_KEY = "BEuWn2rcxKeLXPFa3KJzys7rLOtFX8GUZ9ckfFhsqEVO0Y2PE3WfnOivmFJV3EUVCf1c1g31qSiVoNDbcJQO8GQ";
 
@@ -85,7 +98,8 @@ function urlBase64ToUint8Array(base64String){
   return out;
 }
 function followTagsList(){
-  return Object.keys(state.selected || {}).filter(k => state.selected[k]);
+  // Player/team keys only — event keys (ev:) stay in localStorage but never go to Web Push.
+  return Object.keys(state.selected || {}).filter(k => state.selected[k] && String(k).indexOf("ev:") !== 0);
 }
 async function fetchPushPublicKey(){
   try {
@@ -345,6 +359,101 @@ function appTier(m){
   if (/\bpro\b/.test(blob)) return "pro";
   return "amateur";
 }
+const RESULT_CATS = [
+  ["all","All"],
+  ["MS","Men's Singles"],
+  ["WS","Women's Singles"],
+  ["XD","Mixed Doubles"],
+  ["MD","Men's Doubles"],
+  ["WD","Women's Doubles"]
+];
+function discFromDivName(raw){
+  const s = String(raw || "").toLowerCase();
+  if (!s) return "";
+  if (/mixed/.test(s) || /\bxd\b/.test(s)) return "XD";
+  if (/women'?s?\s*doubles|\bwd\b/.test(s)) return "WD";
+  if (/men'?s?\s*doubles|\bmd\b/.test(s)) return "MD";
+  if (/women'?s?\s*singles|\bws\b/.test(s)) return "WS";
+  if (/men'?s?\s*singles|\bms\b/.test(s)) return "MS";
+  if (/women/.test(s) && /double/.test(s)) return "WD";
+  if (/men/.test(s) && /double/.test(s)) return "MD";
+  if (/women/.test(s) && /single/.test(s)) return "WS";
+  if (/men/.test(s) && /single/.test(s)) return "MS";
+  return "";
+}
+/** PPA division / APP bracket / existing disc field → MS WS XD MD WD. Never invent scores. */
+function matchDisc(m){
+  const d = String(m && m.disc || "").toUpperCase();
+  if (["MS","WS","MD","WD","XD"].includes(d)) return d;
+  return discFromDivName((m && (m.div || m.round || m.comp)) || "");
+}
+function persistResultCat(){
+  try { sessionStorage.setItem("wpm-result-cat", state.resultCat || "all"); } catch(e) {}
+  if (state.boardMode !== "results") return;
+  const cat = state.resultCat && state.resultCat !== "all" ? "cat="+state.resultCat : "";
+  const hash = cat ? "#"+cat : "";
+  const next = location.pathname + location.search + hash;
+  if ((location.pathname + location.search + location.hash) !== next) history.replaceState({}, "", next);
+}
+function eventFollowKey(m){
+  if (!m || !m.tour) return "";
+  if (m.tour === "ppa") return "ev:ppa";
+  if (m.tour === "app") return "ev:app";
+  if (m.tour === "wc") return "ev:wc";
+  return "ev:" + m.tour;
+}
+function followPersonLabel(k){
+  if (PLAYERS[k]) return {Waters:"A. Waters",Johns:"B. Johns",Bright:"A. Bright"}[k] || PLAYERS[k].name;
+  if (TEAMS[k]) return TEAMS[k].name;
+  return k;
+}
+function followingEvents(){
+  const out = [];
+  const seen = new Set();
+  const labels = { "ev:ppa":"PPA Tour (US)", "ev:app":"APP", "ev:wc":"World Cup" };
+  Object.keys(state.selected || {}).filter(k => state.selected[k] && String(k).indexOf("ev:")===0).forEach(k => {
+    if (seen.has(k)) return;
+    seen.add(k);
+    const sample = (state.matches||[]).find(m => eventFollowKey(m)===k);
+    const tour = k.slice(3);
+    out.push({
+      key: k,
+      label: (sample && sample.comp) || labels[k] || tour.toUpperCase(),
+      filter: tour === "app" ? "app-pro" : tour
+    });
+  });
+  (state.matches||[]).filter(followsMatch).forEach(m => {
+    const k = eventFollowKey(m);
+    if (!k || seen.has(k)) return;
+    seen.add(k);
+    out.push({
+      key: k,
+      label: m.comp || m.tour,
+      filter: m.tour === "app" ? (appTier(m)==="pro" ? "app-pro" : "app") : m.tour
+    });
+  });
+  return out;
+}
+function followingRail(){
+  const people = followTagsList();
+  const events = followingEvents();
+  const peopleHtml = people.length
+    ? people.map(k => {
+        const href = TEAMS[k] ? "/team/"+encodeURIComponent(k) : "/player/"+encodeURIComponent(k);
+        return `<a class="follow-item" href="${href}">${esc(followPersonLabel(k))}</a>`;
+      }).join("")
+    : `<p class="empty rail-empty">Follow a player on a match or profile — they land here.</p>`;
+  const eventsHtml = events.length
+    ? events.map(e => `<button class="league ${state.filter===e.filter?"on":""}" data-f="${e.filter}">${esc(e.label)}</button>`).join("")
+    : (people.length ? `<p class="empty rail-empty">No followed event in this board window.</p>` : "");
+  return `<div class="panel rail-card follow-box">
+    <div class="kicker">Following</div>
+    <div class="follow-people">${peopleHtml}</div>
+    ${eventsHtml?`<div class="kicker" style="margin-top:10px">Events</div>${eventsHtml}`:""}
+    <a class="chip" href="/following">Open following</a>
+  </div>`;
+}
+
 function filteredList(){
   return state.matches.filter(m => {
     if (m.date !== state.date) return false;
@@ -360,6 +469,9 @@ function filteredList(){
     if (state.filter === "npl" && m.tour !== "npl") return false;
     if (state.filter === "asia" && m.tour !== "asia") return false;
     if (state.filter === "following" && !followsMatch(m)) return false;
+    if (state.boardMode === "results" && state.resultCat && state.resultCat !== "all") {
+      if (matchDisc(m) !== state.resultCat) return false;
+    }
     return true;
   }).sort((a,b) => {
     const ra = {LIVE:0,NEXT:1,FT:2}[effectiveStatus(a)];
@@ -451,11 +563,9 @@ function collectPlayerRankings(fullName){
       cards.push({ source:"GPA", cat: GPA_CAT_LABEL[cat]||cat, rank:r.rank, detail:(r.points!=null?r.points+" pts":"")+(r.country?" · "+r.country:""), name:r.name });
     });
   });
-  Object.entries(data.elo || {}).forEach(([cat, rows]) => {
-    (rows||[]).forEach(r => {
-      if (!rankingNameMatches(fullName, r.name)) return;
-      cards.push({ source:"Pro ELO", cat: ELO_CAT_LABEL[cat]||cat, rank:r.rank, detail:(r.elo!=null?r.elo+" ELO":"")+(r.dupr?" · DUPR "+r.dupr:""), name:r.name });
-    });
+  ((data.elo || {}).singles || []).forEach(r => {
+    if (!rankingNameMatches(fullName, r.name)) return;
+    cards.push({ source:"WPR", cat: "Open mixed", rank:r.rank, detail:(r.elo!=null?r.elo+" WPR":"")+(r.dupr?" · DUPR "+r.dupr:""), name:r.name });
   });
   Object.entries(data.ppaWorld || {}).forEach(([sex, rows]) => {
     (rows||[]).forEach(r => {
@@ -616,6 +726,7 @@ function viewHome(){
           <button data-f="following" class="${state.filter==="following"?"on":""}">Following</button>
         </div>
       </div>
+      ${state.boardMode==="results"?`<div class="chips cat-chips">${RESULT_CATS.map(([id,l])=>`<button class="chip ${state.resultCat===id?"on":""}" data-cat="${id}">${l}</button>`).join("")}</div>`:""}
     </div>
     <div class="panel">${state.boardMode==="draw" ? drawBoard() : (blocks || `<p class="empty">No matches for this day and filter.</p>`)}</div>
     ${weekStrip()}
@@ -633,17 +744,16 @@ function leagueRail(){
     ["asia","PPA Asia"],
     ["npl","NPL Australia"],
     ["mlp-asia","MLP Asia"],
-    ["gpa","GPA events"],
-    ["following","Following"]
+    ["gpa","GPA events"]
   ];
-  return `<div class="panel rail-card"><div class="kicker">Competitions</div>${items.map(([id,l])=>`<button class="league ${state.filter===id?"on":""}" data-f="${id}">${l}</button>`).join("")}</div>`;
+  return `${followingRail()}<div class="panel rail-card"><div class="kicker">Competitions</div>${items.map(([id,l])=>`<button class="league ${state.filter===id?"on":""}" data-f="${id}">${l}</button>`).join("")}</div>`;
 }
 function tableRail(){
   const gpa=((state.rankings||{}).gpa||{}).mens_singles||[];
-  const elo=((state.rankings||{}).elo||{}).singles||[];
+  const wpr=((state.rankings||{}).elo||{}).singles||[];
   const g=gpa.slice(0,6).map(r=>`<a class="rank-row" href="${playerPath(r.name)}"><b>${r.rank}</b><div><strong>${r.name}</strong><span>${r.country||""}</span></div><em>${r.points||""}</em></a>`).join("");
-  const e=elo.slice(0,6).map(r=>`<a class="rank-row" href="${playerPath(r.name)}"><b>${r.rank}</b><div><strong>${r.name}</strong><span>ELO</span></div><em>${r.elo||""}</em></a>`).join("");
-  return `<div class="panel rail-card"><div class="kicker">GPA table</div>${g||"<p class='empty'>Loading table…</p>"}<a class="chip" href="/rankings">Full table</a><a class="chip" href="/history">Archive</a></div><div class="panel rail-card"><div class="kicker">Pro ELO</div>${e||"<p class='empty'>ELO loading…</p>"}</div>`;
+  const e=wpr.slice(0,6).map(r=>`<a class="rank-row" href="${playerPath(r.name)}"><b>${r.rank}</b><div><strong>${r.name}</strong><span>Open mixed</span></div><em>${r.elo||""}</em></a>`).join("");
+  return `<div class="panel rail-card"><div class="kicker">GPA table</div>${g||"<p class='empty'>Loading table…</p>"}<a class="chip" href="/rankings">Full table</a><a class="chip" href="/history">Archive</a></div><div class="panel rail-card"><div class="kicker">WPR</div>${e||"<p class='empty'>WPR loading…</p>"}</div>`;
 }
 function weekStrip(){
   const cal=(state.calendar&&state.calendar.events)||[];
@@ -709,13 +819,14 @@ function applyDrawQuery(){
   const qd = qs("div");
   if (qt === "wc" || qt === "ppa" || qt === "app") {
     state.drawTour = qt;
-    state.filter = qt;
+    state.filter = qt === "app" ? "app-pro" : qt;
   }
   if (qd) state.drawDiv = qd;
 }
 function syncDrawUrl(){
   if (state.boardMode !== "draw" && path() !== "/draw") return;
-  const href = drawHref(state.drawTour === "wc" ? "wc" : "ppa", state.drawDiv || "");
+  const tour = state.drawTour === "wc" ? "wc" : state.drawTour === "app" ? "app" : "ppa";
+  const href = drawHref(tour, state.drawDiv || "");
   if ((location.pathname + location.search) !== href) history.replaceState({}, "", href);
 }
 function drawNext(m){
@@ -724,7 +835,7 @@ function drawNext(m){
   const wall = drawHref(m.tour, div);
   const nameBits = (m.a+" "+m.b).split(/[\/ ]+/).filter(w => w.length>2);
   const all = [];
-  [state.brackets, state.wcBrackets].forEach(br => Object.values(br||{}).forEach(rounds => Object.values(rounds).forEach(arr => all.push(...arr))));
+  [state.brackets, state.wcBrackets, state.appBrackets].forEach(br => Object.values(br||{}).forEach(rounds => Object.values(rounds).forEach(arr => all.push(...arr))));
   const later = all.filter(x => x.id !== m.id && x.status !== "FT" && hasDrawSides(x) && nameBits.some(n => (x.a+" "+x.b).includes(n)));
   if (!later.length) return `<p class="games"><a href="${wall}">See the draw${div?" · "+String(div).replace(/&/g,"&amp;").replace(/</g,"&lt;"):""}</a></p>`;
   return `<div class="panel"><div class="kicker">Up next in the draw</div>${later.slice(0,3).map(x=>`<a class="match" href="/match/${x.id}"><div class="line"><div class="a">${x.a}</div><div class="score">${x.score||"vs"}</div><div class="b">${x.b}</div></div></a>`).join("")}<a class="chip" href="${wall}">Full draw${div?" · "+String(div).replace(/&/g,"&amp;").replace(/</g,"&lt;"):""}</a></div>`;
@@ -817,7 +928,7 @@ function storiesForPerson(rec, followKey){
 }
 function rankingCardsHtml(cards){
   if (!cards || !cards.length) {
-    return `<p class="empty">No labelled ranking row yet on GPA, Pro ELO or PPA World.</p>`;
+    return `<p class="empty">No labelled ranking row yet on GPA, WPR or PPA World.</p>`;
   }
   return `<div class="rank-cards">${cards.map(c => `
     <div class="rank-card">
@@ -826,7 +937,7 @@ function rankingCardsHtml(cards){
       <div class="cat">${c.cat||""}</div>
       <div class="detail">${c.detail||""}</div>
     </div>`).join("")}</div>
-    <p class="games" style="margin-top:10px">Sources stay labelled — GPA, Pro ELO and PPA World are different boards, not one world #1.</p>`;
+    <p class="games" style="margin-top:10px">Sources stay labelled — GPA, WPR and PPA World are different boards, not one world #1.</p>`;
 }
 function lookupPerson(kind, id){
   id = decodeURIComponent(id||"");
@@ -890,7 +1001,7 @@ function waveRecentPanel(rec){
     return `<div class="panel" style="margin-top:18px">
       <div class="kicker">Recent (Pro tour pool)</div>
       <p class="empty">${note}</p>
-      <p class="games">Source: PickleWave public boards · labelled Pro ELO / tour pool — not GPA or PPA World.</p>
+      <p class="games">Source: PickleWave public boards · labelled WPR / tour pool — not GPA or PPA World.</p>
     </div>`;
   }
   const rows = (wave.recent || []).slice(0, 8);
@@ -914,7 +1025,7 @@ function waveRecentPanel(rec){
   ).join("")}</div>` : "";
   return `<div class="panel" style="margin-top:18px">
     <div class="kicker">Recent (Pro tour pool)</div>
-    <p class="games" style="margin-bottom:10px">PickleWave public tour cards · restyled in WPM · ${wave.elo!=null ? "Pro ELO "+wave.elo : "Pro ELO"} · not an iframe</p>
+    <p class="games" style="margin-bottom:10px">PickleWave public tour cards · restyled in WPM · ${wave.elo!=null ? "WPR "+wave.elo : "WPR"} · not an iframe</p>
     ${list}
     ${watchHtml}
   </div>`;
@@ -1127,12 +1238,13 @@ function hasDrawSides(m){
   if (bad.test(a) || bad.test(b)) return false;
   return true;
 }
-/** Map official PPA round strings → R64/R32/R16/QF/SF/F/Bronze. WC keeps Round N; never bare "Round". */
+/** Map official PPA round strings and APP knockout polish → R64/R32/R16/QF/SF/F/Bronze. WC keeps Round N; never bare "Round". */
 function normalizeRoundLabel(tour, raw){
   const s = String(raw||"").trim();
   if (!s || /^round$/i.test(s) || s === "undefined" || s === "null") return null;
-  if (tour === "ppa") {
+  if (tour === "ppa" || tour === "app") {
     const t = s.toLowerCase().replace(/[-_]/g, " ").replace(/\s+/g, " ").trim();
+    if (/^r?128$/.test(t) || /^round\s*(of\s*)?128$/.test(t)) return "R128";
     if (/^r?64$/.test(t) || /^round\s*(of\s*)?64$/.test(t)) return "R64";
     if (/^r?32$/.test(t) || /^round\s*(of\s*)?32$/.test(t)) return "R32";
     if (/^r?16$/.test(t) || /^round\s*(of\s*)?16$/.test(t)) return "R16";
@@ -1148,9 +1260,9 @@ function normalizeRoundLabel(tour, raw){
   return s;
 }
 function roundSortKey(tour, label){
-  if (tour === "ppa") {
-    const order = ["R64","R32","R16","QF","SF","Bronze","F"];
-    const i = order.indexOf(label);
+  if (tour === "ppa" || tour === "app") {
+    const order = ["R128","R64","R32","R16","QF","SF","Bronze","F"];
+    const i = order.indexOf(label === "Final" ? "F" : label);
     return i < 0 ? 80 + String(label).charCodeAt(0) : i;
   }
   const m = String(label).match(/^Round\s+(\d+)$/i);
@@ -1160,7 +1272,9 @@ function roundSortKey(tour, label){
 function sortDivKeys(tour, keys){
   const pref = tour === "wc"
     ? ["Kids","Juniors","Open team","Seniors","Masters"]
-    : ["Men's Singles","Women's Singles","Men's Doubles","Women's Doubles","Mixed Doubles"];
+    : tour === "app"
+      ? ["Men's Pro Singles","Women's Pro Singles","Mixed Pro Doubles","Men's Pro Doubles","Women's Pro Doubles"]
+      : ["Men's Singles","Women's Singles","Men's Doubles","Women's Doubles","Mixed Doubles"];
   return keys.slice().sort((a,b) => {
     const ia = pref.indexOf(a), ib = pref.indexOf(b);
     const aa = ia < 0 ? 50 : ia, bb = ib < 0 ? 50 : ib;
@@ -1223,13 +1337,16 @@ function drawBoard(){
   const tour = state.drawTour === "wc" ? "wc" : state.drawTour === "app" ? "app" : "ppa";
   const brackets = bracketsFromMatches(tour);
   const divs = sortDivKeys(tour, Object.keys(brackets));
-  const div = state.drawDiv && brackets[state.drawDiv] ? state.drawDiv : (divs[0] || "");
+  const prefer = tour === "app"
+    ? divs.find(d => /\bpro\b/i.test(d) && !/backdraw/i.test(d))
+    : "";
+  const div = state.drawDiv && brackets[state.drawDiv] ? state.drawDiv : (prefer || divs[0] || "");
   const rounds = div ? Object.keys(brackets[div]||{}).sort((a,b) => roundSortKey(tour,a) - roundSortKey(tour,b)) : [];
   const nonempty = rounds.filter(r => (brackets[div][r]||[]).some(hasDrawSides));
   let show = nonempty.slice();
-  if (tour === "ppa") {
+  if (tour === "ppa" || tour === "app") {
     const wall = ["R16","QF","SF","F","Bronze"].filter(r => nonempty.includes(r));
-    const early = ["R64","R32"].filter(r => nonempty.includes(r));
+    const early = ["R128","R64","R32"].filter(r => nonempty.includes(r));
     const earlyHot = early.some(r => (brackets[div][r]||[]).some(m => {
       const st = effectiveStatus(m);
       return st === "LIVE" || st === "NEXT";
@@ -1243,7 +1360,7 @@ function drawBoard(){
   const cols = show.map(r => {
     const items = (brackets[div][r] || []).filter(hasDrawSides).slice(0, 32);
     if (!items.length) return "";
-    const knockout = tour === "ppa" && /^(QF|SF|F|Bronze)$/.test(r);
+    const knockout = (tour === "ppa" || tour === "app") && /^(QF|SF|F|Bronze)$/.test(r);
     const stLabel = m => {
       const st = effectiveStatus(m);
       return st === "LIVE" ? "LIVE" : st === "FT" ? "FT" : "Next";
@@ -1255,9 +1372,12 @@ function drawBoard(){
         <em>${stLabel(m)}</em>
       </a>`).join("")}</div>`;
   }).join("");
-  const note = tour === "ppa"
-    ? "Knockout wall · labels normalised to R64 / R32 / R16 / QF / SF / F / Bronze."
-    : "World Cup wall · Sporttora Round N, sorted. Empty Round buckets hidden.";
+  let note = "World Cup wall · Sporttora Round N, sorted. Empty Round buckets hidden.";
+  if (tour === "ppa") note = "Knockout wall · labels normalised to R64 / R32 / R16 / QF / SF / F / Bronze.";
+  if (tour === "app") note = "APP knockout wall · Den Round N mapped from matchType + totalRounds (Final / SF / QF). Pool play stays Round N. Empty later rounds hidden — never invent a bracket.";
+  const empty = tour === "app" && !divs.length
+    ? "<p class='empty'>APP draw is not on the feed for this event. Den has no bracket sides to hang a wall on — never invent one.</p>"
+    : "<p class='empty'>No draw slots with both sides yet.</p>";
   return `
     <div class="seg" style="margin:0 0 12px">
       <button data-drawtour="ppa" class="${tour==="ppa"?"on":""}">PPA</button>
@@ -1266,7 +1386,7 @@ function drawBoard(){
     </div>
     <div class="seg draw-divs" style="margin:0 0 12px">${divs.map(d=>`<button data-draw="${d}" class="${d===div?"on":""}">${divChipLabel(d)}</button>`).join("")||"<span class='empty'>No divisions yet</span>"}</div>
     <p class="draw-wall-note">${note}${div ? " · <strong>"+divChipLabel(div)+"</strong>" : ""}</p>
-    <div class="bracket">${cols || "<p class='empty'>No draw slots with both sides yet.</p>"}</div>`;
+    <div class="bracket">${cols || empty}</div>`;
 }
 function viewDraw(){
   return `<div class="hero"><h2>DRAW</h2><p>Who plays whom next.</p></div><div class="wrap"><div class="panel">${drawBoard()}</div></div>`;
@@ -1393,7 +1513,7 @@ function viewRankings(){
   const data = state.rankings;
   if (!data) return `<div class="wrap"><p class="empty">Loading rankings…</p></div>`;
   const board = state.rankBoard || "ppa";
-  const cats = [
+  const gpaCats = [
     ["mens_singles","Men's S"],
     ["womens_singles","Women's S"],
     ["mens_doubles","Men's D"],
@@ -1401,20 +1521,24 @@ function viewRankings(){
     ["mens_mixed_doubles","Mixed (M)"],
     ["womens_mixed_doubles","Mixed (W)"]
   ];
+  const ppaCats = [["men","Men"],["women","Women"]];
   const cat = state.rankCat || "mens_singles";
   let rows = [];
   let note = "";
+  let catSeg = "";
   if (board === "ppa") {
-    const sex = (cat||"").indexOf("women")>=0 ? "women" : "men";
+    const sex = cat === "women" || (cat||"").indexOf("women")>=0 ? "women" : "men";
     rows = ((data.ppaWorld||{})[sex]||[]).map(r => ({...r, country:"PPA"}));
-    note = "Official UPA / PPA World Pickleball Rankings · composite 50/35/15 · last 52 weeks · ppatour.com/rankings — not the same as GPA or Pro ELO";
+    note = "PPA World · official UPA / PPA category rankings (men / women composite 50/35/15, last 52 weeks). Not WPR and not GPA.";
+    catSeg = `<div class="seg" style="margin-top:10px;flex-wrap:wrap">${ppaCats.map(([id,l])=>`<button data-rankcat="${id}" class="${sex===id?"on":""}">${l}</button>`).join("")}</div>`;
   } else if (board === "gpa") {
     rows = (data.gpa && data.gpa[cat]) || [];
-    note = "GPA world rankings · rolling 12 months · best 10 · gpapickleball.org — labelled separately from PPA World and Pro ELO";
+    note = "GPA world rankings · rolling 12 months · best 10 · gpapickleball.org — labelled separately from PPA World and WPR.";
+    catSeg = `<div class="seg" style="margin-top:10px;flex-wrap:wrap">${gpaCats.map(([id,l])=>`<button data-rankcat="${id}" class="${cat===id?"on":""}">${l}</button>`).join("")}</div>`;
   } else if (board === "elo") {
-    const eloCat = (cat||"").indexOf("double")>=0 ? "mensDoubles" : "singles";
-    rows = ((data.elo||{})[eloCat]||[]).map(r => ({...r, country:r.dupr?"DUPR "+r.dupr:"Pro ELO"}));
-    note = "Pro ELO · independent board · not a world #1 claim — shown labelled next to GPA and PPA World";
+    rows = ((data.elo||{}).singles||[]).map(r => ({...r, country:"Open mixed"}));
+    note = "WPR · open mixed rating (all players, not MS/WS/MD/WD). PickleWave public board. PPA World is the official PPA category ranking.";
+    catSeg = `<div class="seg" style="margin-top:10px"><button class="on" type="button">Open mixed</button></div>`;
   } else {
     rows = [];
     note = "";
@@ -1423,21 +1547,21 @@ function viewRankings(){
     <a class="rank-row" href="${playerPath(r.name)}">
       <b>${r.rank}</b>
       <div><strong>${r.name}</strong><span>${r.country||""}${r.dupr?" · DUPR "+r.dupr:""}</span></div>
-      <em>${r.points!=null?r.points+" pts":(r.elo?r.elo+" ELO":"")}</em>
+      <em>${r.points!=null?r.points+" pts":(r.elo?r.elo+" WPR":"")}</em>
     </a>`).join("");
   const calEv = ((state.calendar||{}).events||[]).filter(e=>e.upcoming!==false).slice(0,8);
   const events = (calEv.length ? calEv : (data.events||[]).slice(0,8).map(e=>({
     name:e.name, start:(e.tournament_date||"").slice(0,10), venue:e.location||e.venue||"", tier:e.tier||"", host:e.host||"", status:"results-only"
   }))).map(calEventRow).join("");
-  return `<div class="hero"><h2>TABLE</h2><p>PPA World, GPA and Pro ELO — labelled separately. <a href="/calendar" style="color:#f5c518">Calendar</a> · <a href="/history" style="color:#f5c518">Archive</a>.</p></div>
+  return `<div class="hero"><h2>TABLE</h2><p>PPA World, GPA and WPR — labelled separately. WPR is open mixed, not a category table. <a href="/calendar" style="color:#f5c518">Calendar</a> · <a href="/history" style="color:#f5c518">Archive</a>.</p></div>
   <div class="wrap">
     <div class="panel">
       <div class="seg">
         <button data-rankboard="ppa" class="${board==="ppa"?"on":""}">PPA World</button>
         <button data-rankboard="gpa" class="${board==="gpa"?"on":""}">GPA</button>
-        <button data-rankboard="elo" class="${board==="elo"?"on":""}">Pro ELO</button>
+        <button data-rankboard="elo" class="${board==="elo"?"on":""}">WPR</button>
       </div>
-      <div class="seg" style="margin-top:10px;flex-wrap:wrap">${cats.map(([id,l])=>`<button data-rankcat="${id}" class="${cat===id?"on":""}">${l}</button>`).join("")}</div>
+      ${catSeg}
       <p class="games" style="margin-top:10px">${note}</p>
       ${list || "<p class='empty'>Board empty for this cut.</p>"}
     </div>
@@ -1561,13 +1685,16 @@ function bind(){
     state.filter = b.getAttribute("data-f");
     if (state.filter === "wc") state.drawTour = "wc";
     if (state.filter === "ppa") state.drawTour = "ppa";
+    if (state.filter === "app" || state.filter === "app-pro") state.drawTour = "app";
     render();
   }));
   document.querySelectorAll("[data-mode]").forEach(b => b.addEventListener("click", () => {
     state.boardMode = b.getAttribute("data-mode");
     if (state.boardMode === "draw" && state.filter === "wc") state.drawTour = "wc";
     if (state.boardMode === "draw" && state.filter === "ppa") state.drawTour = "ppa";
+    if (state.boardMode === "draw" && (state.filter === "app" || state.filter === "app-pro")) state.drawTour = "app";
     if (state.boardMode === "draw") syncDrawUrl();
+    if (state.boardMode === "results") persistResultCat();
     render();
   }));
   document.querySelectorAll("[data-more]").forEach(b => b.addEventListener("click", () => {
@@ -1589,12 +1716,17 @@ function bind(){
     state.drawTour = b.getAttribute("data-drawtour") || "ppa";
     state.drawDiv = "";
     state.boardMode = "draw";
-    state.filter = state.drawTour === "wc" ? "wc" : (state.drawTour === "ppa" ? "ppa" : state.filter);
+    state.filter = state.drawTour === "wc" ? "wc" : (state.drawTour === "ppa" ? "ppa" : (state.drawTour === "app" ? "app-pro" : state.filter));
     syncDrawUrl();
     render();
   }));
   document.querySelectorAll("[data-rankboard]").forEach(b => b.addEventListener("click", () => { state.rankBoard = b.getAttribute("data-rankboard"); render(); }));
   document.querySelectorAll("[data-rankcat]").forEach(b => b.addEventListener("click", () => { state.rankCat = b.getAttribute("data-rankcat"); render(); }));
+  document.querySelectorAll("[data-cat]").forEach(b => b.addEventListener("click", () => {
+    state.resultCat = b.getAttribute("data-cat") || "all";
+    persistResultCat();
+    render();
+  }));
   document.querySelectorAll("[data-shop]").forEach(b => b.addEventListener("click", () => {
     state.shopCat = b.getAttribute("data-shop");
     render();
@@ -1801,7 +1933,7 @@ window.addEventListener("load", async () => {
 
 
 document.addEventListener("click", function wpmClick(ev){
-  const el = ev.target && ev.target.closest ? ev.target.closest("[data-draw], [data-drawtour], [data-mode], [data-f], [data-shop], [data-day], [data-more]") : null;
+  const el = ev.target && ev.target.closest ? ev.target.closest("[data-draw], [data-drawtour], [data-mode], [data-f], [data-shop], [data-day], [data-more], [data-cat]") : null;
   if (!el) return;
   if (el.hasAttribute("data-draw")) {
     ev.preventDefault();
@@ -1817,6 +1949,14 @@ document.addEventListener("click", function wpmClick(ev){
     state.boardMode = "draw";
     if (state.drawTour === "wc") state.filter = "wc";
     if (state.drawTour === "ppa") state.filter = "ppa";
+    if (state.drawTour === "app") state.filter = "app-pro";
+    render();
+    return;
+  }
+  if (el.hasAttribute("data-cat")) {
+    ev.preventDefault();
+    state.resultCat = el.getAttribute("data-cat") || "all";
+    persistResultCat();
     render();
   }
 }, true);
