@@ -1536,7 +1536,7 @@ function viewRankings(){
     note = "GPA world rankings · rolling 12 months · best 10 · gpapickleball.org — labelled separately from PPA World and WPR.";
     catSeg = `<div class="seg" style="margin-top:10px;flex-wrap:wrap">${gpaCats.map(([id,l])=>`<button data-rankcat="${id}" class="${cat===id?"on":""}">${l}</button>`).join("")}</div>`;
   } else if (board === "elo") {
-    rows = ((data.elo||{}).singles||[]).map(r => ({...r, country:r.dupr?"DUPR "+r.dupr:"Open mixed"}));
+    rows = ((data.elo||{}).singles||[]).map(r => ({...r, country:"Open mixed"}));
     note = "WPR · open mixed rating (all players, not MS/WS/MD/WD). PickleWave public board. PPA World is the official PPA category ranking.";
     catSeg = `<div class="seg" style="margin-top:10px"><button class="on" type="button">Open mixed</button></div>`;
   } else {
