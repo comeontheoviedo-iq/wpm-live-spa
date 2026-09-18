@@ -1,5 +1,6 @@
 import type { Config, Context } from "@netlify/functions";
 import { tagsFor } from "./follow-tags.mjs";
+import { discFromAppBracket, isKnockoutBracket, polishAppRound } from "./app-rounds.mjs";
 import { getStore } from "@netlify/blobs";
 
 /** APP (Association of Pickleball Professionals) via Den Live proxies. */
@@ -420,8 +421,17 @@ function toMatch(m: any, bracket: any, todayTz: string, ev: ActiveEvent) {
   const liveLine = lines.find((l) => l.live);
   const games = lines.map((l) => `${l.disc} ${l.score}${l.live ? " LIVE" : ""}`).join(" · ");
   const court = courtLabel(m);
-  const round = m.roundDisplayName || (m.round != null ? "Round " + m.round : "");
+  const round = polishAppRound({
+    round: m.round,
+    roundDisplayName: m.roundDisplayName,
+    matchType: m.matchType,
+    totalRounds: bracket.totalRounds,
+    bracketType: bracket.bracketType,
+    hasThirdPlaceMatch: bracket.hasThirdPlaceMatch,
+  });
   const tier = bracketTier(bracket.bracketName || "");
+  const disc = discFromAppBracket(bracket);
+  const format = isKnockoutBracket(bracket.bracketType) ? "ko" : "pool";
   return {
     id: "app-" + m.matchId,
     date,
@@ -430,6 +440,8 @@ function toMatch(m: any, bracket: any, todayTz: string, ev: ActiveEvent) {
     comp: ev.name,
     div: [bracket.bracketName, round].filter(Boolean).join(" · "),
     round,
+    disc,
+    format,
     session: court ? court : "",
     a,
     b,
@@ -551,6 +563,8 @@ export default async (req: Request, _context?: Context) => {
         games: m.games,
         date: m.date,
         tier: m.tier,
+        disc: m.disc,
+        format: m.format,
       });
     }
 

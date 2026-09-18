@@ -47,6 +47,7 @@ WPM uses the **Den Live proxies only** (stable, keyless from our egress).
 - Shop stays closed
 - Do not regress WC / PPA overlays
 - LIVE only from Den running statuses (RUNNING / IN_PROGRESS / STARTED / PLAYING). WAITING_FOR_COURT is dated onto venue-today but stays NEXT. Never clock-promote NEXT→LIVE.
+- Knockout round labels: [`app-rounds.md`](./app-rounds.md) — Final/SF/QF from `matchType` + `totalRounds`, never a global “Round 6 = Final”.
 
 ## Browse URL (ops)
 

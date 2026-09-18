@@ -27,3 +27,4 @@
 - Sporttora does not always emit named QF/SF/F for team WC; wall stays `Round N`.
 - PPA Pro Qualifier divisions still appear as chips when present in the bracket tree.
 - Deep link matching for “up next” still uses name-bit overlap, not bracket graph edges.
+- **APP wall:** `/draw?tour=app` — see [`draw-app.md`](./draw-app.md) + [`app-rounds.md`](./app-rounds.md).

@@ -12,6 +12,7 @@
     "netlify/functions/wave-snap.json",
     "netlify/functions/push-lib.mjs",
     "netlify/functions/follow-tags.mjs",
+    "netlify/functions/app-rounds.mjs",
     "netlify/functions/radar-lib.mjs"
   ]
 
