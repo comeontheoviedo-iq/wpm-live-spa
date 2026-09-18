@@ -10,7 +10,8 @@
 | APP Dillons Overland Park Open | Sep 17–20, 2026 | **18453** | AdventHealth Sports Park at Bluhawk · `America/Chicago` | Live on `/api/app`. APP page links `denlive…?tournamentId=18453`. |
 | APP Japan – Sendai (Xebio / Asia Qualifier) | Sep 19–20, 2026 (JST site: Sep 18–20) | **not found** | Motoyama Seisakujo Aoba Arena, Sendai · `Asia/Tokyo` | **Not on Pickleball Den.** Registration / draws: Tournated `games.japanpickleball.org/tournament/11359`. No denlive link. |
 | APP Columbus Open | Oct 1–4, 2026 | **not found** | Pickle & Chill, 880 W Henderson Rd, Columbus OH · `America/New_York` | APP page has **registration only**: `app.pickleballden.com/external-tournament/8057937`. External id ≠ Den Live id (8057937 → brackets 404). No `denlive…tournamentId=` on APP page yet. |
-| APP Asia Chongqing Open | Oct 2–6, 2026 | **not found** | Chongqing, China · `Asia/Shanghai` (guess) | APP page has **no** Den / denlive / external-tournament link. Score path unknown. |
+| APP Asia Chongqing Open | Oct 2–6, 2026 | **not found** | Chongqing, China · `Asia/Shanghai` (guess) | APP Asia Tour (**not MLP Asia**). APP page has **no** Den / denlive / external-tournament link. Score path unknown. |
+| TPB Gijón 2026 | Sep 18–20, 2026 | **not found** | Puerto Deportivo de Gijón · `Europe/Madrid` | TOP Pickleball Tour powered by APP — **not Den Live**. Draw PDF only. See `docs/slate-europe.md`. |
 
 ## Other Den Live APP ids verified (brackets name)
 
@@ -59,5 +60,7 @@ Arming Sendai/Columbus/Chongqing on `/calendar` as **live-path** is blocked unti
 
 - Re-check Columbus when APP adds a denlive link (or Den Live info publishes).  
 - Sendai needs a **non-Den** connector if WPM wants live boards (Tournated / local feed) — out of scope for `/api/app`.  
-- Chongqing: wait for organizer score path.  
+- Chongqing: wait for organizer score path (APP Asia Tour, not MLP Asia).  
+- Gijón is TOP Pickleball, not Den — do not hunt a Den id as if it were APP Overland. See `docs/slate-europe.md`.  
 - `DESK_KEY` was not present in Netlify env at hunt time — calendar POST arming needs that secret (or direct Blobs write).
+

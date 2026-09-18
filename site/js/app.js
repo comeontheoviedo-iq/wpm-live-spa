@@ -472,6 +472,8 @@ function filteredList(){
     if (state.boardMode === "results" && state.resultCat && state.resultCat !== "all") {
       if (matchDisc(m) !== state.resultCat) return false;
     }
+    // Competitions without a live path: never leak PPA/APP/WC as if they belonged here.
+    if (state.filter === "mlp-asia" || state.filter === "app-asia" || state.filter === "tpb" || state.filter === "ppa-eu" || state.filter === "gpa") return false;
     return true;
   }).sort((a,b) => {
     const ra = {LIVE:0,NEXT:1,FT:2}[effectiveStatus(a)];
@@ -728,7 +730,7 @@ function viewHome(){
       </div>
       ${state.boardMode==="results"?`<div class="chips cat-chips">${RESULT_CATS.map(([id,l])=>`<button class="chip ${state.resultCat===id?"on":""}" data-cat="${id}">${l}</button>`).join("")}</div>`:""}
     </div>
-    <div class="panel">${state.boardMode==="draw" ? drawBoard() : (blocks || `<p class="empty">No matches for this day and filter.</p>`)}</div>
+    <div class="panel">${state.boardMode==="draw" ? drawBoard() : (blocks || slateEmpty(state.filter))}</div>
     ${weekStrip()}
     </div>
     <aside class="rail-right">${tableRail()}</aside>
@@ -739,11 +741,14 @@ function leagueRail(){
   const items=[
     ["all","All competitions"],
     ["ppa","PPA Tour (US)"],
+    ["ppa-eu","PPA Europe"],
+    ["tpb","TOP Pickleball"],
     ["app-pro","APP Pro"],
     ["app","APP"],
+    ["app-asia","APP Asia"],
     ["asia","PPA Asia"],
-    ["npl","NPL Australia"],
     ["mlp-asia","MLP Asia"],
+    ["npl","NPL Australia"],
     ["gpa","GPA events"]
   ];
   return `${followingRail()}<div class="panel rail-card"><div class="kicker">Competitions</div>${items.map(([id,l])=>`<button class="league ${state.filter===id?"on":""}" data-f="${id}">${l}</button>`).join("")}</div>`;
@@ -788,16 +793,44 @@ function calEventRow(e){
   const dates=end&&end!==start?`${start} → ${end}`:start;
   const venue=e.venue||e.location||'';
   const id=e.id||('gpa:'+encodeURIComponent(String(e.name||'').toLowerCase())+':'+start);
+  const draw=e.drawUrl?`<a class="chip" href="${esc(e.drawUrl)}" target="_blank" rel="noopener">Draw PDF</a>`:"";
+  const official=e.officialUrl?`<a class="chip" href="${esc(e.officialUrl)}" target="_blank" rel="noopener">Official</a>`:"";
+  const hint=e.note?`<span class="games">${esc(e.note)}</span>`:"";
   return `<div class="rank-row cal-row">
     <b></b>
     <div>
       <strong>${esc(e.name||'')}</strong>
       <span>${dates} · ${esc(venue)} · ${esc(e.tier||'')}</span>
-      <span class="cal-meta">${statusChip(e.status,e.onLive)}${e.armed?' <em class="cal-armed">armed</em>':''}${e.onLive?' <em class="cal-onlive">on WPM LIVE</em>':''}</span>
+      <span class="cal-meta">${statusChip(e.status,e.onLive)}${e.armed?' <em class="cal-armed">armed</em>':''}${e.onLive?' <em class="cal-onlive">on WPM LIVE</em>':''}${e.seeded?' <em class="cal-armed">slate</em>':''}</span>
+      ${hint}
+      ${draw||official?`<span class="cal-meta">${draw}${official}</span>`:""}
     </div>
     <em>${esc(e.host||e.tour||'')}</em>
     <a class="chip cal-add" href="/calendar?add=${encodeURIComponent(id)}">Add</a>
   </div>`;
+}
+function slateFilterMeta(filter){
+  return {
+    tpb: { title:"TOP Pickleball", copy:"TOP Pickleball Tour (powered by APP, not APP Den). Scores delayed — no live path. Official draw PDF only.", match:e => e.tour==="tpb" || /gij[oó]n/i.test(e.name||"") },
+    "ppa-eu": { title:"PPA Europe", copy:"PPA Tour Europe. Upcoming / results-only until ticker + brackets go live. Arizona remains the /api/ppa board.", match:e => e.tour==="ppa-eu" || /barcelona/i.test(e.name||"") },
+    "app-asia": { title:"APP Asia", copy:"APP Asia Tour — not MLP Asia. No Den Live id yet. Results-only.", match:e => e.tour==="app-asia" || (/\bAPP\b/i.test(e.name||"") && /Asia|Chongqing|Taipei|Bangkok|Ho Chi Minh|India Open/i.test(e.name||"")) },
+    "mlp-asia": { title:"MLP Asia", copy:"MLP Asia is the PPA/MLP franchise, not APP. APP Asia Tour stays on the APP Asia chip. No live board.", match:e => e.tour==="mlp-asia" || /\bMLP\b/i.test(e.name||e.host||"") },
+    asia: { title:"PPA Asia", copy:"PPA Asia — results-only until a working ticker is wired. Not APP Asia, not MLP Asia.", match:e => e.tour==="asia" || /PPA Asia|PPA-ASIA/i.test(e.host||"") },
+    gpa: { title:"GPA events", copy:"GPA calendar. Live only when intake passes (name · venue · tz · score path).", match:e => e.tour==="gpa" || /D-JOY|DJOY/i.test(e.host||e.name||"") }
+  }[filter] || null;
+}
+function slateEmpty(filter){
+  const meta = slateFilterMeta(filter);
+  if (!meta) return `<p class="empty">No matches for this day and filter.</p>`;
+  const today=ymd(new Date());
+  const cal=(state.calendar&&state.calendar.events)||[];
+  const rows=cal.filter(e => meta.match(e) && (e.end||e.start||"")>=today).slice(0,8);
+  return `<section class="comp-card">
+    <div class="comp-head"><div><h3>${meta.title}</h3><span>upcoming / scores delayed</span></div></div>
+    <p class="games">${meta.copy}</p>
+    ${rows.length?rows.map(calEventRow).join(""):`<p class="empty">${meta.copy}</p>`}
+    <a class="chip" href="/calendar">Calendar</a>
+  </section>`;
 }
 function followChips(){
   return ["Vietnam","USA","India","Waters","Johns","Bright"].map(k => {
@@ -1444,7 +1477,7 @@ function viewCalendar(){
           <label class="games">Host / tour chip<br><input class="field" name="host" value="${esc(e.host||'')}" placeholder="APP"></label>
           <label class="games">Tour<br>
             <select class="field" name="tour">
-              ${["app","ppa","wc","gpa","npl","other"].map(t=>`<option value="${t}" ${(e.tour||"app")===t?"selected":""}>${t}</option>`).join("")}
+              ${["app","app-asia","ppa","ppa-eu","tpb","wc","gpa","npl","mlp-asia","other"].map(t=>`<option value="${t}" ${(e.tour||"app")===t?"selected":""}>${t}</option>`).join("")}
             </select>
           </label>
           <label class="games">Tier<br><input class="field" name="tier" value="${esc(e.tier||'')}"></label>

@@ -27,3 +27,11 @@
 - Chongqing — **not found**.
 - Side finds: Detroit **18442**, Louisville **18454**.
 - `/api/app` made configurable (calendar-armed / wpm-app blob / env / query). Details: `docs/app-den-ids.md`.
+
+## 2026-09-18 ~afternoon BST — Europe slate (no live path)
+
+- **TPB Gijón 2026** (18–20 Sep, Puerto Deportivo de Gijón, Europe/Madrid) — no Den Live / Tournated / live API. **Scores delayed**. Official groups PDF only. Not APP Den.
+- **PPA P250 Barcelona Open** (23–27 Sep, Tennis Despí) — UUID `1655a7c9-904a-44c9-aa29-b279fca900e8` **parked**. `/api/ppa` remains Arizona `62c01642-…`.
+- **MLP Asia ≠ APP Asia Tour** — never chip MLP Asia as APP.
+- Shop locked. Details: `docs/slate-europe.md`.
+

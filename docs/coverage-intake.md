@@ -21,6 +21,10 @@ Show **“scores delayed”** (or hide LIVE).
 ## Out of scope until intake passes
 MLP, PPA Asia, club opens as **live** boards. GPA calendar / history may show them as **results-only** without live path.
 
+**MLP Asia ≠ APP.** MLP Asia is the PPA/MLP franchise. APP Asia Tour is APP (Chongqing / Taipei / …) and stays labelled APP Asia — never chip MLP Asia as APP.
+
+**Europe slate (no live path yet):** TPB Gijón 2026 (scores delayed + [official draw PDF](https://toppickleballtour.com/wp-content/uploads/2026/09/TOP-PICKLEBALL-TOUR-GIJON-GRUPOS.pdf)); PPA Barcelona Open UUID parked (`1655a7c9-904a-44c9-aa29-b279fca900e8`) — `/api/ppa` stays Arizona until ticker cutover. See [`slate-europe.md`](./slate-europe.md).
+
 ## Live connectors (shipped)
 - **PPA** → `/api/ppa`
 - **World Cup** → `/api/worldcup`

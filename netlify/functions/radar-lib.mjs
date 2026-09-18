@@ -3,6 +3,15 @@
  * Boards: on_board | missing | blocked_by_intake | results_only. Never invents scores.
  */
 
+import {
+  PPA_LIVE_EVENT_ID,
+  PARKED_PPA,
+  GIJON,
+  MLP_ASIA_NOTE,
+  isAppAsiaName,
+  staticWatchEvents,
+} from "./slate-events.mjs";
+
 const UA = { "User-Agent": "WPM-LIVE-radar/1.0", Accept: "application/json" };
 
 const GPA_KEY =
@@ -14,7 +23,7 @@ const DEN = "https://denlive.pickleballden.com";
 export const WIRED = {
   ppa: {
     tour: "ppa",
-    eventId: "62c01642-1bb2-4f9a-9998-599f8fdefe5c",
+    eventId: PPA_LIVE_EVENT_ID,
     name: "PPA Veolia Arizona Open \u00b7 Mesa",
     venue: "Mesa, AZ",
     tz: "America/Phoenix",
@@ -60,9 +69,9 @@ async function fetchJson(url, headers = {}, timeoutMs = 14000) {
     const text = await res.text();
     let body = null;
     try { body = text ? JSON.parse(text) : null; } catch { body = null; }
-    return { ok: res.ok, status: res.status, body, error: res.ok ? null : `HTTP ${res.status}` };
+    return { ok: res.ok, status: res.status, body, text, error: res.ok ? null : `HTTP ${res.status}` };
   } catch (e) {
-    return { ok: false, status: 0, body: null, error: String(e?.message || e) };
+    return { ok: false, status: 0, body: null, text: "", error: String(e?.message || e) };
   } finally {
     clearTimeout(t);
   }
@@ -108,7 +117,7 @@ async function probeGpa(today) {
       const tz = isWiredApp ? WIRED.app.tz : "";
       const inn = intake({ name, venue, tz, scoreOk });
       events.push({
-        tour: "app",
+        tour: isAppAsiaName(name) ? "app-asia" : "app",
         name,
         start,
         end,
@@ -122,15 +131,21 @@ async function probeGpa(today) {
         board: isWiredApp ? "on_board" : "blocked_by_intake",
         note: isWiredApp
           ? "GPA row matches wired Den " + WIRED.app.eventId
-          : "APP on GPA calendar — need Den tournamentId + tz + score smoke before live board",
+          : isAppAsiaName(name)
+            ? "APP Asia Tour (not MLP Asia) — need Den tournamentId + tz + score smoke before live board"
+            : "APP on GPA calendar — need Den tournamentId + tz + score smoke before live board",
       });
     } else {
       const inn = intake({ name, venue: venue || host || "n/a", tz: "", scoreOk: false });
       inn.timezone = false;
       inn.scorePath = false;
       inn.status = "fail";
+      const tour =
+        host.toUpperCase() === "MLP" || /\bMLP\b/i.test(name)
+          ? "mlp-asia"
+          : (host || "other").toLowerCase();
       events.push({
-        tour: (host || "other").toLowerCase(),
+        tour,
         name,
         start,
         end,
@@ -141,7 +156,10 @@ async function probeGpa(today) {
         scorePath: null,
         intake: inn,
         board: "results_only",
-        note: "GPA calendar / results-only — no live connector until intake passes",
+        note:
+          tour === "mlp-asia"
+            ? MLP_ASIA_NOTE
+            : "GPA calendar / results-only — no live connector until intake passes",
       });
     }
   }
@@ -197,6 +215,76 @@ async function probePpa() {
       intake: inn,
       board,
       note,
+    },
+    tickerTitle: title,
+    tick,
+  };
+}
+
+/** Watch parked Barcelona UUID. Never flips /api/ppa. Escalates when ticker title is Barcelona. */
+async function probeParkedBarcelona(tickerTitle) {
+  const parked = PARKED_PPA.barcelona;
+  const scores = await fetchJson(
+    `https://www.ppatour.com/api/scores/?event=${parked.ppaEventId}`
+  );
+  const scoreN = Array.isArray(scores.body?.matches) ? scores.body.matches.length : 0;
+  const title = String(tickerTitle || "");
+  const titleIsBarcelona = /barcelona/i.test(title);
+  const titleIsArizona = /arizona|veolia|mesa/i.test(title);
+  const watch = staticWatchEvents().find((e) => e.tour === "ppa-eu");
+
+  let board = "results_only";
+  let note = parked.note;
+  let priority = null;
+  if (titleIsBarcelona && WIRED.ppa.eventId !== parked.ppaEventId) {
+    board = "blocked_by_intake";
+    note = `ticker "${title}" is Barcelona but /api/ppa still ${WIRED.ppa.eventId} — cut EVENT in ppa.mts to ${parked.ppaEventId}`;
+    priority = "P0";
+  } else if (titleIsArizona || !titleIsBarcelona) {
+    board = "results_only";
+    note = `parked UUID ${parked.ppaEventId} · ticker "${title || "—"}" still US/Arizona · ${scoreN} scores rows (not the live board)`;
+  }
+
+  return {
+    event: {
+      ...watch,
+      tickerTitle: title,
+      scoreMatches: scoreN,
+      scoresOk: scores.ok,
+      titleIsBarcelona,
+      board,
+      note,
+      priority,
+    },
+  };
+}
+
+/** Watch Gijón for an emerging Den / Tournated / live API. Draw PDF is the only official path today. */
+async function probeGijon() {
+  const watch = staticWatchEvents().find((e) => e.tour === "tpb");
+  const page = await fetchJson(GIJON.officialUrl, { Accept: "text/html" }, 12000);
+  const html = String(page.text || page.body || "");
+  const hasDen = /denlive|tournamentId=/i.test(html);
+  const hasTournated = /tournated|pickleballden/i.test(html);
+  let board = "results_only";
+  let note = GIJON.note;
+  if (hasDen || hasTournated) {
+    board = "blocked_by_intake";
+    note =
+      "Gijón official page now mentions Den/Tournated — hunt a working score path before LIVE. Draw PDF still the published groups.";
+  } else if (!page.ok) {
+    note = `Gijón official page ${page.error || page.status} — keep scores delayed. Draw PDF: ${GIJON.drawUrl}`;
+  } else {
+    note = `No Den Live / Tournated on official page. Scores delayed. Draw PDF published (${GIJON.drawUrl}).`;
+  }
+  return {
+    event: {
+      ...watch,
+      officialOk: page.ok,
+      emergingPath: hasDen || hasTournated,
+      board,
+      note,
+      drawUrl: GIJON.drawUrl,
     },
   };
 }
@@ -309,17 +397,25 @@ export async function buildRadarReport(opts = {}) {
   const today = ymd(now);
   const prodBase = opts.prodBase || "https://live.worldpickleballmagazine.com";
 
-  const [gpa, ppa, app, wc] = await Promise.all([
+  const [gpa, ppa, app, wc, gijon] = await Promise.all([
     probeGpa(today),
     probePpa(),
     probeAppDen(),
     probeWorldCup(prodBase),
+    probeGijon(),
   ]);
+  const barcelona = await probeParkedBarcelona(ppa.tickerTitle);
 
   const events = [];
   if (ppa.event) events.push(ppa.event);
   if (app.event) events.push(app.event);
   if (wc.event) events.push(wc.event);
+  if (gijon.event) events.push(gijon.event);
+  if (barcelona.event) events.push(barcelona.event);
+  for (const w of staticWatchEvents()) {
+    if (w.tour === "tpb" || w.tour === "ppa-eu") continue;
+    events.push(w);
+  }
 
   for (const e of gpa.events || []) {
     if (e.tour === "app" && (e.denId === WIRED.app.eventId || /Overland Park/i.test(e.name))) continue;
@@ -337,7 +433,7 @@ export async function buildRadarReport(opts = {}) {
   for (const e of events) {
     if (e.board === "blocked_by_intake") {
       actions.push({
-        priority: e.tour === "ppa" || e.tour === "app" ? "P0" : "P1",
+        priority: e.tour === "ppa" || e.tour === "app" || e.tour === "ppa-eu" ? "P0" : "P1",
         tour: e.tour,
         name: e.name,
         action: e.note,
@@ -363,8 +459,11 @@ export async function buildRadarReport(opts = {}) {
       ppaTicker: ppa.ok,
       denLive: app.ok,
       worldcup: wc.ok,
+      gijonOfficial: gijon.event?.officialOk ?? null,
     },
     wired: WIRED,
+    parkedPpa: PARKED_PPA,
+    ppaLiveEventId: PPA_LIVE_EVENT_ID,
     summary,
     events,
     actions,
@@ -372,9 +471,12 @@ export async function buildRadarReport(opts = {}) {
       schedule: "weekdays 08:30 Europe/London",
       steps: [
         "Run `node scripts/event-radar.mjs` or GET /api/radar",
-        "Escalate P0 actions only (blocked_by_intake on PPA/APP)",
+        "Escalate P0 actions only (blocked_by_intake on PPA/APP/PPA Europe)",
         "If PPA ticker title ≠ wired EVENT → cut ppa.mts EVENT same day",
+        "If ticker title is Barcelona → cut EVENT to parked UUID 1655a7c9-… (not before; Arizona stays live)",
+        "Watch Gijón for Den/Tournated — until then scores delayed + draw PDF only",
         "If new APP on GPA → find Den tournamentId → intake checklist → ship /api/app id",
+        "MLP Asia ≠ APP Asia Tour — never merge those chips",
         "Never invent scores; shop stays closed; do not regress APP/Web Push",
       ],
     },

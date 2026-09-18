@@ -1,5 +1,15 @@
 import type { Config, Context } from "@netlify/functions";
 import { getStore } from "@netlify/blobs";
+import {
+  SLATE,
+  PARKED_PPA,
+  PPA_LIVE_EVENT_ID,
+  GIJON,
+  asCalendarRow,
+  isParkedPpaEventId,
+  isAppAsiaName,
+  matchesSlateName,
+} from "./slate-events.mjs";
 
 const GPA_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBybmVlZGhxaW51ZGFzbmdrcXFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1NDkzMDIsImV4cCI6MjA3NjEyNTMwMn0.U6VPCpYEtyFkVwxQ7yMAbGf_huWORMg_8iyyd-WkADc";
@@ -30,9 +40,30 @@ const KNOWN = {
   },
   ppaMesa: {
     type: "ppa",
-    ppaEventId: "62c01642-1bb2-4f9a-9998-599f8fdefe5c",
+    ppaEventId: PPA_LIVE_EVENT_ID,
     scorePath: "/api/ppa",
     timezone: "America/Phoenix",
+    name: "PPA Veolia Arizona Open · Mesa",
+    live: true,
+  },
+  /** Parked — do not arm as live-path while Arizona is the single /api/ppa EVENT. */
+  ppaBarcelona: {
+    type: "ppa",
+    ppaEventId: PARKED_PPA.barcelona.ppaEventId,
+    scorePath: null,
+    timezone: PARKED_PPA.barcelona.timezone,
+    name: PARKED_PPA.barcelona.name,
+    live: false,
+    parked: true,
+  },
+  tpbGijon: {
+    type: "none",
+    scorePath: null,
+    timezone: GIJON.timezone,
+    name: GIJON.name,
+    live: false,
+    drawUrl: GIJON.drawUrl,
+    officialUrl: GIJON.officialUrl,
   },
   wcDanang: {
     type: "url",
@@ -94,7 +125,12 @@ function deskKey() {
 function hasScorePath(c: Connector | null | undefined): boolean {
   if (!c || c.type === "none") return false;
   if (c.type === "app") return Boolean(c.denTournamentId && String(c.denTournamentId).trim());
-  if (c.type === "ppa") return Boolean(c.ppaEventId && String(c.ppaEventId).trim());
+  if (c.type === "ppa") {
+    const id = c.ppaEventId && String(c.ppaEventId).trim();
+    // Parked UUID is metadata for cutover, not a working live path.
+    if (!id || isParkedPpaEventId(id)) return false;
+    return true;
+  }
   if (c.type === "url" || c.type === "djoy")
     return Boolean((c.scoreUrl || c.scorePath) && String(c.scoreUrl || c.scorePath).trim());
   return false;
@@ -167,6 +203,10 @@ async function gpaEvents() {
 function guessTour(host: string, name: string): string {
   const h = String(host || "").toUpperCase();
   const n = String(name || "");
+  if (h === "MLP" || /\bMLP\b/i.test(n)) return "mlp-asia"; // never APP
+  if (/Gij[oó]n/i.test(n) || /TOP Pickleball|\bTPB\b/i.test(n)) return "tpb";
+  if (/Barcelona/i.test(n) && /PPA/i.test(n + h)) return "ppa-eu";
+  if (isAppAsiaName(n) || (h === "APP" && /Asia/i.test(n))) return "app-asia";
   if (h === "APP" || /\bAPP\b/i.test(n)) return "app";
   if (h === "PPA" || /PPA/i.test(n)) return "ppa";
   if (h === "DJOY" || /D-JOY|DJOY/i.test(n)) return "gpa";
@@ -220,23 +260,34 @@ function mergeCalendar(gpaRows: any[], armed: ArmedEvent[]) {
           "Den registration external-tournament/8057937 exists; Den Live tournamentId not published yet (no denlive link on APP page)";
         status = "results-only";
       } else if (/Chongqing/i.test(name)) {
-        note = "No Den Live / registration Den link found on APP page — score path unknown";
+        note =
+          "APP Asia Tour (not MLP Asia). No Den Live / registration Den link found on APP page — score path unknown";
+        status = "results-only";
+      } else if (isAppAsiaName(name)) {
+        note = "APP Asia Tour — not MLP Asia. No live Den path yet; results-only.";
         status = "results-only";
       }
     }
 
+    const seedHit = SLATE.find((s) => matchesSlateName(name, s.name));
+    if (seedHit && !armedRow) {
+      timezone = timezone || seedHit.timezone;
+      note = note || seedHit.note;
+      if (seedHit.status === "delayed") status = "delayed";
+      else if (status !== "live-path") status = seedHit.status;
+    }
     return {
       id,
       name,
       start,
       end,
-      venue,
+      venue: venue || seedHit?.venue || "",
       location: e.location || "",
       tier: e.tier || "",
       host,
-      tour,
+      tour: seedHit?.tour || tour,
       prize_pool: e.prize_pool ?? null,
-      registration_url: e.registration_url || "",
+      registration_url: e.registration_url || seedHit?.officialUrl || "",
       armed: Boolean(armedRow),
       onLive,
       status: armedRow ? status : end < today ? "results-only" : status,
@@ -245,6 +296,8 @@ function mergeCalendar(gpaRows: any[], armed: ArmedEvent[]) {
       note,
       armedAt,
       upcoming: end >= today,
+      officialUrl: seedHit?.officialUrl || "",
+      drawUrl: seedHit?.drawUrl || "",
     };
   });
 
@@ -273,7 +326,18 @@ function mergeCalendar(gpaRows: any[], armed: ArmedEvent[]) {
       armedAt: a.armedAt,
       upcoming: a.end >= today,
       orphan: true,
+      officialUrl: "",
+      drawUrl: "",
     });
+  }
+
+  // Seeded events that GPA does not list (Gijón, Barcelona Europe, …)
+  for (const seed of SLATE) {
+    const exists = events.some(
+      (e: any) => e.id === seed.id || matchesSlateName(e.name, seed.name)
+    );
+    if (exists) continue;
+    events.push(asCalendarRow(seed, today));
   }
 
   events.sort((a: any, b: any) => String(a.start).localeCompare(String(b.start)));
@@ -317,6 +381,10 @@ export default async (req: Request, _context: Context) => {
           neverFakeScores: true,
         },
         known: KNOWN,
+        slate: SLATE.map((s) => asCalendarRow(s, new Date().toISOString().slice(0, 10))),
+        parkedPpa: PARKED_PPA,
+        ppaLiveEventId: PPA_LIVE_EVENT_ID,
+        neverFakeScores: true,
       },
       { headers: { "Cache-Control": "public, max-age=60" } }
     );
