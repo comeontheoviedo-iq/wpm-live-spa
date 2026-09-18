@@ -57,6 +57,8 @@ const state = {
   history: null,
   rankBoard: "gpa",
   rankCat: "mens_singles",
+  calendar: null,
+  calAddId: "",
   brackets: {},
   wcBrackets: {},
   drawTour: "ppa",
@@ -69,8 +71,8 @@ if ("Notification" in window && Notification.permission === "granted") {
   setTimeout(() => { syncPushSubscription(); }, 2500);
 }
 
-const SAFE_SW = "/sw.js?v=20260918b";
-const SAFE_SW_MARK = "20260918b";
+const SAFE_SW = "/sw.js?v=20260918d";
+const SAFE_SW_MARK = "20260918d";
 /** Application-server VAPID public key (safe to embed). Private stays in Netlify env. */
 const VAPID_PUBLIC_KEY = "BEuWn2rcxKeLXPFa3KJzys7rLOtFX8GUZ9ckfFhsqEVO0Y2PE3WfnOivmFJV3EUVCf1c1g31qSiVoNDbcJQO8GQ";
 
@@ -504,6 +506,7 @@ function chrome(inner, title){
   <nav class="tabbar">
     <a class="${path()==="/"||path().startsWith("/match")||path().startsWith("/player")||path().startsWith("/team")||path()==="/draw"?"on":""}" href="/">Live</a>
     <a class="${path()==="/rankings"?"on":""}" href="/rankings">Table</a>
+    <a class="${path()==="/calendar"?"on":""}" href="/calendar">Cal</a>
     <a class="${path()==="/following"?"on":""}" href="/following">Follow</a>
     <a class="${path()==="/magazine"?"on":""}" href="/magazine">Mag</a>
     <a class="${path()==="/shop"?"on":""}" href="/shop">Shop</a>
@@ -622,10 +625,48 @@ function tableRail(){
   return `<div class="panel rail-card"><div class="kicker">GPA table</div>${g||"<p class='empty'>Loading table…</p>"}<a class="chip" href="/rankings">Full table</a><a class="chip" href="/history">Archive</a></div><div class="panel rail-card"><div class="kicker">Pro ELO</div>${e||"<p class='empty'>ELO loading…</p>"}</div>`;
 }
 function weekStrip(){
-  const ev=(state.rankings&&state.rankings.events)||[];
-  const soon=ev.filter(e=> (e.tournament_date||'') >= ymd(new Date())).slice(0,5);
+  const cal=(state.calendar&&state.calendar.events)||[];
+  const fromRank=(state.rankings&&state.rankings.events)||[];
+  const today=ymd(new Date());
+  let soon;
+  if(cal.length){
+    soon=cal.filter(e=> (e.end||e.start||'') >= today).slice(0,6);
+  } else {
+    soon=fromRank.filter(e=> (e.tournament_date||'') >= today).slice(0,5).map(e=>({
+      name:e.name, start:(e.tournament_date||'').slice(0,10), venue:e.location||e.venue||'', tier:e.tier||'', host:e.host||'', status:'results-only', onLive:false, armed:false
+    }));
+  }
   if(!soon.length) return '';
-  return `<div class="panel"><div class="kicker">This week on the GPA calendar</div>${soon.map(e=>`<div class="rank-row"><b></b><div><strong>${e.name||''}</strong><span>${(e.tournament_date||'').slice(0,10)} · ${e.location||e.venue||''} · ${e.tier||''}</span></div><em>${e.host||''}</em></div>`).join('')}<a class="chip" href="/rankings">Full table</a><a class="chip" href="/history">Archive</a></div>`;
+  const armedLive = soon.filter(e=>e.onLive || e.status==='live-path');
+  const chrome = armedLive.length
+    ? `<div class="cal-chrome"><span class="desk">ON WPM LIVE</span>${armedLive.map(e=>`<span class="cal-pill live-path">${esc(e.name)}</span>`).join('')}</div>`
+    : '';
+  return `${chrome}<div class="panel"><div class="kicker">GPA calendar</div>${soon.map(calEventRow).join('')}<a class="chip" href="/calendar">Full calendar</a><a class="chip" href="/rankings">Table</a><a class="chip" href="/history">Archive</a></div>`;
+}
+function esc(s){
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+}
+function statusChip(st, onLive){
+  if(onLive || st==='live-path') return '<span class="cal-status live-path">live-path</span>';
+  if(st==='delayed') return '<span class="cal-status delayed">scores delayed</span>';
+  return '<span class="cal-status results-only">results-only</span>';
+}
+function calEventRow(e){
+  const start=(e.start||e.tournament_date||'').toString().slice(0,10);
+  const end=(e.end||e.end_date||start).toString().slice(0,10);
+  const dates=end&&end!==start?`${start} → ${end}`:start;
+  const venue=e.venue||e.location||'';
+  const id=e.id||('gpa:'+encodeURIComponent(String(e.name||'').toLowerCase())+':'+start);
+  return `<div class="rank-row cal-row">
+    <b></b>
+    <div>
+      <strong>${esc(e.name||'')}</strong>
+      <span>${dates} · ${esc(venue)} · ${esc(e.tier||'')}</span>
+      <span class="cal-meta">${statusChip(e.status,e.onLive)}${e.armed?' <em class="cal-armed">armed</em>':''}${e.onLive?' <em class="cal-onlive">on WPM LIVE</em>':''}</span>
+    </div>
+    <em>${esc(e.host||e.tour||'')}</em>
+    <a class="chip cal-add" href="/calendar?add=${encodeURIComponent(id)}">Add</a>
+  </div>`;
 }
 function followChips(){
   return ["Vietnam","USA","India","Waters","Johns","Bright"].map(k => {
@@ -1231,13 +1272,93 @@ function viewSearch(){
   const th=teams.filter(t=>(t.team||"").toLowerCase().includes(n)).map(t=>`<a class="rank-row" href="/team/${encodeURIComponent(t.team)}"><b>${t.rank}</b><div><strong>${t.team}</strong><span>MLP 2026 · ${t.pts} pts</span></div></a>`);
   return `<div class="hero"><h2>SEARCH</h2><p>${q}</p></div><div class="wrap"><div class="panel">${hits.join("")||th.join("")||"<p class='empty'>No profile yet.</p>"}${th.join("")}</div></div>`;
 }
+function viewCalendar(){
+  const data = state.calendar;
+  if (!data) return `<div class="wrap"><p class="empty">Loading calendar…</p></div>`;
+  const today = ymd(new Date());
+  const addId = qs("add") || state.calAddId || "";
+  const all = data.events || [];
+  const upcoming = all.filter(e => (e.end || e.start || "") >= today);
+  const past = all.filter(e => (e.end || e.start || "") < today).slice(-8).reverse();
+  const pick = all.find(e => e.id === addId) || null;
+  const armed = (data.armed || []).slice().sort((a,b)=>String(a.start).localeCompare(String(b.start)));
+
+  let form = "";
+  if (pick || addId === "new") {
+    const e = pick || { name:"", venue:"", timezone:"", start:"", end:"", host:"", tier:"", tour:"app", connector:{type:"none"}, note:"" };
+    const c = e.connector || {};
+    form = `<div class="panel cal-form">
+      <div class="kicker">Desk · add / arm event</div>
+      <p class="games">Intake gate (see coverage-intake): <b>name · venue · timezone · working score path</b>. Without a score path the event stays <b>results-only</b> or <b>scores delayed</b> — never fake 0–0. Full pass → <b>on WPM LIVE</b> (live-path).</p>
+      <form id="calArmForm" class="stack">
+        <input type="hidden" name="id" value="${esc(e.id||'')}">
+        <label class="games">Display name<br><input class="field" name="name" required value="${esc(e.name||'')}"></label>
+        <label class="games">Venue<br><input class="field" name="venue" value="${esc(e.venue||e.location||'')}" placeholder="City / venue"></label>
+        <label class="games">Timezone (IANA)<br><input class="field" name="timezone" value="${esc(e.timezone||'')}" placeholder="America/Chicago"></label>
+        <div class="cal-dates">
+          <label class="games">Start<br><input class="field" name="start" required value="${esc((e.start||'').toString().slice(0,10))}"></label>
+          <label class="games">End<br><input class="field" name="end" value="${esc((e.end||e.start||'').toString().slice(0,10))}"></label>
+        </div>
+        <div class="cal-dates">
+          <label class="games">Host / tour chip<br><input class="field" name="host" value="${esc(e.host||'')}" placeholder="APP"></label>
+          <label class="games">Tour<br>
+            <select class="field" name="tour">
+              ${["app","ppa","wc","gpa","npl","other"].map(t=>`<option value="${t}" ${(e.tour||"app")===t?"selected":""}>${t}</option>`).join("")}
+            </select>
+          </label>
+          <label class="games">Tier<br><input class="field" name="tier" value="${esc(e.tier||'')}"></label>
+        </div>
+        <label class="games">Score connector<br>
+          <select class="field" name="connType" id="calConnType">
+            <option value="none" ${(!c.type||c.type==="none")?"selected":""}>none → results-only</option>
+            <option value="app" ${c.type==="app"?"selected":""}>APP / Den tournamentId → /api/app</option>
+            <option value="ppa" ${c.type==="ppa"?"selected":""}>PPA event id → /api/ppa</option>
+            <option value="url" ${c.type==="url"?"selected":""}>URL / path (e.g. /api/worldcup)</option>
+            <option value="djoy" ${c.type==="djoy"?"selected":""}>D-Joy (URL when published)</option>
+          </select>
+        </label>
+        <label class="games">Den tournamentId (APP)<br><input class="field" name="denTournamentId" value="${esc(c.denTournamentId||'')}" placeholder="18453"></label>
+        <label class="games">PPA event id<br><input class="field" name="ppaEventId" value="${esc(c.ppaEventId||'')}" placeholder="uuid"></label>
+        <label class="games">Score URL / path<br><input class="field" name="scoreUrl" value="${esc(c.scoreUrl||c.scorePath||'')}" placeholder="/api/…"></label>
+        <label class="games"><input type="checkbox" name="delayed" ${e.status==="delayed"?"checked":""}> Mark scores delayed (even if path set)</label>
+        <label class="games">Note<br><input class="field" name="note" value="${esc(e.note||'')}"></label>
+        <label class="games">Desk key<br><input class="field" name="key" id="calDeskKey" type="password" value="${esc(state.deskKey)}"></label>
+        <div class="cal-actions">
+          <button class="btn" type="submit">Arm / save</button>
+          ${e.armed?`<button class="chip" type="button" id="calDisarm" data-id="${esc(e.id||'')}">Disarm</button>`:""}
+          <a class="chip" href="/calendar">Cancel</a>
+        </div>
+        <p class="games" id="calArmMsg"></p>
+      </form>
+    </div>`;
+  }
+
+  const list = (rows, title) => `<div class="panel"><div class="kicker">${title}</div>${rows.length?rows.map(calEventRow).join(""):"<p class='empty'>None</p>"}</div>`;
+
+  const armedBlock = armed.length
+    ? `<div class="panel"><div class="kicker">Armed on desk</div>${armed.map(a=>`<div class="rank-row"><b></b><div><strong>${esc(a.name)}</strong><span>${a.start} → ${a.end} · ${esc(a.venue)} · ${esc(a.timezone||"—")}</span><span class="cal-meta">${statusChip(a.status,a.onLive)}${a.onLive?' <em class="cal-onlive">on WPM LIVE</em>':''}</span></div><em>${esc(a.tour)}</em><a class="chip" href="/calendar?add=${encodeURIComponent(a.id)}">Edit</a></div>`).join("")}</div>`
+    : `<div class="panel"><div class="kicker">Armed on desk</div><p class="empty">None yet. Pick an event and complete intake to arm.</p></div>`;
+
+  return `<div class="hero">
+    <div class="desk">DESK CALENDAR</div>
+    <h2>GPA SLATE</h2>
+    <p>FotMob-style upcoming events from GPA. Mark <b>on WPM LIVE</b> only when intake passes. No score path → results-only or scores delayed — never invent lines.</p>
+  </div>
+  <div class="wrap">
+    ${form}
+    ${armedBlock}
+    ${list(upcoming, "Upcoming")}
+    ${list(past, "Recent (results-only)")}
+    <p class="games"><a href="/desk">Score desk</a> · <a href="/rankings">Table</a> · <a href="/history">Archive</a> · intake rule in docs</p>
+  </div>`;
+}
 function viewHistory(){
   const h = state.history;
   if (!h) return `<div class="wrap"><p class="empty">Loading archive…</p></div>`;
   const armed = (h.armed||[]).map(e => `<div class="rank-row"><b></b><div><strong>${e.name}</strong><span>${e.start} → ${e.end} · ${e.host} · ${e.status}</span></div><em>${e.connector}</em></div>`).join("");
   const npl = (h.npl||[]).slice(0,30).map(m => `<div class="rank-row"><b>${m.score}</b><div><strong>${m.a} vs ${m.b}</strong><span>${m.date} · ${m.games||""}</span></div><em>NPL</em></div>`).join("");
   const medals = (h.gpaMedals||[]).filter(x=>x.place==="winner").slice(0,40).map(m => `<a class="rank-row" href="${playerPath(m.player)}"><b>W</b><div><strong>${m.player}</strong><span>${m.event} · ${m.category}</span></div><em>${m.points||""}</em></a>`).join("");
-  return `<div class="hero"><h2>ARCHIVE</h2><p>Federation results. D-Joy Leg 3 armed 10 Sep.</p></div>
+  return `<div class="hero"><h2>ARCHIVE</h2><p>Federation results. <a href="/calendar" style="color:#f5c518">Desk calendar</a> for upcoming GPA slate + arm status.</p></div>
   <div class="wrap">
     <div class="panel"><div class="kicker">Armed</div>${armed||"<p class='empty'>None</p>"}</div>
     <div class="panel"><div class="kicker">GPA golds</div>${medals||"<p class='empty'>No medals yet</p>"}</div>
@@ -1283,10 +1404,11 @@ function viewRankings(){
       <div><strong>${r.name}</strong><span>${r.country||""}${r.dupr?" · DUPR "+r.dupr:""}</span></div>
       <em>${r.points!=null?r.points+" pts":(r.elo?r.elo+" ELO":"")}</em>
     </a>`).join("");
-  const events = (data.events||[]).slice(0,8).map(e => `
-    <div class="match"><div class="line"><div class="a">${e.name||""}</div><div class="b">${e.location||e.venue||""}</div></div>
-    <div class="games">${(e.tournament_date||"").slice(0,10)} · ${e.tier||""} · ${e.host||""}</div></div>`).join("");
-  return `<div class="hero"><h2>TABLE</h2><p>PPA World, GPA and Pro ELO — labelled separately. <a href="/history" style="color:#f5c518">Archive</a> for past events.</p></div>
+  const calEv = ((state.calendar||{}).events||[]).filter(e=>e.upcoming!==false).slice(0,8);
+  const events = (calEv.length ? calEv : (data.events||[]).slice(0,8).map(e=>({
+    name:e.name, start:(e.tournament_date||"").slice(0,10), venue:e.location||e.venue||"", tier:e.tier||"", host:e.host||"", status:"results-only"
+  }))).map(calEventRow).join("");
+  return `<div class="hero"><h2>TABLE</h2><p>PPA World, GPA and Pro ELO — labelled separately. <a href="/calendar" style="color:#f5c518">Calendar</a> · <a href="/history" style="color:#f5c518">Archive</a>.</p></div>
   <div class="wrap">
     <div class="panel">
       <div class="seg">
@@ -1298,7 +1420,7 @@ function viewRankings(){
       <p class="games" style="margin-top:10px">${note}</p>
       ${list || "<p class='empty'>Board empty for this cut.</p>"}
     </div>
-    <div class="panel"><div class="kicker">GPA calendar</div>${events||"<p class='empty'>No events.</p>"}</div>
+    <div class="panel"><div class="kicker">GPA calendar</div>${events||"<p class='empty'>No events.</p>"}<a class="chip" href="/calendar">Open calendar / add-event</a></div>
   </div>`;
 }
 function viewShop(){
@@ -1327,7 +1449,7 @@ function viewDesk(){
     </form>`).join("");
   return `<div class="wrap">
     <h2 style="font-family:Syne,sans-serif;font-size:32px">Desk</h2>
-    <p class="games">Password-gated score writer. This is what makes a match page live.</p>
+    <p class="games">Password-gated score writer. This is what makes a match page live. <a href="/calendar">Desk calendar / add-event</a> arms GPA slate events (intake gate).</p>
     <p class="games">Last feed write: ${state.updated || "seed file only"}</p>
     <label class="games">Desk key<br><input class="field" id="deskKey" type="password" value="${state.deskKey}"></label>
     <div class="panel" style="overflow:auto">${rows}</div>
@@ -1385,6 +1507,7 @@ function render(){
   else if (p === "/following") inner = viewFollowing();
   else if (p === "/magazine") inner = viewMagazine();
   else if (p === "/search") inner = viewSearch();
+  else if (p === "/calendar") inner = viewCalendar();
   else if (p === "/history") inner = viewHistory();
   else if (p === "/rankings") inner = viewRankings();
   else if (p === "/shop") inner = viewShop();
@@ -1498,7 +1621,70 @@ function bind(){
       render();
     });
   });
+
+  const calArm = document.getElementById("calArmForm");
+  if (calArm) calArm.addEventListener("submit", async ev => {
+    ev.preventDefault();
+    const fd = new FormData(calArm);
+    const key = fd.get("key") || state.deskKey;
+    state.deskKey = String(key||"");
+    localStorage.setItem("wpm-desk-key", state.deskKey);
+    const connType = String(fd.get("connType")||"none");
+    const body = {
+      key,
+      action: "arm",
+      id: fd.get("id") || undefined,
+      name: fd.get("name"),
+      venue: fd.get("venue"),
+      timezone: fd.get("timezone"),
+      start: fd.get("start"),
+      end: fd.get("end"),
+      host: fd.get("host"),
+      tour: fd.get("tour"),
+      tier: fd.get("tier"),
+      note: fd.get("note"),
+      delayed: fd.get("delayed") === "on",
+      connector: {
+        type: connType,
+        denTournamentId: fd.get("denTournamentId") || "",
+        ppaEventId: fd.get("ppaEventId") || "",
+        scoreUrl: fd.get("scoreUrl") || ""
+      }
+    };
+    const msg = document.getElementById("calArmMsg");
+    try {
+      const res = await fetch("/api/calendar", {method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify(body)});
+      const json = await res.json().catch(()=>({}));
+      if (!res.ok) {
+        if (msg) msg.textContent = json.message || json.error || "Save failed";
+        else alert(json.message || json.error || "Save failed");
+        return;
+      }
+      if (msg) msg.textContent = json.event && json.event.onLive
+        ? "Armed · on WPM LIVE ("+json.event.status+")"
+        : "Saved · status "+(json.event&&json.event.status||"ok")+" (not live until intake + score path)";
+      await pullCalendar();
+      state.calAddId = "";
+      history.replaceState({}, "", "/calendar");
+      render();
+    } catch(e) {
+      if (msg) msg.textContent = "Network error";
+    }
+  });
+  const calDisarm = document.getElementById("calDisarm");
+  if (calDisarm) calDisarm.addEventListener("click", async () => {
+    const id = calDisarm.getAttribute("data-id");
+    const key = (document.getElementById("calDeskKey")||{}).value || state.deskKey;
+    const res = await fetch("/api/calendar", {method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify({key, action:"disarm", id})});
+    const json = await res.json().catch(()=>({}));
+    if (!res.ok) { alert(json.error || "Disarm failed"); return; }
+    await pullCalendar();
+    history.replaceState({}, "", "/calendar");
+    render();
+  });
+
 }
+
 
 async function pull(){
   let file = null;
@@ -1554,6 +1740,12 @@ async function pullRankings(){
     if (res.ok) state.rankings = await res.json();
   } catch(e) {}
 }
+async function pullCalendar(){
+  try {
+    const res = await fetch("/api/calendar", {cache:"no-store"});
+    if (res.ok) state.calendar = await res.json();
+  } catch(e) {}
+}
 
 async function pullMagazine(page){
   try {
@@ -1572,7 +1764,8 @@ window.addEventListener("popstate", render);
 window.addEventListener("load", async () => {
   await pull();
   pullHistory().then(()=>{ if(path()==="/history") render(); });
-  pullRankings().then(() => { if (path()==="/rankings" || path().startsWith("/player/")) render(); });
+  pullRankings().then(() => { if (path()==="/rankings" || path().startsWith("/player/") || path()==="/") render(); });
+  pullCalendar().then(() => { if (path()==="/calendar" || path()==="/" || path()==="/rankings") render(); });
   pullMagazine(1).then(() => { if (path()==="/magazine") render(); });
   render();
   setInterval(() => {

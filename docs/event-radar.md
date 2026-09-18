@@ -59,6 +59,7 @@ Desk tick boxes before shipping a tour chip:
 ## Product / calendar awareness
 
 - SPA rankings panel already surfaces GPA `events` from `/api/rankings` (week calendar).
+- Desk calendar UI: `/calendar` + `/api/calendar` (Blobs `calendar-armed`) — see `docs/desk-calendar.md`.
 - Desk depth is `/api/radar` (JSON report, Blobs cache ~30 min; `?refresh=1` to bypass).
 - Wired ids live in `netlify/functions/radar-lib.mjs` `WIRED` — keep in sync when cutting PPA/APP events.
 

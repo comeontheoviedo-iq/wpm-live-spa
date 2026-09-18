@@ -25,3 +25,7 @@ MLP, PPA Asia, club opens as **live** boards. GPA calendar / history may show th
 - **PPA** → `/api/ppa`
 - **World Cup** → `/api/worldcup`
 - **APP / Den Live** → `/api/app` (see `docs/app-den-live.md`) — tour chip **APP**
+
+## Desk calendar
+
+Arm GPA slate events from **`/calendar`** (Blobs `calendar-armed`). See [`desk-calendar.md`](./desk-calendar.md). Status chips: **live-path** / **scores delayed** / **results-only**.

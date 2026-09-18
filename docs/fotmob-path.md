@@ -37,3 +37,7 @@ WPM LIVE should feel like FotMob for pickleball: live truth first, then identity
 ## Magazine surface (2026-09-18c)
 
 `/magazine` is a desk rail, not a plain list: featured/cover image, kicker, title, standfirst from `/api/magazine` (WP featured + Yoast og fallback). Stubs only until feed loads. See `docs/magazine-polish.md`.
+
+## Desk calendar (2026-09-18d)
+
+`/calendar` + `GET|POST /api/calendar` — GPA slate with intake-gated add-event. See `docs/desk-calendar.md`.
