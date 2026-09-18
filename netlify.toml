@@ -9,7 +9,8 @@
     "netlify/functions/wc-parse.mjs",
     "netlify/functions/wave-parse.mjs",
     "netlify/functions/wave-snap-build.mjs",
-    "netlify/functions/wave-snap.json"
+    "netlify/functions/wave-snap.json",
+    "netlify/functions/push-lib.mjs"
   ]
 
 [functions.rankings]
@@ -19,6 +20,9 @@
   timeout = 26
 
 [functions.app]
+  timeout = 26
+
+[functions."push-live-check"]
   timeout = 26
 
 [[redirects]]
@@ -54,6 +58,11 @@
 [[redirects]]
   from = "/api/history"
   to = "/.netlify/functions/history"
+  status = 200
+
+[[redirects]]
+  from = "/api/push-subscribe"
+  to = "/.netlify/functions/push-subscribe"
   status = 200
 
 [[redirects]]

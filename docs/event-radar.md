@@ -54,7 +54,7 @@ Keep a running `docs/radar-log.md` (optional) or Slack/desk note:
 ```
 YYYY-MM-DD radar
 - PPA … intake pass · /api/ppa
-- APP Overland Park (18453) … intake pass · /api/app
+- APP Overland Park (18453) … /api/app · APP Pro/APP chips · LIVE harden `wpm-20260918b`
 - GPA … results-only
 - WC … /api/worldcup
 ```

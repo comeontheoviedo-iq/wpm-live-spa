@@ -64,9 +64,71 @@ const state = {
 };
 try { state.selected = JSON.parse(localStorage.getItem("wpm-follows") || "{}"); } catch(e) { state.selected = {}; }
 try { state.notified = JSON.parse(sessionStorage.getItem("wpm-notified-live") || "{}"); } catch(e) { state.notified = {}; }
+// Re-sync push subscription if alerts already granted (follows may have changed offline).
+if ("Notification" in window && Notification.permission === "granted") {
+  setTimeout(() => { syncPushSubscription(); }, 2500);
+}
 
-const SAFE_SW = "/sw.js?v=20260917n";
-const SAFE_SW_MARK = "20260917n";
+const SAFE_SW = "/sw.js?v=20260918b";
+const SAFE_SW_MARK = "20260918b";
+/** Application-server VAPID public key (safe to embed). Private stays in Netlify env. */
+const VAPID_PUBLIC_KEY = "BEuWn2rcxKeLXPFa3KJzys7rLOtFX8GUZ9ckfFhsqEVO0Y2PE3WfnOivmFJV3EUVCf1c1g31qSiVoNDbcJQO8GQ";
+
+function urlBase64ToUint8Array(base64String){
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(base64);
+  const out = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out;
+}
+function followTagsList(){
+  return Object.keys(state.selected || {}).filter(k => state.selected[k]);
+}
+async function fetchPushPublicKey(){
+  try {
+    const res = await fetch("/api/push-subscribe", { cache: "no-store" });
+    if (!res.ok) return VAPID_PUBLIC_KEY;
+    const j = await res.json();
+    return (j && j.publicKey) || VAPID_PUBLIC_KEY;
+  } catch(e) {
+    return VAPID_PUBLIC_KEY;
+  }
+}
+/** After Notification permission + SW ready: PushManager.subscribe and POST + follows. */
+async function syncPushSubscription(){
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return { ok: false, reason: "unsupported" };
+  if (!("Notification" in window) || Notification.permission !== "granted") return { ok: false, reason: "permission" };
+  try {
+    const reg = await ensureSafeSW();
+    if (!reg) return { ok: false, reason: "sw" };
+    await navigator.serviceWorker.ready;
+    const key = await fetchPushPublicKey();
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(key)
+      });
+    }
+    const follows = followTagsList();
+    const res = await fetch("/api/push-subscribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ subscription: sub.toJSON(), follows }),
+      cache: "no-store"
+    });
+    if (!res.ok) {
+      const t = await res.text().catch(() => "");
+      console.warn("[wpm-push] subscribe POST failed", res.status, t);
+      return { ok: false, reason: "post" };
+    }
+    return { ok: true, follows: follows.length };
+  } catch(e) {
+    console.warn("[wpm-push] sync failed", e);
+    return { ok: false, reason: "error" };
+  }
+}
 
 function persistNotified(){
   try { sessionStorage.setItem("wpm-notified-live", JSON.stringify(state.notified || {})); } catch(e) {}
@@ -84,7 +146,7 @@ function followedTagsFor(m){
 }
 function notifyBody(m){
   const who = followedTagsFor(m).join(", ") || "follow";
-  const tour = m.comp || (m.tour === "ppa" ? "PPA" : m.tour === "app" ? "APP" : m.tour === "wc" ? "World Cup" : (m.tour || "")).toString();
+  const tour = m.comp || (m.tour === "ppa" ? "PPA" : m.tour === "app" ? (appTier(m) === "pro" ? "APP Pro" : "APP") : m.tour === "wc" ? "World Cup" : (m.tour || "")).toString();
   const div = m.div || m.round || "";
   const meta = [tour, div].filter(Boolean).join(" · ");
   const line = meta ? `${m.a} vs ${m.b} · ${meta}` : `${m.a} vs ${m.b} is live`;
@@ -238,7 +300,12 @@ function datesAvailable(){
 function competition(m){
   const d = ((m.div||"")+" "+(m.cat||"")).toLowerCase();
   if (m.tour === "ppa") return {id:"ppa", title:"PPA Nationals", place:"Cary, NC", rank:1};
-  if (m.tour === "app") return {id:"app", title:"APP Overland Park", place:"Overland Park, KS", rank:1};
+  if (m.tour === "app") {
+    const pro = appTier(m) === "pro";
+    return pro
+      ? {id:"app-pro", title:"APP Pro · Overland Park", place:"Overland Park, KS", rank:1}
+      : {id:"app", title:"APP · Overland Park", place:"Overland Park, KS", rank:2};
+  }
   if (d.includes("open")) return {id:"wc-open", title:"World Cup · Open", place:"Da Nang", rank:2};
   if (d.includes("junior")) return {id:"wc-jr", title:"World Cup · Juniors", place:"Da Nang", rank:3};
   if (d.includes("kid")) return {id:"wc-kids", title:"World Cup · Kids", place:"Da Nang", rank:4};
@@ -247,11 +314,25 @@ function competition(m){
   return {id:"other", title:m.comp||"Other", place:"", rank:9};
 }
 
+function appTier(m){
+  if (m.tour !== "app") return "";
+  if (m.tier === "pro" || m.tier === "amateur") return m.tier;
+  // Fallback if older API omitted tier: Pro in div/comp name
+  const blob = ((m.div||"")+" "+(m.comp||"")).toLowerCase();
+  if (/\bpro\b/.test(blob)) return "pro";
+  return "amateur";
+}
 function filteredList(){
   return state.matches.filter(m => {
     if (m.date !== state.date) return false;
     if (state.filter === "ppa" && m.tour !== "ppa") return false;
-    if (state.filter === "app" && m.tour !== "app") return false;
+    if (state.filter === "app-pro") {
+      if (m.tour !== "app" || appTier(m) !== "pro") return false;
+    } else if (state.filter === "app") {
+      if (m.tour !== "app" || appTier(m) !== "amateur") return false;
+    }
+    // All: soft-hide APP amateur unless LIVE (keeps All from flooding)
+    if (state.filter === "all" && m.tour === "app" && appTier(m) === "amateur" && effectiveStatus(m) !== "LIVE") return false;
     if (state.filter === "wc" && m.tour !== "wc") return false;
     if (state.filter === "npl" && m.tour !== "npl") return false;
     if (state.filter === "asia" && m.tour !== "asia") return false;
@@ -504,6 +585,7 @@ function viewHome(){
         <div class="seg">
           <button data-f="all" class="${state.filter==="all"?"on":""}">All</button>
           <button data-f="ppa" class="${state.filter==="ppa"?"on":""}">PPA</button>
+          <button data-f="app-pro" class="${state.filter==="app-pro"?"on":""}">APP Pro</button>
           <button data-f="app" class="${state.filter==="app"?"on":""}">APP</button>
           <button data-f="npl" class="${state.filter==="npl"?"on":""}">NPL</button>
           <button data-f="wc" class="${state.filter==="wc"?"on":""}">World Cup</button>
@@ -522,7 +604,8 @@ function leagueRail(){
   const items=[
     ["all","All competitions"],
     ["ppa","PPA Tour (US)"],
-    ["app","APP Tour"],
+    ["app-pro","APP Pro"],
+    ["app","APP"],
     ["asia","PPA Asia"],
     ["npl","NPL Australia"],
     ["mlp-asia","MLP Asia"],
@@ -821,7 +904,7 @@ function alertsCta(){
   }
   const p = Notification.permission;
   if (p === "granted") {
-    return `<div class="panel"><p class="games">Live alerts on · ping when a follow walks on (needs this tab or installed PWA open for now).</p></div>`;
+    return `<div class="panel"><p class="games">Live alerts on · Web Push when a follow walks on (works with this tab closed after subscribe).</p></div>`;
   }
   if (p === "denied") {
     return `<div class="panel"><p class="games">Live alerts blocked. Allow notifications for this site in browser settings, then reload.</p></div>`;
@@ -997,7 +1080,7 @@ function bracketsFromMatches(tour){
 function drawBoard(){
   if (state.filter === "wc") state.drawTour = "wc";
   if (state.filter === "ppa") state.drawTour = "ppa";
-  if (state.filter === "app") state.drawTour = "app";
+  if (state.filter === "app" || state.filter === "app-pro") state.drawTour = "app";
   const tour = state.drawTour === "wc" ? "wc" : state.drawTour === "app" ? "app" : "ppa";
   const brackets = bracketsFromMatches(tour);
   const divs = sortDivKeys(tour, Object.keys(brackets));
@@ -1180,8 +1263,15 @@ function toggleFollow(k){
   if (state.selected[k]) {
     ensureSafeSW();
     if ("Notification" in window && Notification.permission === "default") {
-      Notification.requestPermission().then(() => render());
+      Notification.requestPermission().then((p) => {
+        if (p === "granted") syncPushSubscription();
+        render();
+      });
+    } else if ("Notification" in window && Notification.permission === "granted") {
+      syncPushSubscription();
     }
+  } else if ("Notification" in window && Notification.permission === "granted") {
+    syncPushSubscription();
   }
   render();
 }
@@ -1302,6 +1392,7 @@ function bind(){
   if (enableAlerts) enableAlerts.addEventListener("click", async () => {
     await ensureSafeSW();
     if ("Notification" in window) await Notification.requestPermission();
+    await syncPushSubscription();
     render();
   });
   const key = document.getElementById("deskKey");

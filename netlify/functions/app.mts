@@ -1,4 +1,5 @@
 import type { Config } from "@netlify/functions";
+import { getStore } from "@netlify/blobs";
 
 /** APP (Association of Pickleball Professionals) via Den Live proxies. */
 const TOURNAMENT_ID = "18453";
@@ -8,8 +9,13 @@ const COMP = "APP Dillons Overland Park Open";
 const VENUE = "AdventHealth Sports Park at Bluhawk, Overland Park, KS";
 const UA = { "User-Agent": "WPM-LIVE/1.0", Accept: "application/json" };
 
+/** Align with Den Live isRunningMatch — never clock-promote. */
 const LIVE_STATUSES = new Set(["RUNNING", "IN_PROGRESS", "INPROGRESS", "STARTED", "PLAYING"]);
 const SKIP_STATUSES = new Set(["BYE", "WAITING_FOR_OPPONENT", "WAITINGFOROPPONENT"]);
+const BRACKET_FETCH_CONCURRENCY = 6;
+const BRACKET_FETCH_MS = 8000;
+const BLOB_TTL_MS = 45_000;
+const BLOB_STORE = "wpm-app";
 
 function ymdInTz(d: Date, tz: string): string {
   return new Intl.DateTimeFormat("en-CA", {
@@ -26,10 +32,95 @@ function addDays(iso: string, n: number): string {
   return dt.toISOString().slice(0, 10);
 }
 
-async function fetchJson(url: string) {
-  const res = await fetch(url, { headers: UA });
-  if (!res.ok) throw new Error(`${url} → ${res.status}`);
-  return res.json();
+function statusToken(raw: any): string {
+  return String(raw ?? "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "_");
+}
+
+/** Pro brackets name "Pro"; skill-rating / Amateur brackets are amateur. */
+function bracketTier(bracketName: string): "pro" | "amateur" {
+  const n = String(bracketName || "");
+  if (/\bAmateur\b/i.test(n)) return "amateur";
+  if (/\bPro\b/i.test(n)) return "pro";
+  return "amateur";
+}
+
+async function fetchJson(url: string, timeoutMs = BRACKET_FETCH_MS) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { headers: UA, signal: ctrl.signal });
+    if (!res.ok) throw new Error(`${url} → ${res.status}`);
+    return await res.json();
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+async function mapPool<T, R>(items: T[], limit: number, fn: (item: T, idx: number) => Promise<R>): Promise<R[]> {
+  const out = new Array<R>(items.length);
+  let next = 0;
+  async function worker() {
+    while (true) {
+      const i = next++;
+      if (i >= items.length) return;
+      out[i] = await fn(items[i], i);
+    }
+  }
+  const n = Math.min(Math.max(1, limit), Math.max(1, items.length));
+  await Promise.all(Array.from({ length: n }, () => worker()));
+  return out;
+}
+
+function blobStore() {
+  try {
+    return getStore({ name: BLOB_STORE, consistency: "strong" });
+  } catch {
+    return null;
+  }
+}
+
+async function cachedBracketMatches(bracketId: string): Promise<{ content: any[]; fromCache: boolean; error?: string }> {
+  const key = `bracket-matches:${TOURNAMENT_ID}:${bracketId}`;
+  const store = blobStore();
+  if (store) {
+    try {
+      const hit = (await store.get(key, { type: "json" })) as { at?: number; content?: any[] } | null;
+      if (hit && typeof hit.at === "number" && Array.isArray(hit.content) && Date.now() - hit.at < BLOB_TTL_MS) {
+        return { content: hit.content, fromCache: true };
+      }
+    } catch {
+      /* ignore blob read errors — fetch live */
+    }
+  }
+  try {
+    const payload = await fetchJson(
+      `${DEN}/api/bracket-matches?bracketId=${encodeURIComponent(bracketId)}&size=200`
+    );
+    const content = payload?.payload?.content || payload?.content || [];
+    if (store) {
+      try {
+        await store.setJSON(key, { at: Date.now(), content });
+      } catch {
+        /* ignore blob write */
+      }
+    }
+    return { content, fromCache: false };
+  } catch (e: any) {
+    // Soft fail: serve stale blob if present
+    if (store) {
+      try {
+        const hit = (await store.get(key, { type: "json" })) as { at?: number; content?: any[] } | null;
+        if (hit && Array.isArray(hit.content)) {
+          return { content: hit.content, fromCache: true, error: String(e?.message || e) };
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+    return { content: [], fromCache: false, error: String(e?.message || e) };
+  }
 }
 
 function sideName(team: any): string {
@@ -48,19 +139,21 @@ function sideName(team: any): string {
 function tagsFor(a: string, b: string) {
   const blob = (a + " " + b).toLowerCase();
   const tags: string[] = [];
-  // Light follow hooks for known APP names if present
   for (const t of ["Waters", "Johns", "Bright", "Jardim", "Devilliers", "Fu"]) {
     if (blob.includes(t.toLowerCase())) tags.push(t);
   }
   return tags;
 }
 
+/**
+ * Map Den match status → WPM LIVE | FT | NEXT.
+ * LIVE only from Den running tokens (RUNNING / IN_PROGRESS / …); WAITING_FOR_COURT stays NEXT.
+ * Never invent LIVE from the clock.
+ */
 function mapStatus(raw: string, completed: boolean): "LIVE" | "FT" | "NEXT" {
-  const s = String(raw || "")
-    .toUpperCase()
-    .replace(/[^A-Z0-9]+/g, "_");
-  if (LIVE_STATUSES.has(s)) return "LIVE";
-  if (completed || s === "COMPLETED" || s === "COMPLETE" || s === "FINISHED") return "FT";
+  const s = statusToken(raw);
+  if (LIVE_STATUSES.has(s) && !completed) return "LIVE";
+  if (completed || s === "COMPLETED" || s === "COMPLETE" || s === "FINISHED" || s === "CLOSED") return "FT";
   return "NEXT";
 }
 
@@ -68,7 +161,6 @@ function mapStatus(raw: string, completed: boolean): "LIVE" | "FT" | "NEXT" {
 function localArrayToIso(arr: any, tz: string): string | null {
   if (!Array.isArray(arr) || arr.length < 5) return null;
   const [y, mo, d, h = 0, mi = 0, s = 0] = arr;
-  // Build a UTC instant that displays as this wall clock in tz via iterative offset.
   const guess = new Date(Date.UTC(y, mo - 1, d, h, mi, s));
   const fmt = new Intl.DateTimeFormat("en-US", {
     timeZone: tz,
@@ -95,7 +187,6 @@ function bracketStartIso(startDate: string, startTime: string | null, tz: string
 function gameComplete(a: number, b: number) {
   const hi = Math.max(a, b);
   const lo = Math.min(a, b);
-  // APP mixes 11- and 15-pt formats; treat win-by-2 at/above 11 as complete.
   return hi >= 11 && hi - lo >= 2;
 }
 
@@ -137,7 +228,7 @@ function courtLabel(m: any): string {
 
 function matchDate(m: any, bracketDate: string, st: string, todayTz: string): string {
   // Rolling: live / on-deck sit on "today" so the desk sees them without flipping dates.
-  if (st === "LIVE" || String(m.status || "").toUpperCase() === "WAITING_FOR_COURT") return todayTz;
+  if (st === "LIVE" || statusToken(m.status || m.matchStatus || m.state) === "WAITING_FOR_COURT") return todayTz;
   const arr = m.startTime || m.endTime;
   if (Array.isArray(arr) && arr.length >= 3) {
     const [y, mo, d] = arr;
@@ -150,8 +241,8 @@ function toMatch(m: any, bracket: any, todayTz: string) {
   const a = sideName(m.team1);
   const b = sideName(m.team2);
   if (a === "TBD" || b === "TBD" || a === "BYE" || b === "BYE") return null;
-  const raw = m.status || m.matchStatus || "";
-  if (SKIP_STATUSES.has(String(raw).toUpperCase().replace(/[^A-Z0-9]+/g, "_"))) return null;
+  const raw = m.status || m.matchStatus || m.state || "";
+  if (SKIP_STATUSES.has(statusToken(raw))) return null;
   const st = mapStatus(raw, !!m.completed);
   const date = matchDate(m, bracket.startDate, st, todayTz);
   const start =
@@ -165,10 +256,12 @@ function toMatch(m: any, bracket: any, todayTz: string) {
   const games = lines.map((l) => `${l.disc} ${l.score}${l.live ? " LIVE" : ""}`).join(" · ");
   const court = courtLabel(m);
   const round = m.roundDisplayName || (m.round != null ? "Round " + m.round : "");
+  const tier = bracketTier(bracket.bracketName || "");
   return {
     id: "app-" + m.matchId,
     date,
     tour: "app",
+    tier,
     comp: COMP,
     div: [bracket.bracketName, round].filter(Boolean).join(" · "),
     round,
@@ -179,13 +272,15 @@ function toMatch(m: any, bracket: any, todayTz: string) {
     status: st,
     start,
     // Never emit phantom 0-0: FT with no played games (walkover/empty Den row) stays score-blank.
-    score: (!w0 && !w1 && !liveLine) ? "" : `${w0}-${w1}`,
+    score: !w0 && !w1 && !liveLine ? "" : `${w0}-${w1}`,
     games,
     lines,
     court,
     note: liveLine
       ? `In play ${liveLine.disc}${liveLine.score && liveLine.score !== "–" ? " " + liveLine.score : ""}`
-      : (st === "FT" && !lines.length ? "Result recorded (no game scores)" : court || ""),
+      : st === "FT" && !lines.length
+        ? "Result recorded (no game scores)"
+        : court || "",
     watch: "", // stay in-app — no bounce to Den/APPTV as product path
     venue: VENUE,
     tz: TZ,
@@ -210,10 +305,11 @@ function keepMatch(m: any, todayTz: string) {
 }
 
 export default async () => {
+  const degraded: string[] = [];
   try {
     const [infoRes, brRes] = await Promise.all([
-      fetchJson(`${DEN}/api/tournament-info?tournamentId=${TOURNAMENT_ID}`),
-      fetchJson(`${DEN}/api/tournament-brackets?tournamentId=${TOURNAMENT_ID}`),
+      fetchJson(`${DEN}/api/tournament-info?tournamentId=${TOURNAMENT_ID}`, 10000),
+      fetchJson(`${DEN}/api/tournament-brackets?tournamentId=${TOURNAMENT_ID}`, 10000),
     ]);
     const venueName = infoRes?.info?.venue?.name || VENUE;
     const brackets: any[] = brRes?.brackets?.content || [];
@@ -225,6 +321,7 @@ export default async () => {
           delayed: true,
           message: "scores delayed",
           matches: [],
+          degraded: ["brackets:empty"],
           event: { id: TOURNAMENT_ID, name: COMP, venue: venueName, tz: TZ },
         },
         { headers: { "Cache-Control": "public, max-age=15" } }
@@ -233,23 +330,28 @@ export default async () => {
 
     const todayTz = ymdInTz(new Date(), TZ);
     const window = new Set([addDays(todayTz, -1), todayTz, addDays(todayTz, 1)]);
-    const selected = brackets.filter(
-      (b) => b.status === "Running" || window.has(b.startDate) || LIVE_STATUSES.has(String(b.status || "").toUpperCase())
-    );
+    const selected = brackets
+      .filter(
+        (b) =>
+          b.status === "Running" ||
+          window.has(b.startDate) ||
+          LIVE_STATUSES.has(statusToken(b.status))
+      )
+      // Prefer Running brackets first so LIVE lands even if later fetches time out.
+      .sort((a, b) => Number(b.status === "Running") - Number(a.status === "Running"));
 
-    const settled = await Promise.all(
-      selected.map(async (b) => {
-        try {
-          const payload = await fetchJson(
-            `${DEN}/api/bracket-matches?bracketId=${encodeURIComponent(b.bracketId)}&size=200`
-          );
-          const content = payload?.payload?.content || payload?.content || [];
-          return { bracket: b, matches: content };
-        } catch {
-          return { bracket: b, matches: [] as any[] };
-        }
-      })
-    );
+    const settled = await mapPool(selected, BRACKET_FETCH_CONCURRENCY, async (b) => {
+      const { content, fromCache, error } = await cachedBracketMatches(String(b.bracketId));
+      if (error) degraded.push(`bracket:${b.bracketId}:${content.length ? "stale" : "fail"}`);
+      return { bracket: b, matches: content, error: error || null, fromCache };
+    });
+
+    const hardFail = settled.filter((s) => s.error && !s.matches.length).length;
+    const staleOk = settled.filter((s) => s.error && s.matches.length).length;
+    const softNotes: string[] = [];
+    if (hardFail) softNotes.push(`${hardFail} bracket(s) unavailable`);
+    if (staleOk) softNotes.push(`${staleOk} bracket(s) served from short cache after fetch error`);
+    const failNotes = degraded.slice();
 
     const all = settled
       .flatMap(({ bracket, matches }) => matches.map((m: any) => toMatch(m, bracket, todayTz)))
@@ -272,8 +374,12 @@ export default async () => {
         status: m.status,
         games: m.games,
         date: m.date,
+        tier: m.tier,
       });
     }
+
+    const liveCount = matches.filter((m) => m.status === "LIVE").length;
+    const partial = hardFail > 0 && matches.length > 0;
 
     return Response.json(
       {
@@ -281,6 +387,10 @@ export default async () => {
         source: "den-live",
         matches,
         brackets: bracketsOut,
+        liveCount,
+        degraded: failNotes.length ? failNotes : undefined,
+        note: softNotes.length ? softNotes.join(" · ") : undefined,
+        partial: partial || undefined,
         event: {
           id: TOURNAMENT_ID,
           name: COMP,
@@ -300,6 +410,7 @@ export default async () => {
         delayed: true,
         message: "scores delayed",
         matches: [],
+        degraded: ["fatal:" + String(e?.message || e)],
         error: String(e?.message || e),
       },
       { status: 200, headers: { "Cache-Control": "public, max-age=10" } }

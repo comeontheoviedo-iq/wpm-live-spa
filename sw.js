@@ -1,9 +1,9 @@
-/* WPM LIVE safe SW (20260918a)
+/* WPM LIVE safe SW (20260918b)
  * Never caches boards, HTML, JS, API, or JSON — those always hit network no-store.
  * Optional network-first cache only for inert static assets (icon/manifest/css).
- * Handles notificationclick for follow LIVE alerts.
+ * Handles push + notificationclick for follow LIVE alerts (closed-tab Web Push).
  */
-const STATIC_CACHE = "wpm-static-20260918a";
+const STATIC_CACHE = "wpm-static-20260918b";
 const STATIC_PATHS = new Set(["/icon.svg", "/manifest.json", "/css/app.css"]);
 
 self.addEventListener("install", (e) => {
@@ -76,6 +76,44 @@ self.addEventListener("fetch", (e) => {
 
   // Default: network only, never write cache (no poison path for unknown assets)
   e.respondWith(fetch(req, { cache: "no-store" }));
+});
+
+self.addEventListener("push", (e) => {
+  let payload = { title: "WPM LIVE", body: "A followed match is LIVE", tag: "wpm-live", data: { url: "/" } };
+  try {
+    if (e.data) {
+      const raw = e.data.text();
+      try {
+        const j = JSON.parse(raw);
+        if (j && typeof j === "object") {
+          payload = {
+            title: typeof j.title === "string" ? j.title : payload.title,
+            body: typeof j.body === "string" ? j.body : payload.body,
+            tag: typeof j.tag === "string" ? j.tag : payload.tag,
+            data: j.data && typeof j.data === "object" ? j.data : payload.data,
+          };
+        } else if (raw) {
+          payload.body = raw;
+        }
+      } catch (_) {
+        if (raw) payload.body = raw;
+      }
+    }
+  } catch (_) {}
+
+  const url =
+    payload.data && typeof payload.data.url === "string" && payload.data.url.startsWith("/")
+      ? payload.data.url
+      : "/";
+
+  e.waitUntil(
+    self.registration.showNotification(payload.title || "WPM LIVE", {
+      body: payload.body || "",
+      tag: payload.tag || "wpm-live",
+      renotify: false,
+      data: { url },
+    })
+  );
 });
 
 self.addEventListener("notificationclick", (e) => {

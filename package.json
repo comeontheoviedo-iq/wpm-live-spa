@@ -4,6 +4,7 @@
   "type": "module",
   "dependencies": {
     "@netlify/blobs": "^9.1.2",
-    "@netlify/functions": "^3.1.10"
+    "@netlify/functions": "^3.1.10",
+    "web-push": "^3.6.7"
   }
 }
