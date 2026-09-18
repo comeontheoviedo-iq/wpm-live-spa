@@ -84,7 +84,7 @@ function followedTagsFor(m){
 }
 function notifyBody(m){
   const who = followedTagsFor(m).join(", ") || "follow";
-  const tour = m.comp || (m.tour === "ppa" ? "PPA" : m.tour === "wc" ? "World Cup" : (m.tour || "")).toString();
+  const tour = m.comp || (m.tour === "ppa" ? "PPA" : m.tour === "app" ? "APP" : m.tour === "wc" ? "World Cup" : (m.tour || "")).toString();
   const div = m.div || m.round || "";
   const meta = [tour, div].filter(Boolean).join(" · ");
   const line = meta ? `${m.a} vs ${m.b} · ${meta}` : `${m.a} vs ${m.b} is live`;
@@ -127,8 +127,9 @@ function effectiveStatus(m){
   if (m.status === "FT") return "FT";
   if (m.status === "LIVE") return "LIVE";
   if ((m.lines || []).some(l => l.live)) return "LIVE";
-  // Soft window only for non-PPA tours that supply an explicit end (desk/WC windows).
-  if (m.tour !== "ppa") {
+  // Soft window only for tours that supply an explicit end (desk/WC windows).
+  // PPA + APP: API status is authority — never clock-promote NEXT→LIVE.
+  if (m.tour !== "ppa" && m.tour !== "app") {
     const now = Date.now();
     const start = parseUtc(m.start);
     const end = parseUtc(m.end);
@@ -237,6 +238,7 @@ function datesAvailable(){
 function competition(m){
   const d = ((m.div||"")+" "+(m.cat||"")).toLowerCase();
   if (m.tour === "ppa") return {id:"ppa", title:"PPA Nationals", place:"Cary, NC", rank:1};
+  if (m.tour === "app") return {id:"app", title:"APP Overland Park", place:"Overland Park, KS", rank:1};
   if (d.includes("open")) return {id:"wc-open", title:"World Cup · Open", place:"Da Nang", rank:2};
   if (d.includes("junior")) return {id:"wc-jr", title:"World Cup · Juniors", place:"Da Nang", rank:3};
   if (d.includes("kid")) return {id:"wc-kids", title:"World Cup · Kids", place:"Da Nang", rank:4};
@@ -249,6 +251,7 @@ function filteredList(){
   return state.matches.filter(m => {
     if (m.date !== state.date) return false;
     if (state.filter === "ppa" && m.tour !== "ppa") return false;
+    if (state.filter === "app" && m.tour !== "app") return false;
     if (state.filter === "wc" && m.tour !== "wc") return false;
     if (state.filter === "npl" && m.tour !== "npl") return false;
     if (state.filter === "asia" && m.tour !== "asia") return false;
@@ -501,6 +504,7 @@ function viewHome(){
         <div class="seg">
           <button data-f="all" class="${state.filter==="all"?"on":""}">All</button>
           <button data-f="ppa" class="${state.filter==="ppa"?"on":""}">PPA</button>
+          <button data-f="app" class="${state.filter==="app"?"on":""}">APP</button>
           <button data-f="npl" class="${state.filter==="npl"?"on":""}">NPL</button>
           <button data-f="wc" class="${state.filter==="wc"?"on":""}">World Cup</button>
           <button data-f="following" class="${state.filter==="following"?"on":""}">Following</button>
@@ -518,6 +522,7 @@ function leagueRail(){
   const items=[
     ["all","All competitions"],
     ["ppa","PPA Tour (US)"],
+    ["app","APP Tour"],
     ["asia","PPA Asia"],
     ["npl","NPL Australia"],
     ["mlp-asia","MLP Asia"],
@@ -549,7 +554,7 @@ function followChips(){
 
 function drawHref(tour, div){
   const p = new URLSearchParams();
-  if (tour === "wc" || tour === "ppa") p.set("tour", tour);
+  if (tour === "wc" || tour === "ppa" || tour === "app") p.set("tour", tour);
   if (div) p.set("div", div);
   const q = p.toString();
   return "/draw" + (q ? "?" + q : "");
@@ -557,7 +562,7 @@ function drawHref(tour, div){
 function applyDrawQuery(){
   const qt = qs("tour");
   const qd = qs("div");
-  if (qt === "wc" || qt === "ppa") {
+  if (qt === "wc" || qt === "ppa" || qt === "app") {
     state.drawTour = qt;
     state.filter = qt;
   }
@@ -569,7 +574,7 @@ function syncDrawUrl(){
   if ((location.pathname + location.search) !== href) history.replaceState({}, "", href);
 }
 function drawNext(m){
-  if (m.tour !== "ppa" && m.tour !== "wc") return "";
+  if (m.tour !== "ppa" && m.tour !== "wc" && m.tour !== "app") return "";
   const div = String(m.div||"").split(" · ")[0].trim();
   const wall = drawHref(m.tour, div);
   const nameBits = (m.a+" "+m.b).split(/[\/ ]+/).filter(w => w.length>2);
@@ -971,7 +976,7 @@ function normalizeBracketTree(tour, stored){
   return out;
 }
 function bracketsFromMatches(tour){
-  const stored = tour==="wc" ? state.wcBrackets : state.brackets;
+  const stored = tour==="wc" ? state.wcBrackets : tour==="app" ? state.appBrackets : state.brackets;
   const normalized = normalizeBracketTree(tour, stored);
   const looksJunk = !Object.keys(normalized).length || Object.values(normalized).every(rounds => {
     const keys = Object.keys(rounds||{});
@@ -992,7 +997,8 @@ function bracketsFromMatches(tour){
 function drawBoard(){
   if (state.filter === "wc") state.drawTour = "wc";
   if (state.filter === "ppa") state.drawTour = "ppa";
-  const tour = state.drawTour === "wc" ? "wc" : "ppa";
+  if (state.filter === "app") state.drawTour = "app";
+  const tour = state.drawTour === "wc" ? "wc" : state.drawTour === "app" ? "app" : "ppa";
   const brackets = bracketsFromMatches(tour);
   const divs = sortDivKeys(tour, Object.keys(brackets));
   const div = state.drawDiv && brackets[state.drawDiv] ? state.drawDiv : (divs[0] || "");
@@ -1033,6 +1039,7 @@ function drawBoard(){
   return `
     <div class="seg" style="margin:0 0 12px">
       <button data-drawtour="ppa" class="${tour==="ppa"?"on":""}">PPA</button>
+      <button data-drawtour="app" class="${tour==="app"?"on":""}">APP</button>
       <button data-drawtour="wc" class="${tour==="wc"?"on":""}">World Cup</button>
     </div>
     <div class="seg draw-divs" style="margin:0 0 12px">${divs.map(d=>`<button data-draw="${d}" class="${d===div?"on":""}">${divChipLabel(d)}</button>`).join("")||"<span class='empty'>No divisions yet</span>"}</div>
@@ -1347,10 +1354,12 @@ async function pull(){
       state.updated = data.updated || state.updated;
       if (tour === "ppa" && data.brackets) state.brackets = data.brackets;
       if (tour === "wc" && data.brackets) state.wcBrackets = data.brackets;
+      if (tour === "app" && data.brackets) state.appBrackets = data.brackets;
     } catch(e) {}
   }
   await overlay("/api/worldcup", "wc");
   await overlay("/api/ppa", "ppa");
+  await overlay("/api/app", "app");
   state.heroByDate = state.heroByDate || {};
   const liveN = (state.matches||[]).filter(m => effectiveStatus(m)==="LIVE").length;
   const todayLine = liveN

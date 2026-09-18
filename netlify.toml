@@ -18,6 +18,9 @@
 [functions."wave-snap-refresh"]
   timeout = 26
 
+[functions.app]
+  timeout = 26
+
 [[redirects]]
   from = "/api/worldcup"
   to = "/.netlify/functions/worldcup"
@@ -26,6 +29,11 @@
 [[redirects]]
   from = "/api/ppa"
   to = "/.netlify/functions/ppa"
+  status = 200
+
+[[redirects]]
+  from = "/api/app"
+  to = "/.netlify/functions/app"
   status = 200
 
 [[redirects]]

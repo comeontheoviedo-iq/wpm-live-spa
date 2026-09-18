@@ -19,4 +19,9 @@ Show **“scores delayed”** (or hide LIVE).
 - [ ] Watch deep link (optional)
 
 ## Out of scope until intake passes
-APP, MLP, PPA Asia, club opens as **live** boards. GPA calendar / history may show them as **results-only** without live path.
+MLP, PPA Asia, club opens as **live** boards. GPA calendar / history may show them as **results-only** without live path.
+
+## Live connectors (shipped)
+- **PPA** → `/api/ppa`
+- **World Cup** → `/api/worldcup`
+- **APP / Den Live** → `/api/app` (see `docs/app-den-live.md`) — tour chip **APP**
