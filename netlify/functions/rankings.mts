@@ -12,7 +12,120 @@ import {
 
 const GPA_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBybmVlZGhxaW51ZGFzbmdrcXFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1NDkzMDIsImV4cCI6MjA3NjEyNTMwMn0.U6VPCpYEtyFkVwxQ7yMAbGf_huWORMg_8iyyd-WkADc";
-const PPA_WORLD = {"men": [{"rank": 1, "name": "Ben Johns", "points": 18837.5}, {"rank": 2, "name": "Gabriel Tardio", "points": 13443.8}, {"rank": 3, "name": "Christian Alshon", "points": 11682.5}, {"rank": 4, "name": "Hayden Patriquin", "points": 10857.5}, {"rank": 5, "name": "Federico Staksrud", "points": 10620}, {"rank": 6, "name": "JW Johnson", "points": 10380.6}, {"rank": 7, "name": "Andrei Daescu", "points": 10130}, {"rank": 8, "name": "CJ Klinger", "points": 6280}, {"rank": 9, "name": "Eric Oncins", "points": 5753.8}, {"rank": 10, "name": "Noe Khlif", "points": 4138.8}], "women": [{"rank": 1, "name": "Anna Leigh Waters", "points": 21555}, {"rank": 2, "name": "Anna Bright", "points": 16390}, {"rank": 3, "name": "Jorja Johnson", "points": 11226.3}, {"rank": 4, "name": "Hurricane Tyra Black", "points": 10010}, {"rank": 5, "name": "Catherine Parenteau", "points": 8465}, {"rank": 6, "name": "Parris Todd", "points": 8170}, {"rank": 7, "name": "Rachel Rohrabacher", "points": 7630}, {"rank": 8, "name": "Kate Fahey", "points": 6352.5}, {"rank": 9, "name": "Tina Pisnik", "points": 5571.3}, {"rank": 10, "name": "Kaitlyn Christian", "points": 5454.4}]};
+/** Last-resort static snapshot only — prefer live /api/rankings + Blobs. */
+const PPA_WORLD_FALLBACK = {"men": [{"rank": 1, "name": "Ben Johns", "points": 18837.5}, {"rank": 2, "name": "Gabriel Tardio", "points": 13443.8}, {"rank": 3, "name": "Christian Alshon", "points": 11682.5}, {"rank": 4, "name": "Hayden Patriquin", "points": 10857.5}, {"rank": 5, "name": "Federico Staksrud", "points": 10620}, {"rank": 6, "name": "JW Johnson", "points": 10380.6}, {"rank": 7, "name": "Andrei Daescu", "points": 10130}, {"rank": 8, "name": "CJ Klinger", "points": 6280}, {"rank": 9, "name": "Eric Oncins", "points": 5753.8}, {"rank": 10, "name": "Noe Khlif", "points": 4138.8}], "women": [{"rank": 1, "name": "Anna Leigh Waters", "points": 21555}, {"rank": 2, "name": "Anna Bright", "points": 16390}, {"rank": 3, "name": "Jorja Johnson", "points": 11226.3}, {"rank": 4, "name": "Hurricane Tyra Black", "points": 10010}, {"rank": 5, "name": "Catherine Parenteau", "points": 8465}, {"rank": 6, "name": "Parris Todd", "points": 8170}, {"rank": 7, "name": "Rachel Rohrabacher", "points": 7630}, {"rank": 8, "name": "Kate Fahey", "points": 6352.5}, {"rank": 9, "name": "Tina Pisnik", "points": 5571.3}, {"rank": 10, "name": "Kaitlyn Christian", "points": 5454.4}]};
+const PPA_RANKINGS_URL = "https://www.ppatour.com/api/rankings/";
+const PPA_WORLD_TTL_MS = 60 * 60 * 1000; // 1h Blobs cache
+const PPA_WORLD_TOP_N = 100;
+
+type PpaWorldRow = { rank: number; name: string; points: number | null };
+type PpaWorldBoard = { men: PpaWorldRow[]; women: PpaWorldRow[] };
+
+function mapPpaEntries(entries: any[], topN: number): PpaWorldRow[] {
+  return (entries || []).slice(0, topN).map((e: any) => ({
+    rank: Number(e.rank),
+    name: String(e.name || "").trim(),
+    points:
+      e.points == null || e.points === ""
+        ? null
+        : Math.round(Number(e.points) * 10) / 10,
+  }));
+}
+
+function parsePpaWorldApi(data: any): PpaWorldBoard | null {
+  const divisions = data?.divisions;
+  if (!Array.isArray(divisions)) return null;
+  const menDiv = divisions.find((d: any) => d?.key === "men");
+  const womenDiv = divisions.find((d: any) => d?.key === "women");
+  const men = mapPpaEntries(menDiv?.entries || [], PPA_WORLD_TOP_N);
+  const women = mapPpaEntries(womenDiv?.entries || [], PPA_WORLD_TOP_N);
+  if (!men.length || !women.length || !men[0]?.name || !women[0]?.name) return null;
+  return { men, women };
+}
+
+async function loadPpaWorld(): Promise<{
+  board: PpaWorldBoard;
+  source: string;
+  updated: string | null;
+}> {
+  let store: ReturnType<typeof getStore> | null = null;
+  try {
+    store = getStore("wpm-ppa");
+  } catch {
+    store = null;
+  }
+
+  if (store) {
+    try {
+      const hit = (await store.get("world", { type: "json" })) as {
+        at?: number;
+        updated?: string;
+        board?: PpaWorldBoard;
+      } | null;
+      if (
+        hit?.board?.men?.length &&
+        hit?.board?.women?.length &&
+        typeof hit.at === "number" &&
+        Date.now() - hit.at < PPA_WORLD_TTL_MS
+      ) {
+        return {
+          board: hit.board,
+          source: "ppatour.com/api/rankings (blobs cache ≤1h)",
+          updated: hit.updated || new Date(hit.at).toISOString(),
+        };
+      }
+    } catch {
+      /* ignore blob read — fetch live */
+    }
+  }
+
+  try {
+    const res = await fetch(PPA_RANKINGS_URL, {
+      headers: { "User-Agent": "WPM-LIVE/1.0" },
+    });
+    if (!res.ok) throw new Error("ppa world " + res.status);
+    const data = await res.json();
+    const board = parsePpaWorldApi(data);
+    if (!board) throw new Error("ppa world parse empty");
+    const updated = new Date().toISOString();
+    if (store) {
+      try {
+        await store.setJSON("world", { at: Date.now(), updated, board });
+      } catch {
+        /* ignore blob write */
+      }
+    }
+    return {
+      board,
+      source: "ppatour.com/api/rankings (live)",
+      updated,
+    };
+  } catch {
+    if (store) {
+      try {
+        const hit = (await store.get("world", { type: "json" })) as {
+          updated?: string;
+          board?: PpaWorldBoard;
+        } | null;
+        if (hit?.board?.men?.length && hit?.board?.women?.length) {
+          return {
+            board: hit.board,
+            source: "ppatour.com/api/rankings (stale blobs)",
+            updated: hit.updated || null,
+          };
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+    return {
+      board: PPA_WORLD_FALLBACK as PpaWorldBoard,
+      source: "ppatour.com/rankings (static snapshot fallback)",
+      updated: null,
+    };
+  }
+}
+
 const GPA = "https://prneedhqinudasngkqqi.supabase.co/rest/v1";
 
 /** Prefer nightly Blobs snap; fall back to bundled wave-snap.json / inline. */
@@ -210,7 +323,7 @@ async function buildWavePlayers(
 }
 
 export default async () => {
-  const [{ snap: waveSnap, source: snapSource }, gpa, events, singlesLive, mdLive, history] =
+  const [{ snap: waveSnap, source: snapSource }, gpa, events, singlesLive, mdLive, history, ppaLive] =
     await Promise.all([
       loadWaveSnap(),
       gpaRankings().catch(() => ({})),
@@ -218,6 +331,7 @@ export default async () => {
       waveBoard("/rankings/all-singles").catch(() => []),
       waveBoard("/rankings/mens-doubles").catch(() => []),
       gpaHistory().catch(() => []),
+      loadPpaWorld(),
     ]);
   const liveOk = singlesLive.length > 0;
   const eloSingles = liveOk ? singlesLive : waveSnap.singles || [];
@@ -236,7 +350,8 @@ export default async () => {
       gpa,
       events,
       elo: { singles: eloSingles, mensDoubles: eloMd },
-      ppaWorld: PPA_WORLD,
+      ppaWorld: ppaLive.board,
+      ppaWorldUpdated: ppaLive.updated,
       wavePlayers,
       waveMeta,
       history,
@@ -255,7 +370,7 @@ export default async () => {
         gpa: "gpapickleball.org",
         elo: "picklewave.com public rankings",
         wavePlayers: "picklewave.com public player + /ppa tabs (restyled; no iframe)",
-        ppaWorld: "ppatour.com/rankings (static snapshot in function)",
+        ppaWorld: ppaLive.source,
       },
     },
     { headers: { "Cache-Control": "public, max-age=300" } }

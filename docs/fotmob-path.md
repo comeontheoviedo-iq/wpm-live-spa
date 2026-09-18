@@ -25,6 +25,7 @@ WPM LIVE should feel like FotMob for pickleball: live truth first, then identity
 - Profile: header + Follow · ranking cards (GPA / Pro ELO / PPA World) · **Recent (Pro tour pool)** from `wavePlayers` · Today · Recent results · magazine hits · archive medals.
 - Ranking table names link to `/player/<Name>` (short key when known).
 - Pro ELO / tour pool labelled as PickleWave public boards — never merged with GPA or PPA World.
+- **PPA World** is live from `ppatour.com/api/rankings` (1h Blobs cache + static fallback). See `docs/ppa-world-rankings.md`.
 
 ## Explicit non-goals (this slice)
 

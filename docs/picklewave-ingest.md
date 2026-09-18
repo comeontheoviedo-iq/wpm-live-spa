@@ -55,8 +55,9 @@ Bright’s PickleWave id: **`128780`** (seen on singles / women’s doubles boar
     "elo": "picklewave.com public rankings",
     "wavePlayers": "picklewave.com public player + /ppa tabs (restyled; no iframe)",
     "gpa": "gpapickleball.org",
-    "ppaWorld": "…"
-  }
+    "ppaWorld": "ppatour.com/api/rankings (live|blobs|fallback)"
+  },
+  "ppaWorldUpdated": "ISO-8601 or null"
 }
 ```
 
