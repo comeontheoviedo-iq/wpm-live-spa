@@ -674,7 +674,9 @@ function viewMatch(id){
   const st = effectiveStatus(m);
   const w = WATCH[m.watch];
   const games = (m.games||"").split("·").map(s=>s.trim()).filter(Boolean);
-  const related = STORIES.filter(s => (m.tour==="wc" && s.tag==="World Cup") || (m.tour==="ppa" && s.tag==="PPA Tour"));
+  const wantTag = m.tour==="wc" ? "World Cup" : m.tour==="ppa" ? "PPA Tour" : m.tour==="app" ? "APP" : "";
+  const liveRelated = wantTag ? (state.magazine.stories||[]).filter(s => (s.tag||"") === wantTag || (s.title||"").toLowerCase().includes(wantTag.toLowerCase())).slice(0,3) : [];
+  const related = liveRelated.length ? liveRelated : STORIES.filter(s => (m.tour==="wc" && s.tag==="World Cup") || (m.tour==="ppa" && s.tag==="PPA Tour"));
   const people = (m.tags||[]).map(t => {
     if (PLAYERS[t]) return `<a class="chip ${state.selected[t]?"on":""}" href="/player/${t}">${PLAYERS[t].name}</a>`;
     if (TEAMS[t]) return `<a class="chip ${state.selected[t]?"on":""}" href="/team/${t}">${TEAMS[t].name}</a>`;
@@ -704,7 +706,7 @@ function viewMatch(id){
       <div class="kicker">On this match</div>
       <div class="chips">${people || "<span class='empty'>No player pages tagged.</span>"}</div>
     </div>
-    ${related.length?`<div class="panel"><div class="kicker">From the magazine</div>${related.map(s=>`<a href="${s.href}"><h3 style="font-family:Syne,sans-serif;margin:8px 0">${s.title}</h3><p class="games">${s.stand}</p></a>`).join("")}</div>`:""}
+    ${related.length?`<div class="panel"><div class="kicker">From the magazine</div>${related.map(magTease).join("")}</div>`:""}
     <div class="panel"><div class="kicker">Kit on this match</div>${PRODUCTS.filter(p => !(m.tags||[]).length || (p.tags||[]).some(t => (m.tags||[]).includes(t)) || p.cat==="balls" || p.cat==="grips").slice(0,3).map(productCard).join("")}</div>
   </div>`;
 }
@@ -736,11 +738,19 @@ function storiesForPerson(rec, followKey){
     .filter(Boolean)
     .map(s => String(s).toLowerCase())
     .filter((s,i,arr) => s.length > 2 && arr.indexOf(s) === i);
-  const live = (state.magazine.stories||[]).map(s => ({ tag:"", title:s.title, stand:s.stand||"", href:s.href }));
-  const all = STORIES.concat(live);
+  const live = (state.magazine.stories||[]).map(s => ({
+    tag: s.tag||"", title:s.title, stand:s.stand||"", href:s.href, image:s.image||""
+  }));
+  // Prefer live feed (with featured images) over hardcoded STORIES stubs
+  const all = live.length ? live.concat(STORIES) : STORIES.slice();
+  const seen = new Set();
   return all.filter(s => {
+    const key = (s.href||s.title||"").toLowerCase();
+    if (seen.has(key)) return false;
     const blob = `${s.tag||""} ${s.title||""} ${s.stand||""}`.toLowerCase();
-    return needles.some(n => blob.includes(n));
+    if (!needles.some(n => blob.includes(n))) return false;
+    seen.add(key);
+    return true;
   }).slice(0, 6);
 }
 function rankingCardsHtml(cards){
@@ -880,7 +890,7 @@ function viewPerson(kind, id){
       <div class="kicker">Recent results</div>
       ${recent.length?recent.map(matchRow).join(""):(list.length?list.map(matchRow).join(""):"<p class='empty'>No tagged matches yet.</p>")}
     </div>
-    ${stories.length?`<div class="panel"><div class="kicker">From the magazine</div>${stories.map(s=>`<a href="${s.href}"><h3 style="font-family:Syne,sans-serif;margin:8px 0;font-size:18px">${s.title}</h3><p class="games">${s.stand||""}</p></a>`).join("")}</div>`:""}
+    ${stories.length?`<div class="panel"><div class="kicker">From the magazine</div>${stories.map(magTease).join("")}</div>`:""}
     ${playerMedals(rec.name)}
   </div>`;
 }
@@ -939,8 +949,68 @@ function viewFollowing(){
   </div>`;
 }
 
+
+function escAttr(s){
+  return String(s||"").replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/'/g,"&#39;").replace(/</g,"&lt;");
+}
+function storyDateLabel(s){
+  const d = (s.date||"").slice(0,10);
+  if (!d) return "";
+  try {
+    const dt = new Date(d+"T12:00:00Z");
+    return dt.toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"});
+  } catch(e){ return d; }
+}
+function magazineStories(){
+  if (state.magazine.stories && state.magazine.stories.length) {
+    return state.magazine.stories.map(s => ({
+      date: s.date||"",
+      title: s.title||"",
+      stand: s.stand||"",
+      href: s.href||"#",
+      image: s.image||"",
+      tag: s.tag||""
+    }));
+  }
+  return STORIES.map(s => ({
+    date:"", title:s.title, stand:s.stand, href:s.href, image:s.image||"", tag:s.tag||"", cover:!!s.cover
+  }));
+}
+function storyCard(s, opts){
+  opts = opts || {};
+  const featured = !!opts.featured || !!s.cover;
+  const img = s.image||"";
+  const kicker = s.tag || (featured ? "Featured" : "");
+  const date = storyDateLabel(s);
+  const meta = [kicker, date].filter(Boolean).join(" · ");
+  const phClass = "ph" + (img ? "" : " missing");
+  const phStyle = img ? ` style="background-image:url('${escAttr(img)}')"` : "";
+  return `<a class="story${featured?" cover":""}" href="${escAttr(s.href||"#")}" ${s.href && s.href.indexOf("worldpickleballmagazine.com")>=0?'target="_blank" rel="noopener"':""}>
+    <div class="${phClass}"${phStyle}></div>
+    <div class="body">
+      ${meta?`<div class="kicker-line">${escAttr(meta)}</div>`:""}
+      <h3>${escAttr(s.title||"")}</h3>
+      ${s.stand?`<p class="standfirst">${escAttr(s.stand)}</p>`:""}
+    </div>
+  </a>`;
+}
+function magTease(s){
+  const img = s.image||"";
+  const thumbClass = "thumb" + (img ? "" : " missing");
+  const thumbStyle = img ? ` style="background-image:url('${escAttr(img)}')"` : "";
+  const kicker = s.tag || storyDateLabel(s) || "Magazine";
+  return `<a class="mag-tease" href="${escAttr(s.href||"#")}" ${s.href && s.href.indexOf("worldpickleballmagazine.com")>=0?'target="_blank" rel="noopener"':""}>
+    <div class="${thumbClass}"${thumbStyle}>${img?"":"WPM"}</div>
+    <div>
+      <div class="kicker-line">${escAttr(kicker)}</div>
+      <h3>${escAttr(s.title||"")}</h3>
+      ${s.stand?`<p>${escAttr((s.stand||"").slice(0,110))}</p>`:""}
+    </div>
+  </a>`;
+}
+
 function viewMagazine(){
-  const stories = state.magazine.stories.length ? state.magazine.stories : STORIES.map(s => ({date:"", title:s.title, stand:s.stand, href:s.href}));
+  const stories = magazineStories();
   const issues = [
     ["#19 Aug 2026","https://worldpickleballmagazine.com/magazines/"],
     ["#18 Jul 2026","https://worldpickleballmagazine.com/world-pickleball-magazine-july-2026-global-pickleball-news/"],
@@ -950,13 +1020,20 @@ function viewMagazine(){
     ["#14 Mar 2026","https://worldpickleballmagazine.com/march-2026/"],
     ["#1 Feb 2025","https://worldpickleballmagazine.com/magazine/wpm-issue-1-february-2025/"]
   ];
+  const featured = stories[0];
+  const rest = stories.slice(1);
+  const live = !!(state.magazine.stories&&state.magazine.stories.length);
   return `<div class="wrap">
-    <h2 style="font-family:Syne,sans-serif;font-size:32px">Magazine</h2>
-    <p class="games">The desk behind the scores. Issues from Feb 2025. Articles from the full site archive.</p>
-    <div class="kicker" style="margin-top:16px">Issues</div>
-    <div class="chips">${issues.map(([l,h])=>`<a class="chip" href="${h}">${l}</a>`).join("")}<a class="chip" href="https://worldpickleballmagazine.com/magazines/">All 19 issues</a></div>
+    <div class="mag-hero">
+      <div class="desk">WORLD PICKLEBALL MAGAZINE</div>
+      <h2>Magazine desk</h2>
+      <p>Featured covers and standfirsts from the site archive — same navy/gold desk as Live. ${live?"Live feed from worldpickleballmagazine.com.":"Showing stub stories until the magazine feed loads."}</p>
+    </div>
+    <div class="kicker">Issues</div>
+    <div class="chips">${issues.map(([l,h])=>`<a class="chip" href="${h}" target="_blank" rel="noopener">${l}</a>`).join("")}<a class="chip" href="https://worldpickleballmagazine.com/magazines/" target="_blank" rel="noopener">All 19 issues</a></div>
     <div class="grid" style="margin-top:16px">
-      ${stories.map(s=>`<a class="story" href="${s.href}"><div class="ph"${s.image?` style="background-image:url('${s.image}');background-size:cover;background-position:center"`:""}></div><div class="body"><small>${(s.date||"").slice(0,10)}</small><h3>${s.title}</h3><p class="games">${s.stand||""}</p></div></a>`).join("")}
+      ${featured?storyCard(featured,{featured:true}):""}
+      ${rest.map(s=>storyCard(s)).join("")}
     </div>
     ${state.magazine.page < state.magazine.pages ? `<button class="btn" id="magMore" style="margin-top:16px">Load older stories</button>`:""}
     <p class="games" style="margin-top:10px">${state.magazine.total||""} stories on worldpickleballmagazine.com since January 2025.</p>

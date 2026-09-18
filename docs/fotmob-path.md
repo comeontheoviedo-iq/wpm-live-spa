@@ -33,3 +33,7 @@ WPM LIVE should feel like FotMob for pickleball: live truth first, then identity
 - Do not open the shop.
 - Do not invent scores or collapse ranking boards into a single #1.
 - Do not iframe PickleWave.
+
+## Magazine surface (2026-09-18c)
+
+`/magazine` is a desk rail, not a plain list: featured/cover image, kicker, title, standfirst from `/api/magazine` (WP featured + Yoast og fallback). Stubs only until feed loads. See `docs/magazine-polish.md`.
