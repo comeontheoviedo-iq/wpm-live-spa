@@ -742,6 +742,7 @@ function leagueRail(){
     ["all","All competitions"],
     ["ppa","PPA Tour (US)"],
     ["ppa-eu","PPA Europe"],
+    ["tpb","TOP Pickleball"],
     ["app-pro","APP Pro"],
     ["app","APP"],
     ["app-asia","APP Asia"],
