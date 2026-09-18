@@ -1,4 +1,5 @@
 import type { Config, Context } from "@netlify/functions";
+import { tagsFor } from "./follow-tags.mjs";
 import { getStore } from "@netlify/blobs";
 
 /** APP (Association of Pickleball Professionals) via Den Live proxies. */
@@ -307,15 +308,6 @@ function sideName(team: any): string {
   if (names.length === 1) return names[0];
   const short = names.map((n: string) => n.split(/\s+/).slice(-1)[0]);
   return short.join(" / ");
-}
-
-function tagsFor(a: string, b: string) {
-  const blob = (a + " " + b).toLowerCase();
-  const tags: string[] = [];
-  for (const t of ["Waters", "Johns", "Bright", "Jardim", "Devilliers", "Fu"]) {
-    if (blob.includes(t.toLowerCase())) tags.push(t);
-  }
-  return tags;
 }
 
 /**

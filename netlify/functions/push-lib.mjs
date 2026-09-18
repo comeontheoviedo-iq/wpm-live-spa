@@ -7,6 +7,7 @@
 import { createHash } from "node:crypto";
 import { getStore } from "@netlify/blobs";
 import webpush from "web-push";
+import { matchFollowKeys } from "./follow-tags.mjs";
 
 export const PUSH_STORE = "wpm-push";
 export const NOTIFIED_TTL_MS = 6 * 60 * 60 * 1000; // ~6h
@@ -98,9 +99,8 @@ export function isMatchLive(m) {
 }
 
 export function matchFollows(m, follows) {
-  const set = new Set((follows || []).map(String));
-  if (!set.size) return [];
-  return (m.tags || []).filter((t) => set.has(t));
+  // Tags + name/games token match (same helper as richer board tagging)
+  return matchFollowKeys(m, follows);
 }
 
 export function notifyPayload(m, who) {

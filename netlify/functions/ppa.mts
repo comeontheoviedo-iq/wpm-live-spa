@@ -1,4 +1,5 @@
 import type { Config } from "@netlify/functions";
+import { tagsFor } from "./follow-tags.mjs";
 
 const EVENT = "62c01642-1bb2-4f9a-9998-599f8fdefe5c"; // Veolia Arizona Open 2026-09-14..20
 
@@ -10,15 +11,6 @@ function sideName(team: any) {
   if (names.length === 1) return names[0];
   const short = names.map((n: string) => n.split(" ").slice(-1)[0]);
   return short.join(" / ");
-}
-
-function tagsFor(a: string, b: string) {
-  const blob = (a + " " + b).toLowerCase();
-  const tags = [];
-  if (blob.includes("waters")) tags.push("Waters");
-  if (blob.includes("johns")) tags.push("Johns");
-  if (blob.includes("bright")) tags.push("Bright");
-  return tags;
 }
 
 function gamesWon(g: any[]) {

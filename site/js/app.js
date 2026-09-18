@@ -71,8 +71,8 @@ if ("Notification" in window && Notification.permission === "granted") {
   setTimeout(() => { syncPushSubscription(); }, 2500);
 }
 
-const SAFE_SW = "/sw.js?v=20260918d";
-const SAFE_SW_MARK = "20260918d";
+const SAFE_SW = "/sw.js?v=20260918e";
+const SAFE_SW_MARK = "20260918e";
 /** Application-server VAPID public key (safe to embed). Private stays in Netlify env. */
 const VAPID_PUBLIC_KEY = "BEuWn2rcxKeLXPFa3KJzys7rLOtFX8GUZ9ckfFhsqEVO0Y2PE3WfnOivmFJV3EUVCf1c1g31qSiVoNDbcJQO8GQ";
 
@@ -143,8 +143,29 @@ function pruneNotified(){
   });
   if (changed) persistNotified();
 }
+function followNameTokens(s){
+  return String(s || "").split(/[^A-Za-z0-9']+/).filter(t => t.length > 0);
+}
+/** Follow keys that hit this match via tags or a/b/games name tokens (mirrors push matchFollowKeys). */
+function matchedFollowsFor(m){
+  const keys = Object.keys(state.selected || {}).filter(k => state.selected[k]);
+  if (!keys.length || !m) return [];
+  const tagSet = new Set(m.tags || []);
+  const hay = `${m.a || ""} ${m.b || ""} ${m.games || ""}`;
+  const hayTokens = new Set(followNameTokens(hay).map(t => t.toLowerCase()));
+  const hayLower = hay.toLowerCase();
+  const hit = [];
+  for (const k of keys) {
+    if (tagSet.has(k)) { hit.push(k); continue; }
+    const kl = String(k).toLowerCase();
+    if (!kl) continue;
+    if (hayTokens.has(kl)) { hit.push(k); continue; }
+    if (kl.includes(" ") && hayLower.includes(kl)) { hit.push(k); continue; }
+  }
+  return hit;
+}
 function followedTagsFor(m){
-  return (m.tags || []).filter(t => state.selected[t]);
+  return matchedFollowsFor(m);
 }
 function notifyBody(m){
   const who = followedTagsFor(m).join(", ") || "follow";
@@ -202,7 +223,7 @@ function effectiveStatus(m){
   return m.status === "NEXT" ? "NEXT" : (m.status || "NEXT");
 }
 function followsMatch(m){
-  return (m.tags || []).some(t => state.selected[t]);
+  return matchedFollowsFor(m).length > 0;
 }
 function anyFollows(){
   return Object.values(state.selected).some(Boolean);

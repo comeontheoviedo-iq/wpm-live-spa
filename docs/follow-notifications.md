@@ -1,6 +1,6 @@
 # Follow notifications — milestone 6
 
-**Slice:** 2026-09-17 · page alerts · **Web Push:** 2026-09-18 · client `wpm-20260918b.js` · SW `sw.js?v=20260918b` — see `docs/web-push.md`  
+**Slice:** 2026-09-17 · page alerts · **Web Push:** 2026-09-18 · client `wpm-20260918e.js` · SW `sw.js?v=20260918e` — see `docs/web-push.md`  
 **Product:** ping when a followed player/team goes LIVE (“follow fires when that player walks on”).
 
 ## What shipped
@@ -37,7 +37,7 @@
 - **Web Push shipped 2026-09-18** — see `docs/web-push.md`. Closed-tab alerts require Notification permission + successful `POST /api/push-subscribe` (follows synced to Blobs `wpm-push`). Cron every 5 min.
 - Page `maybeNotify` still used when a tab is open (12s poll).
 - OS / browser may still suppress notifications when permission is denied or Do Not Disturb is on.
-- Sparse `tags` on matches limit who can fire.
+- Tag coverage expanded 2026-09-18e (`follow-tags.mjs` + name-token match) — see `docs/web-push.md`.
 
 ## Non-goals (unchanged)
 - No fake scores · no shop · no WC/PPA ingest changes · no third-party push vendor.
