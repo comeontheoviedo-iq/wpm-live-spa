@@ -3,6 +3,10 @@ import { tagsFor } from "./follow-tags.mjs";
 import { discFromDivName } from "./app-rounds.mjs";
 
 const EVENT = "62c01642-1bb2-4f9a-9998-599f8fdefe5c"; // Veolia Arizona Open 2026-09-14..20
+const PPA_TZ = "America/Phoenix"; // Mesa — MST year-round; ticker notes already say MST
+const PPA_NAME = "PPA Veolia Arizona Open · Mesa";
+const PPA_VENUE = "Mesa, AZ";
+const PPA_EVENT_KEY = "ev:ppa:" + EVENT;
 
 function sideName(team: any) {
   if (!team) return "TBD";
@@ -96,13 +100,17 @@ function toMatch(m: any) {
     b,
     tags: tagsFor(a, b),
     status: st,
-    start: m.plannedStart || date + "T14:00:00Z",
+    start: m.plannedStart || "",
+    hasClock: !!m.plannedStart,
     score: st === "NEXT" && !w0 && !w1 && !liveLine ? "" : `${w0}-${w1}`,
     games,
     lines,
     court: m.court || "",
     note: liveLine ? `In play ${liveLine.disc} ${liveLine.score}` : (m.time || ""),
     watch: "pbtv",
+    tz: PPA_TZ,
+    venue: PPA_VENUE,
+    eventKey: PPA_EVENT_KEY,
   };
 }
 
@@ -154,7 +162,19 @@ export default async () => {
     });
   }
   return Response.json(
-    { updated: new Date().toISOString(), source: "ppa-ticker", matches, brackets },
+    {
+      updated: new Date().toISOString(),
+      source: "ppa-ticker",
+      matches,
+      brackets,
+      event: {
+        id: EVENT,
+        name: PPA_NAME,
+        venue: PPA_VENUE,
+        tz: PPA_TZ,
+        eventKey: PPA_EVENT_KEY,
+      },
+    },
     { headers: { "Cache-Control": "public, max-age=15" } }
   );
 };

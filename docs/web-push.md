@@ -1,6 +1,6 @@
 # Web Push — closed-tab follow alerts
 
-**Slice:** 2026-09-18 · tag coverage · client `wpm-20260918e.js` · SW `sw.js?v=20260918e`  
+**Slice:** 2026-09-18 · tag coverage · client `wpm-20260918i.js` · SW `sw.js?v=20260918i`  
 **Product:** ping when a followed player/team goes LIVE even with **every tab closed**.
 
 ## Architecture
@@ -66,7 +66,7 @@ Body:
 
 ## How to verify
 
-1. Hard refresh https://live.worldpickleballmagazine.com — JS `wpm-20260918e.js`, SW `20260918e`.
+1. Hard refresh https://live.worldpickleballmagazine.com — JS `wpm-20260918i.js`, SW `20260918i`.
 2. DevTools → Application → Service Workers: safe SW only; Cache Storage has no `/`, `/js/*`, `/api/*`, `*.json`.
 3. Following → **Turn on live alerts** → Allow. Network: `POST /api/push-subscribe` 200; Application → Push Messaging / subscription present.
 4. Confirm Blobs: Netlify UI → Blobs → `wpm-push` → `sub/…` with your follows.
@@ -88,6 +88,7 @@ Body:
 - iOS Safari needs Add to Home Screen / recent iOS for Web Push.
 - Rotating VAPID requires new client subscribe (old PushSubscriptions invalidate).
 - Client + server may both notify when a tab is open (different channels); SW `tag` = match id limits duplicate OS banners somewhat.
+- **Event follows** (`ev:app:18453`, `ev:ppa:…`, `ev:slate:tpb-gijon-2026`) live in `wpm-follows` and the Following rail only. `followTagsList()` strips `ev:` before `POST /api/push-subscribe` — player/team keys are unchanged.
 
 ## Non-goals
 

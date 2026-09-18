@@ -1,6 +1,6 @@
 # Follow notifications — milestone 6
 
-**Slice:** 2026-09-17 · page alerts · **Web Push:** 2026-09-18 · client `wpm-20260918e.js` · SW `sw.js?v=20260918e` — see `docs/web-push.md`  
+**Slice:** 2026-09-17 · page alerts · **Web Push:** 2026-09-18 · client `wpm-20260918i.js` · SW `sw.js?v=20260918i` — see `docs/web-push.md`  
 **Product:** ping when a followed player/team goes LIVE (“follow fires when that player walks on”).
 
 ## What shipped
