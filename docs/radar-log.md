@@ -35,3 +35,12 @@
 - **MLP Asia ≠ APP Asia Tour** — never chip MLP Asia as APP.
 - Shop locked. Details: `docs/slate-europe.md`.
 
+## 2026-09-28 — PPA cut to Rate Las Vegas Open
+
+- Ticker title `PPA Tour: Rate Las Vegas Open`. First-serve rows `8:00 AM PDT` (`plannedStart` `2026-09-28T08:00:00Z` is the API timestamp; the board clock is the ticker string).
+- `/api/ppa` EVENT cut from finished Mesa `62c01642-1bb2-4f9a-9998-599f8fdefe5c` to `86926aef-0566-4fbb-87cf-a48068a9f1c6`. Venue Darling Tennis Center, Las Vegas. TZ `America/Los_Angeles`.
+- Not the April Las Vegas UUID `92d37566-…`.
+- Scores feed for the new UUID: scheduled draw rows with `dateKey` `9999-12-31` (Date TBA) and null games. Those stay off the day board. No phantom 0–0. LIVE only when the ticker says `live`.
+- **PPA P250 Barcelona Open** `1655a7c9-904a-44c9-aa29-b279fca900e8` window ended 27 Sep. Scores API **0** matches. Marked ended / unparked. Do not cut `/api/ppa` there.
+- Client `wpm-20260928a.js` · SW `wpm-static-20260928a`. Shop stays Coming soon.
+

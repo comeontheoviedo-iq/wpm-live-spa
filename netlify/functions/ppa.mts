@@ -1,11 +1,13 @@
 import type { Config } from "@netlify/functions";
 import { tagsFor } from "./follow-tags.mjs";
 import { discFromDivName } from "./app-rounds.mjs";
+import { PPA_LIVE } from "./slate-events.mjs";
+import { keepPpaMatch, mergePpaDateKey, ppaBoardDate } from "./ppa-keep.mjs";
 
-const EVENT = "62c01642-1bb2-4f9a-9998-599f8fdefe5c"; // Veolia Arizona Open 2026-09-14..20
-const PPA_TZ = "America/Phoenix"; // Mesa — MST year-round; ticker notes already say MST
-const PPA_NAME = "PPA Veolia Arizona Open · Mesa";
-const PPA_VENUE = "Mesa, AZ";
+const EVENT = PPA_LIVE.eventId; // Rate Las Vegas Open 2026-09-28 · Darling Tennis Center
+const PPA_TZ = PPA_LIVE.tz; // America/Los_Angeles — ticker clock is the "8:00 AM PDT" string
+const PPA_NAME = PPA_LIVE.name;
+const PPA_VENUE = PPA_LIVE.venue;
 const PPA_EVENT_KEY = "ev:ppa:" + EVENT;
 
 function sideName(team: any) {
@@ -81,7 +83,7 @@ function toMatch(m: any) {
   const a = sideName(t0);
   const b = sideName(t1);
   const st = mapStatus(m.status);
-  const date = (m.dateKey || (m.plannedStart || "").slice(0, 10) || new Date().toISOString().slice(0, 10));
+  const date = ppaBoardDate(m);
   const lines = linesFrom(m, t0, t1);
   const w0 = lines.filter((l: any) => l.winner === a).length;
   const w1 = lines.filter((l: any) => l.winner === b).length;
@@ -91,7 +93,7 @@ function toMatch(m: any) {
     id: "ppa-" + m.id,
     date,
     tour: "ppa",
-    comp: "PPA Veolia Arizona Open · Mesa",
+    comp: PPA_NAME,
     div: [m.division || m.divisionLabel, m.round || m.roundLabel].filter(Boolean).join(" · "),
     round: m.round || m.roundLabel || "",
     disc: discFromDivName(m.division || m.divisionLabel || ""),
@@ -114,19 +116,6 @@ function toMatch(m: any) {
   };
 }
 
-function keepPpaMatch(m: any, now: Date = new Date()) {
-  if (m.status === "LIVE" || m.status === "FT") return true;
-  // NEXT: keep if start within last 48h or in the future
-  const start = m.start ? new Date(m.start) : null;
-  if (start && !Number.isNaN(start.getTime())) {
-    const ageMs = now.getTime() - start.getTime();
-    return ageMs <= 48 * 3600000; // past within 48h OR future (negative age)
-  }
-  // No start: keep if date >= yesterday (today-1)
-  const y = new Date(now.getTime() - 86400000).toISOString().slice(0, 10);
-  return !m.date || m.date >= y;
-}
-
 export default async () => {
   const [tickRes, scoreRes] = await Promise.all([
     fetch("https://www.ppatour.com/api/ticker/", { headers: { "User-Agent": "WPM-LIVE/1.0" } }),
@@ -138,7 +127,7 @@ export default async () => {
   for (const m of scores.matches || []) byId[m.id] = m;
   for (const m of tick.matches || []) {
     const prev = byId[m.id] || {};
-    byId[m.id] = { ...prev, ...m, dateKey: prev.dateKey || (m.plannedStart || "").slice(0, 10) };
+    byId[m.id] = { ...prev, ...m, dateKey: mergePpaDateKey(prev, m) };
   }
   const now = new Date();
   const all = Object.values(byId).map(toMatch);

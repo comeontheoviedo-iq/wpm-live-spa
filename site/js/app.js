@@ -86,8 +86,8 @@ if ("Notification" in window && Notification.permission === "granted") {
   setTimeout(() => { syncPushSubscription(); }, 2500);
 }
 
-const SAFE_SW = "/sw.js?v=20260918i";
-const SAFE_SW_MARK = "20260918i";
+const SAFE_SW = "/sw.js?v=20260928a";
+const SAFE_SW_MARK = "20260928a";
 const GIJON_DRAW_URL = "https://toppickleballtour.com/wp-content/uploads/2026/09/TOP-PICKLEBALL-TOUR-GIJON-GRUPOS.pdf";
 /** Application-server VAPID public key (safe to embed). Private stays in Netlify env. */
 const VAPID_PUBLIC_KEY = "BEuWn2rcxKeLXPFa3KJzys7rLOtFX8GUZ9ckfFhsqEVO0Y2PE3WfnOivmFJV3EUVCf1c1g31qSiVoNDbcJQO8GQ";
@@ -409,7 +409,7 @@ function competition(m){
     return {
       id:"ppa",
       title: "PPA · "+shortEventLabel(ev.name || m.comp, eventFollowKey(m)),
-      place: ev.venue || m.venue || "Mesa, AZ",
+      place: ev.venue || m.venue || "Darling Tennis Center, Las Vegas",
       rank:1,
       eventKey: eventFollowKey(m)
     };
@@ -494,7 +494,8 @@ function shortEventLabel(name, key){
   const k = String(key || "");
   const blob = n + " " + k;
   if (/overland/i.test(blob) || /18453/.test(k)) return "Overland";
-  if (/arizona|mesa/i.test(n) || /62c01642/i.test(k) || k === "ev:ppa") return "Arizona";
+  if (/arizona|mesa/i.test(n) || /62c01642/i.test(k)) return "Arizona";
+  if (/las vegas|darling/i.test(n) || /86926aef/i.test(k) || k === "ev:ppa") return "Las Vegas";
   if (/gij/i.test(blob)) return "Gijón";
   if (/barcelona/i.test(blob)) return "Barcelona";
   if (/world cup|^ev:wc$/i.test(blob)) return "World Cup";
@@ -550,7 +551,7 @@ function followingRail(){
     : (events.length ? "" : `<p class="empty rail-empty">Follow a player or an event — they land here.</p>`);
   const eventsHtml = events.length
     ? events.map(e => `<button class="league ${state.filter===e.filter?"on":""}" data-f="${e.filter}">${esc(e.label)}</button>`).join("")
-    : (people.length ? `<p class="empty rail-empty">Follow Overland, Arizona or a slate event from its card.</p>` : "");
+    : (people.length ? `<p class="empty rail-empty">Follow Overland, Las Vegas or a slate event from its card.</p>` : "");
   return `<div class="panel rail-card follow-box">
     <div class="kicker">Following</div>
     <div class="follow-people">${peopleHtml}</div>
@@ -716,7 +717,7 @@ function courtOnCard(m){
 function scheduledLocalLabel(m){
   if (!m) return "";
   const note = String(m.note || "").trim();
-  if (m.tour === "ppa" && note && !/^In play/i.test(note) && /\d/.test(note) && /(AM|PM|MST|MDT|CST|CDT|EST|EDT)/i.test(note)) {
+  if (m.tour === "ppa" && note && !/^In play/i.test(note) && /\d/.test(note) && /(AM|PM|MST|MDT|PST|PDT|CST|CDT|EST|EDT)/i.test(note)) {
     return note;
   }
   if (m.hasClock !== true || !m.start) return "";
@@ -922,6 +923,7 @@ function esc(s){
 function statusChip(st, onLive){
   if(onLive || st==='live-path') return '<span class="cal-status live-path">live-path</span>';
   if(st==='delayed') return '<span class="cal-status delayed">scores delayed</span>';
+  if(st==='ended') return '<span class="cal-status results-only">ended</span>';
   return '<span class="cal-status results-only">results-only</span>';
 }
 function officialDrawCta(url, label){
@@ -957,7 +959,7 @@ function calEventRow(e){
 function slateFilterMeta(filter){
   return {
     tpb: { title:"TOP Pickleball", copy:"TOP Pickleball Tour (powered by APP, not APP Den). Scores delayed — no live path. Official draw PDF only.", match:e => e.tour==="tpb" || /gij[oó]n/i.test(e.name||"") },
-    "ppa-eu": { title:"PPA Europe", copy:"PPA Tour Europe. Upcoming / results-only until ticker + brackets go live. Arizona remains the /api/ppa board.", match:e => e.tour==="ppa-eu" || /barcelona/i.test(e.name||"") },
+    "ppa-eu": { title:"PPA Europe", kicker:"ended", copy:"PPA Tour Europe. Barcelona window ended 27 Sep 2026 with no scores. Not the live board — Rate Las Vegas Open is /api/ppa.", match:e => e.tour==="ppa-eu" || /barcelona/i.test(e.name||"") },
     "app-asia": { title:"APP Asia", copy:"APP Asia Tour — not MLP Asia. No Den Live id yet. Results-only.", match:e => e.tour==="app-asia" || (/\bAPP\b/i.test(e.name||"") && /Asia|Chongqing|Taipei|Bangkok|Ho Chi Minh|India Open/i.test(e.name||"")) },
     "mlp-asia": { title:"MLP Asia", copy:"MLP Asia is the PPA/MLP franchise, not APP. APP Asia Tour stays on the APP Asia chip. No live board.", match:e => e.tour==="mlp-asia" || /\bMLP\b/i.test(e.name||e.host||"") },
     asia: { title:"PPA Asia", copy:"PPA Asia — results-only until a working ticker is wired. Not APP Asia, not MLP Asia.", match:e => e.tour==="asia" || /PPA Asia|PPA-ASIA/i.test(e.host||"") },
@@ -973,7 +975,7 @@ function slateEmpty(filter){
   const drawUrl = (rows.find(e => e.drawUrl)||{}).drawUrl || (filter==="tpb" ? GIJON_DRAW_URL : "");
   const draw = officialDrawCta(drawUrl, filter==="tpb" ? "Official draw" : "Draw PDF");
   return `<section class="comp-card">
-    <div class="comp-head"><div><h3>${meta.title}</h3><span>upcoming / scores delayed</span></div></div>
+    <div class="comp-head"><div><h3>${meta.title}</h3><span>${meta.kicker || "upcoming / scores delayed"}</span></div></div>
     <p class="games">${meta.copy}</p>
     ${rows.length?rows.map(calEventRow).join(""):`<p class="empty">${meta.copy}</p>`}
     ${draw}
@@ -1308,7 +1310,7 @@ function viewFollowing(){
     ${alertsCta()}
     ${eventCards}
     <div class="chips" style="margin:14px 0">${followChips()}</div>
-    <div class="panel">${list.length?list.map(matchRow).join(""):"<p class='empty'>Follow a player or tap Follow on Overland / Arizona / Gijón. This tab then becomes your board.</p>"}</div>
+    <div class="panel">${list.length?list.map(matchRow).join(""):"<p class='empty'>Follow a player or tap Follow on Overland / Las Vegas / Gijón. This tab then becomes your board.</p>"}</div>
     ${shop.length?`<div class="panel"><div class="kicker">On court with your follows</div>${shop.map(productCard).join("")}</div>`:""}
     <div class="panel">
       <div class="kicker">Watch</div>

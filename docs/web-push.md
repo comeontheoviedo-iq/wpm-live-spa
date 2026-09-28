@@ -1,6 +1,6 @@
 # Web Push — closed-tab follow alerts
 
-**Slice:** 2026-09-18 · tag coverage · client `wpm-20260918i.js` · SW `sw.js?v=20260918i`  
+**Slice:** 2026-09-18 · tag coverage · current client `wpm-20260928a.js` · SW `sw.js?v=20260928a`  
 **Product:** ping when a followed player/team goes LIVE even with **every tab closed**.
 
 ## Architecture
@@ -66,7 +66,7 @@ Body:
 
 ## How to verify
 
-1. Hard refresh https://live.worldpickleballmagazine.com — JS `wpm-20260918i.js`, SW `20260918i`.
+1. Hard refresh https://live.worldpickleballmagazine.com — JS `wpm-20260928a.js`, SW `20260928a`.
 2. DevTools → Application → Service Workers: safe SW only; Cache Storage has no `/`, `/js/*`, `/api/*`, `*.json`.
 3. Following → **Turn on live alerts** → Allow. Network: `POST /api/push-subscribe` 200; Application → Push Messaging / subscription present.
 4. Confirm Blobs: Netlify UI → Blobs → `wpm-push` → `sub/…` with your follows.

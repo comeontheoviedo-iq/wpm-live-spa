@@ -74,7 +74,8 @@ Public JSON: GPA events merged with armed flags (`armed`, `onLive`, `status`, `c
 - **APP Columbus** — Den **registration** `external-tournament/8057937` only; Den Live scoring id not published yet.
 - **APP Asia Chongqing** — no Den link found. APP Asia Tour, **not** MLP Asia.
 - **TPB Gijón 2026** — seeded slate, scores delayed, official draw PDF. No Den id. See `docs/slate-europe.md`.
-- **PPA Barcelona Open** — UUID parked `1655a7c9-904a-44c9-aa29-b279fca900e8`. `/api/ppa` stays Arizona until ticker cutover.
+- **PPA Barcelona Open** — ended 27 Sep 2026, UUID `1655a7c9-904a-44c9-aa29-b279fca900e8`, no scores, unparked. Do not cut `/api/ppa` there.
+- **PPA Rate Las Vegas Open** — live `/api/ppa` UUID `86926aef-0566-4fbb-87cf-a48068a9f1c6`, Darling Tennis Center, `America/Los_Angeles`. Not April `92d37566-…`.
 - **`/api/app` now follows** Blobs `calendar-armed` / `wpm-app` `active-tournament` / env / query (fallback 18453). Arming an APP row with `denTournamentId` drives the live connector when intake passes.
 - D-Joy Leg 3 still awaits a published live URL (`connector: djoy`).
 - Cross-link: [`app-den-ids.md`](./app-den-ids.md)

@@ -4,11 +4,14 @@
  */
 
 import {
+  PPA_LIVE,
   PPA_LIVE_EVENT_ID,
+  ENDED_PPA,
   PARKED_PPA,
   GIJON,
   MLP_ASIA_NOTE,
   isAppAsiaName,
+  ppaTickerTitleAligned,
   staticWatchEvents,
 } from "./slate-events.mjs";
 
@@ -23,10 +26,10 @@ const DEN = "https://denlive.pickleballden.com";
 export const WIRED = {
   ppa: {
     tour: "ppa",
-    eventId: PPA_LIVE_EVENT_ID,
-    name: "PPA Veolia Arizona Open \u00b7 Mesa",
-    venue: "Mesa, AZ",
-    tz: "America/Phoenix",
+    eventId: PPA_LIVE.eventId,
+    name: PPA_LIVE.name,
+    venue: PPA_LIVE.venue,
+    tz: PPA_LIVE.tz,
     scorePath: "/api/ppa",
   },
   app: {
@@ -173,7 +176,7 @@ async function probePpa() {
   const title = tick.body?.tournament?.title || tick.body?.tournament?.name || "";
   const tickN = Array.isArray(tick.body?.matches) ? tick.body.matches.length : 0;
   const scoreN = Array.isArray(scores.body?.matches) ? scores.body.matches.length : 0;
-  const titleAligned = !title || /arizona/i.test(title) || /veolia/i.test(title) || /mesa/i.test(title);
+  const titleAligned = ppaTickerTitleAligned(title);
 
   const inn = intake({
     name: title || wired.name,
@@ -221,29 +224,18 @@ async function probePpa() {
   };
 }
 
-/** Watch parked Barcelona UUID. Never flips /api/ppa. Escalates when ticker title is Barcelona. */
-async function probeParkedBarcelona(tickerTitle) {
-  const parked = PARKED_PPA.barcelona;
+/** Barcelona window ended 27 Sep 2026. Report the scores count. Never cut /api/ppa here. */
+async function probeEndedBarcelona(tickerTitle) {
+  const ended = ENDED_PPA.barcelona;
   const scores = await fetchJson(
-    `https://www.ppatour.com/api/scores/?event=${parked.ppaEventId}`
+    `https://www.ppatour.com/api/scores/?event=${ended.ppaEventId}`
   );
   const scoreN = Array.isArray(scores.body?.matches) ? scores.body.matches.length : 0;
   const title = String(tickerTitle || "");
-  const titleIsBarcelona = /barcelona/i.test(title);
-  const titleIsArizona = /arizona|veolia|mesa/i.test(title);
   const watch = staticWatchEvents().find((e) => e.tour === "ppa-eu");
-
-  let board = "results_only";
-  let note = parked.note;
-  let priority = null;
-  if (titleIsBarcelona && WIRED.ppa.eventId !== parked.ppaEventId) {
-    board = "blocked_by_intake";
-    note = `ticker "${title}" is Barcelona but /api/ppa still ${WIRED.ppa.eventId} — cut EVENT in ppa.mts to ${parked.ppaEventId}`;
-    priority = "P0";
-  } else if (titleIsArizona || !titleIsBarcelona) {
-    board = "results_only";
-    note = `parked UUID ${parked.ppaEventId} · ticker "${title || "—"}" still US/Arizona · ${scoreN} scores rows (not the live board)`;
-  }
+  const note =
+    `ended 2026-09-27 · unparked · ${scoreN} scores rows · not the live board ` +
+    `(do not cut /api/ppa to ${ended.ppaEventId})`;
 
   return {
     event: {
@@ -251,10 +243,12 @@ async function probeParkedBarcelona(tickerTitle) {
       tickerTitle: title,
       scoreMatches: scoreN,
       scoresOk: scores.ok,
-      titleIsBarcelona,
-      board,
+      parked: false,
+      ended: true,
+      titleIsBarcelona: /barcelona/i.test(title),
+      board: "results_only",
       note,
-      priority,
+      priority: null,
     },
   };
 }
@@ -404,7 +398,7 @@ export async function buildRadarReport(opts = {}) {
     probeWorldCup(prodBase),
     probeGijon(),
   ]);
-  const barcelona = await probeParkedBarcelona(ppa.tickerTitle);
+  const barcelona = await probeEndedBarcelona(ppa.tickerTitle);
 
   const events = [];
   if (ppa.event) events.push(ppa.event);
@@ -463,6 +457,7 @@ export async function buildRadarReport(opts = {}) {
     },
     wired: WIRED,
     parkedPpa: PARKED_PPA,
+    endedPpa: ENDED_PPA,
     ppaLiveEventId: PPA_LIVE_EVENT_ID,
     summary,
     events,
@@ -473,7 +468,9 @@ export async function buildRadarReport(opts = {}) {
         "Run `node scripts/event-radar.mjs` or GET /api/radar",
         "Escalate P0 actions only (blocked_by_intake on PPA/APP/PPA Europe)",
         "If PPA ticker title ≠ wired EVENT → cut ppa.mts EVENT same day",
-        "If ticker title is Barcelona → cut EVENT to parked UUID 1655a7c9-… (not before; Arizona stays live)",
+        "Live PPA is Rate Las Vegas Open 86926aef-… Darling Tennis Center, America/Los_Angeles",
+        "Barcelona 1655a7c9 ended 27 Sep 2026 with no scores — unparked; do not cut /api/ppa there",
+        "Do not wire the April Las Vegas UUID 92d37566-…",
         "Watch Gijón for Den/Tournated — until then scores delayed + draw PDF only",
         "If new APP on GPA → find Den tournamentId → intake checklist → ship /api/app id",
         "MLP Asia ≠ APP Asia Tour — never merge those chips",
