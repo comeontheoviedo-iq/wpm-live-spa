@@ -2,10 +2,13 @@ import type { Config, Context } from "@netlify/functions";
 import { getStore } from "@netlify/blobs";
 import {
   SLATE,
+  ENDED_PPA,
   PARKED_PPA,
+  PPA_LIVE,
   PPA_LIVE_EVENT_ID,
   GIJON,
   asCalendarRow,
+  isBlockedPpaEventId,
   isParkedPpaEventId,
   isAppAsiaName,
   matchesSlateName,
@@ -38,23 +41,25 @@ const KNOWN = {
     timezone: "America/New_York",
     name: "Humana APP Louisville Open",
   },
-  ppaMesa: {
+  ppaLasVegas: {
     type: "ppa",
     ppaEventId: PPA_LIVE_EVENT_ID,
     scorePath: "/api/ppa",
-    timezone: "America/Phoenix",
-    name: "PPA Veolia Arizona Open · Mesa",
+    timezone: PPA_LIVE.tz,
+    name: PPA_LIVE.name,
+    venue: PPA_LIVE.venue,
     live: true,
   },
-  /** Parked — do not arm as live-path while Arizona is the single /api/ppa EVENT. */
+  /** Ended 27 Sep 2026, no scores. Unparked — not a live path and not a cutover target. */
   ppaBarcelona: {
     type: "ppa",
-    ppaEventId: PARKED_PPA.barcelona.ppaEventId,
+    ppaEventId: ENDED_PPA.barcelona.ppaEventId,
     scorePath: null,
-    timezone: PARKED_PPA.barcelona.timezone,
-    name: PARKED_PPA.barcelona.name,
+    timezone: ENDED_PPA.barcelona.timezone,
+    name: ENDED_PPA.barcelona.name,
     live: false,
-    parked: true,
+    parked: false,
+    ended: true,
   },
   tpbGijon: {
     type: "none",
@@ -127,8 +132,8 @@ function hasScorePath(c: Connector | null | undefined): boolean {
   if (c.type === "app") return Boolean(c.denTournamentId && String(c.denTournamentId).trim());
   if (c.type === "ppa") {
     const id = c.ppaEventId && String(c.ppaEventId).trim();
-    // Parked UUID is metadata for cutover, not a working live path.
-    if (!id || isParkedPpaEventId(id)) return false;
+    // Ended Barcelona and the April Las Vegas UUID are not a working live path.
+    if (!id || isParkedPpaEventId(id) || isBlockedPpaEventId(id)) return false;
     return true;
   }
   if (c.type === "url" || c.type === "djoy")
@@ -383,6 +388,7 @@ export default async (req: Request, _context: Context) => {
         known: KNOWN,
         slate: SLATE.map((s) => asCalendarRow(s, new Date().toISOString().slice(0, 10))),
         parkedPpa: PARKED_PPA,
+        endedPpa: ENDED_PPA,
         ppaLiveEventId: PPA_LIVE_EVENT_ID,
         neverFakeScores: true,
       },

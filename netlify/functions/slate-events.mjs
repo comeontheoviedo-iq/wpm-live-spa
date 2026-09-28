@@ -1,13 +1,29 @@
 /**
  * Seeded slate events with no live score path yet.
- * Shared by calendar.mts + radar-lib.mjs.
- * Never onLive. Never point /api/ppa at a parked UUID while a US event is wired.
+ * Shared by calendar.mts + radar-lib.mjs + ppa.mts.
+ * Never onLive for slate seeds. Never point /api/ppa at an ended or rejected UUID.
  */
 
-/** Live /api/ppa EVENT — Veolia Arizona Open (Mesa). Do not swap for Barcelona. */
-export const PPA_LIVE_EVENT_ID = "62c01642-1bb2-4f9a-9998-599f8fdefe5c";
+/** Live /api/ppa EVENT — Rate Las Vegas Open (Darling Tennis Center). */
+export const PPA_LIVE_EVENT_ID = "86926aef-0566-4fbb-87cf-a48068a9f1c6";
 
-export const PARKED_PPA = {
+/** April Las Vegas Open. Not this September event — never wire /api/ppa to it. */
+export const PPA_APRIL_LAS_VEGAS_PREFIX = "92d37566";
+
+export const PPA_LIVE = {
+  eventId: PPA_LIVE_EVENT_ID,
+  name: "PPA Rate Las Vegas Open",
+  venue: "Darling Tennis Center, Las Vegas",
+  tz: "America/Los_Angeles",
+  start: "2026-09-28",
+  firstServe: "8:00 AM PDT",
+};
+
+/**
+ * Barcelona window closed 27 Sep 2026. Official scores API returned no matches.
+ * Unparked: not a cutover target. Do not point /api/ppa here.
+ */
+export const ENDED_PPA = {
   barcelona: {
     ppaEventId: "1655a7c9-904a-44c9-aa29-b279fca900e8",
     name: "PPA Tour Europe \u00b7 P250 Barcelona Open",
@@ -16,13 +32,17 @@ export const PARKED_PPA = {
     start: "2026-09-23",
     end: "2026-09-27",
     officialUrl: "https://ppatour.com/tournament/2026/ppa-spain-p250-barcelona/",
-    scorePathWhenLive: "/api/ppa",
+    ended: true,
+    parked: false,
     note:
-      "UUID parked for cutover. /api/ppa stays Arizona (" +
+      "Window ended 27 Sep 2026 with no scores on the official PPA scores API. Unparked \u2014 do not cut /api/ppa to this UUID. Live board is Rate Las Vegas Open (" +
       PPA_LIVE_EVENT_ID +
-      ") until the official ticker title is Barcelona. Single EVENT id \u2014 do not point the live board here while Mesa is on.",
+      ").",
   },
 };
+
+/** Nothing is parked for cutover. Kept so older readers see an empty set. */
+export const PARKED_PPA = {};
 
 export const GIJON = {
   id: "slate:tpb-gijon-2026",
@@ -46,21 +66,21 @@ export const GIJON = {
 
 export const BARCELONA = {
   id: "slate:ppa-barcelona-2026",
-  name: PARKED_PPA.barcelona.name,
-  venue: PARKED_PPA.barcelona.venue,
-  timezone: PARKED_PPA.barcelona.timezone,
+  name: ENDED_PPA.barcelona.name,
+  venue: ENDED_PPA.barcelona.venue,
+  timezone: ENDED_PPA.barcelona.timezone,
   tour: "ppa-eu",
   host: "PPA Tour Europe",
   tier: "P250",
-  start: PARKED_PPA.barcelona.start,
-  end: PARKED_PPA.barcelona.end,
-  status: "results-only",
+  start: ENDED_PPA.barcelona.start,
+  end: ENDED_PPA.barcelona.end,
+  status: "ended",
   onLive: false,
-  officialUrl: PARKED_PPA.barcelona.officialUrl,
+  officialUrl: ENDED_PPA.barcelona.officialUrl,
   drawUrl: "",
-  note: PARKED_PPA.barcelona.note,
-  // UUID stored for cutover; type none so intake never treats this as a working live path.
-  connector: { type: "none", ppaEventId: PARKED_PPA.barcelona.ppaEventId },
+  note: ENDED_PPA.barcelona.note,
+  // UUID kept so desk can see which event ended. type none — not a live path.
+  connector: { type: "none", ppaEventId: ENDED_PPA.barcelona.ppaEventId },
 };
 
 export const SLATE = [GIJON, BARCELONA];
@@ -72,7 +92,7 @@ export const MLP_ASIA_NOTE =
 export const FILTER_COPY = {
   tpb: "TOP Pickleball Tour (powered by APP, not APP Den). Scores delayed \u2014 no live path. Official draw PDF only.",
   "ppa-eu":
-    "PPA Tour Europe. Upcoming / results-only until ticker + brackets go live. Arizona remains the /api/ppa board.",
+    "PPA Tour Europe. Barcelona window ended 27 Sep 2026 with no scores. Not the live board \u2014 Rate Las Vegas Open is /api/ppa.",
   "app-asia": "APP Asia Tour \u2014 not MLP Asia. No Den Live id yet. Results-only.",
   "mlp-asia": MLP_ASIA_NOTE,
   asia: "PPA Asia \u2014 results-only until a working ticker is wired. Not APP Asia, not MLP Asia.",
@@ -81,12 +101,33 @@ export const FILTER_COPY = {
 
 export const SLATE_FILTERS = ["tpb", "ppa-eu", "app-asia", "mlp-asia", "asia", "gpa"];
 
-export function isParkedPpaEventId(id) {
-  return String(id || "").trim() === PARKED_PPA.barcelona.ppaEventId;
+/** No UUID is parked for a future cut. Barcelona is ended, not waiting. */
+export function isParkedPpaEventId(_id) {
+  return false;
+}
+
+export function isEndedPpaEventId(id) {
+  const s = String(id || "").trim().toLowerCase();
+  return s === ENDED_PPA.barcelona.ppaEventId;
+}
+
+/** April Las Vegas prefix, or any ended Europe UUID. Not a working /api/ppa path. */
+export function isBlockedPpaEventId(id) {
+  const s = String(id || "").trim().toLowerCase();
+  if (!s) return false;
+  if (isEndedPpaEventId(s)) return true;
+  return s.startsWith(PPA_APRIL_LAS_VEGAS_PREFIX);
 }
 
 export function isLivePpaEventId(id) {
   return String(id || "").trim() === PPA_LIVE_EVENT_ID;
+}
+
+/** Ticker title must be Rate Las Vegas. A bare "Las Vegas" title is not this event. */
+export function ppaTickerTitleAligned(title) {
+  const t = String(title || "").trim();
+  if (!t) return true;
+  return /rate/i.test(t) && /las vegas/i.test(t);
 }
 
 /** APP Asia Tour names on GPA \u2014 still APP, never MLP. */
@@ -168,11 +209,12 @@ export function staticWatchEvents() {
       tz: BARCELONA.timezone,
       source: "slate-seed",
       denId: null,
-      ppaEventId: PARKED_PPA.barcelona.ppaEventId,
+      ppaEventId: ENDED_PPA.barcelona.ppaEventId,
       officialUrl: BARCELONA.officialUrl,
       drawUrl: "",
       scorePath: null,
-      parked: true,
+      parked: false,
+      ended: true,
       intake: {
         name: true,
         venue: true,

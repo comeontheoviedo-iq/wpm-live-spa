@@ -15,7 +15,8 @@
     "netlify/functions/app-rounds.mjs",
     "netlify/functions/app-dates.mjs",
     "netlify/functions/radar-lib.mjs",
-    "netlify/functions/slate-events.mjs"
+    "netlify/functions/slate-events.mjs",
+    "netlify/functions/ppa-keep.mjs"
   ]
 
 [functions.rankings]

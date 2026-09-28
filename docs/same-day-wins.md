@@ -6,11 +6,11 @@ PR #3 already merged Sunday Finals day-filter as `wpm-20260918h.js`. This bust k
 
 ## APP court + local time
 
-Board cards show Den `court` and scheduled local time in **`America/Chicago`** (Overland) only when Den provided them (`hasClock` from `startTime`/`scheduledTime`). Same pattern as PPA: court when the ticker has one; official `7:15 PM MST` / `America/Phoenix` when present. No bracket 09:00 painted as a match clock.
+Board cards show Den `court` and scheduled local time in **`America/Chicago`** (Overland) only when Den provided them (`hasClock` from `startTime`/`scheduledTime`). Same pattern as PPA: court when the ticker has one; official ticker clock when present (Rate Las Vegas Open uses `8:00 AM PDT` / `America/Los_Angeles`). No bracket 09:00 painted as a match clock.
 
 ## Following events
 
-Following box above Competitions lists **followed events** (Overland / Arizona / Gijón slate) from the same `wpm-follows` object. Keys are `ev:…`. Competitions cards and slate/calendar rows have Follow. Web Push still receives **player/team keys only**.
+Following box above Competitions lists **followed events** (Overland / Las Vegas / Gijón slate) from the same `wpm-follows` object. Keys are `ev:…`. Competitions cards and slate/calendar rows have Follow. Web Push still receives **player/team keys only**. The live PPA label is Las Vegas (`wpm-20260928a.js`).
 
 ## SW cache align
 
