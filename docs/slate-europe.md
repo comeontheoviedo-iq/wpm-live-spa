@@ -17,7 +17,7 @@ Gijón has **no working live score path**. Barcelona’s window **ended 27 Sep 2
 | Status | **scores delayed** / results-only |
 | Live id | **None** — no Den Live `tournamentId`, no Tournated, no live API found |
 
-Tour chip is **TOP Pickleball (`tpb`)**, not APP Den. Powered-by-APP is sponsorship, not `/api/app`. Groups are the official PDF only (not parsed into fake match scores). Competitions / scores-delayed card has a one-tap **Official draw** CTA to that PDF (`wpm-20260928a.js`).
+Tour chip is **TOP Pickleball (`tpb`)**, not APP Den. Powered-by-APP is sponsorship, not `/api/app`. Groups are the official PDF only (not parsed into fake match scores). Competitions / scores-delayed card has a one-tap **Official draw** CTA to that PDF (`wpm-20260929a.js`). The reader card says **Scores delayed** — the Den/Tournated detail stays in this doc and on radar.
 
 ## PPA Tour Europe · P250 Barcelona Open
 
@@ -44,6 +44,7 @@ The ticker moved to Rate Las Vegas Open. Radar must not raise a cutover to Barce
 - Seed: `netlify/functions/slate-events.mjs`
 - Calendar merge: `netlify/functions/calendar.mts`
 - Radar: `netlify/functions/radar-lib.mjs`
-- UI: competitions empty cards + **Official draw** CTA + calendar follow (`wpm-20260928a.js`)
+- UI: competitions empty cards + **Official draw** CTA + calendar follow (`wpm-20260929a.js`)
+- Reader board (`readerStatusLine` / `toReaderEvent`): **Event ended**, **Scores delayed**, **Draw not published yet**, or **Results will appear when available**. One sentence. Desk `note` / UUID / `/api/ppa` stay off the card.
 
 Intake rule unchanged: name + venue + timezone + **working** score path. An ended UUID is not a working path.

@@ -8,26 +8,29 @@ import assert from "node:assert/strict";
 import { matchHasClock, matchBoardDate } from "../netlify/functions/app-dates.mjs";
 import { GIJON, asCalendarRow } from "../netlify/functions/slate-events.mjs";
 
-const js = fs.readFileSync("js/wpm-20260928a.js", "utf8");
+const js = fs.readFileSync("js/wpm-20260929a.js", "utf8");
+const prev = fs.readFileSync("js/wpm-20260928a.js", "utf8");
 const shipped = fs.readFileSync("js/wpm-20260918i.js", "utf8");
 const index = fs.readFileSync("index.html", "utf8");
 const sw = fs.readFileSync("sw.js", "utf8");
 const siteIndex = fs.readFileSync("site/index.html", "utf8");
 const siteSw = fs.readFileSync("site/sw.js", "utf8");
-const siteJs = fs.readFileSync("site/js/wpm-20260928a.js", "utf8");
+const siteJs = fs.readFileSync("site/js/wpm-20260929a.js", "utf8");
 const ppa = fs.readFileSync("netlify/functions/ppa.mts", "utf8");
 
 assert.ok(shipped.includes('SAFE_SW_MARK = "20260918i"'), "previous bundle 18i stays on disk");
-assert.ok(js.includes('SAFE_SW_MARK = "20260928a"'));
-assert.ok(js.includes("/sw.js?v=20260928a"));
-assert.ok(index.includes("wpm-20260928a.js"));
-assert.ok(index.includes("sw.js?v=20260928a"));
-assert.ok(index.includes("app.css?v=20260928a"));
+assert.ok(prev.includes('SAFE_SW_MARK = "20260928a"'), "previous bundle 28a stays on disk");
+assert.ok(js.includes('SAFE_SW_MARK = "20260929a"'));
+assert.ok(js.includes("/sw.js?v=20260929a"));
+assert.ok(index.includes("wpm-20260929a.js"));
+assert.ok(index.includes("sw.js?v=20260929a"));
+assert.ok(index.includes("app.css?v=20260929a"));
+assert.equal(index.includes("wpm-20260928a.js"), false);
 assert.equal(index.includes("wpm-20260918i.js"), false);
-assert.ok(sw.includes("wpm-static-20260928a"));
+assert.ok(sw.includes("wpm-static-20260929a"));
 assert.equal(index.includes("20260918f"), false, "index must not pin old SW f");
-assert.ok(siteIndex.includes("wpm-20260928a.js"));
-assert.ok(siteSw.includes("wpm-static-20260928a"));
+assert.ok(siteIndex.includes("wpm-20260929a.js"));
+assert.ok(siteSw.includes("wpm-static-20260929a"));
 assert.equal(siteJs, js);
 
 assert.ok(js.includes("function isEventFollowKey"));
@@ -65,4 +68,4 @@ const wazirFinal = { matchType: "FINAL", startTime: null, scheduledTime: null };
 assert.equal(matchHasClock(wazirFinal), false, "no invented clock");
 assert.equal(matchBoardDate(wazirFinal, { bracketDate: "2026-09-17", eventEndDate: "2026-09-20" }), "2026-09-20");
 
-console.log("ok quick-wins · 28a bust · 18i kept · event follows · Gijón draw · Las Vegas labels · no invented APP clock");
+console.log("ok quick-wins · 29a bust · 28a kept · event follows · Gijón draw · Las Vegas labels · no invented APP clock");

@@ -66,7 +66,7 @@ Shop stays closed. Tours stay labelled (APP / PPA / WC / GPA / …).
 
 ### `GET /api/calendar`
 
-Public JSON: GPA events merged with armed flags (`armed`, `onLive`, `status`, `connector`, `timezone`, `note`). Also returns raw `armed[]` and `known` connector hints.
+Public JSON: GPA events merged with armed flags (`armed`, `onLive`, `status`, `connector`, `timezone`). `note` and `statusNote` are the reader line only (`Event ended`, `Scores delayed`, `Draw not published yet`, `Results will appear when available`). Desk hints (Den ids, UUIDs, `/api/ppa`, intake blockers) stay in this doc and in the function source — they are not returned on those prose fields. `armed[]` is mapped the same way. `known` connector hints remain for the desk form.
 
 ## Residual
 

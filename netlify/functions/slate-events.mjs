@@ -89,6 +89,7 @@ export const SLATE = [GIJON, BARCELONA];
 export const MLP_ASIA_NOTE =
   "MLP Asia \u2260 APP. MLP Asia is the PPA/MLP franchise. APP Asia Tour (Chongqing / Taipei / Bangkok / HCMC / India) stays on the APP Asia chip \u2014 never chip MLP Asia as APP.";
 
+/** Desk / radar copy. Never send these strings on the public board. */
 export const FILTER_COPY = {
   tpb: "TOP Pickleball Tour (powered by APP, not APP Den). Scores delayed \u2014 no live path. Official draw PDF only.",
   "ppa-eu":
@@ -98,6 +99,83 @@ export const FILTER_COPY = {
   asia: "PPA Asia \u2014 results-only until a working ticker is wired. Not APP Asia, not MLP Asia.",
   gpa: "GPA calendar. Live only when intake passes (name \u00b7 venue \u00b7 tz \u00b7 score path).",
 };
+
+/** The only prose the reader board may show on a results-only / ended / parked card. */
+export const READER_LINES = {
+  ended: "Event ended",
+  delayed: "Scores delayed",
+  draw: "Draw not published yet",
+  results: "Results will appear when available",
+};
+
+export const READER_FILTER_COPY = {
+  tpb: READER_LINES.delayed,
+  "ppa-eu": READER_LINES.ended,
+  "app-asia": READER_LINES.results,
+  "mlp-asia": READER_LINES.results,
+  asia: READER_LINES.results,
+  gpa: READER_LINES.results,
+};
+
+const READER_LINE_VALUES = new Set(Object.values(READER_LINES));
+const UUID_RE =
+  /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+const DESK_JARGON_RE =
+  /\b(blocker|intake|radar|tournamentid|uuid|external-tournament|den live|den id)\b|\/api\/ppa\b/i;
+
+export function textHasDeskJargon(value) {
+  const s = String(value || "");
+  if (!s) return false;
+  if (UUID_RE.test(s)) return true;
+  if (DESK_JARGON_RE.test(s)) return true;
+  if (/\b(note|reason)\b/i.test(s) && /den|api|uuid|intake|radar|blocker|tournament/i.test(s))
+    return true;
+  return false;
+}
+
+/**
+ * One short status for a results-only, ended, or calendar-parked card.
+ * Live-path rows stay quiet — the status chip already says they are live.
+ * Desk notes are an input only (draw-not-published detection). They are never returned.
+ */
+export function readerStatusLine(row) {
+  if (!row || typeof row !== "object") return "";
+  const status = String(row.status || "").toLowerCase();
+  if (row.onLive || status === "live-path") return "";
+  if (row.ended || status === "ended") return READER_LINES.ended;
+  if (status === "delayed") return READER_LINES.delayed;
+  const blob = [row.note, row.statusNote, row.blurb, row.detail, row.description]
+    .filter(Boolean)
+    .join(" ");
+  const drawMissing =
+    !row.drawUrl &&
+    /draw/i.test(blob) &&
+    /not published|unpublished|no official/i.test(blob);
+  if (drawMissing) return READER_LINES.draw;
+  return READER_LINES.results;
+}
+
+/**
+ * Public calendar row. Replaces note / statusNote / blurb / detail / description
+ * with the reader line and drops desk-only prose keys.
+ */
+export function toReaderEvent(row) {
+  if (!row || typeof row !== "object") return row;
+  const statusNote = readerStatusLine(row);
+  const next = { ...row, note: statusNote, statusNote };
+  for (const key of ["blurb", "detail", "description"]) {
+    if (Object.prototype.hasOwnProperty.call(row, key)) next[key] = statusNote;
+  }
+  delete next.blocker;
+  delete next.reason;
+  delete next.deskNote;
+  delete next.radar;
+  return next;
+}
+
+export function isReaderStatusLine(value) {
+  return READER_LINE_VALUES.has(String(value || "").trim());
+}
 
 export const SLATE_FILTERS = ["tpb", "ppa-eu", "app-asia", "mlp-asia", "asia", "gpa"];
 
