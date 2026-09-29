@@ -12,6 +12,8 @@ import {
   isParkedPpaEventId,
   isAppAsiaName,
   matchesSlateName,
+  readerStatusLine,
+  toReaderEvent,
 } from "./slate-events.mjs";
 
 const GPA_KEY =
@@ -373,22 +375,28 @@ export default async (req: Request, _context: Context) => {
       gpaEvents().catch(() => []),
       loadArmed(),
     ]);
-    const events = mergeCalendar(gpa, armedStore.events);
+    const today = new Date().toISOString().slice(0, 10);
+    const events = mergeCalendar(gpa, armedStore.events).map(toReaderEvent);
     return Response.json(
       {
         updated: new Date().toISOString(),
         armedUpdated: armedStore.updated,
         events,
-        armed: armedStore.events,
+        armed: armedStore.events.map((row) => toReaderEvent(row)),
         intake: {
           rule: "name + venue + timezone + working score path",
           doc: "/docs/coverage-intake.md",
           neverFakeScores: true,
         },
         known: KNOWN,
-        slate: SLATE.map((s) => asCalendarRow(s, new Date().toISOString().slice(0, 10))),
+        slate: SLATE.map((s) => toReaderEvent(asCalendarRow(s, today))),
         parkedPpa: PARKED_PPA,
-        endedPpa: ENDED_PPA,
+        endedPpa: {
+          barcelona: {
+            ...ENDED_PPA.barcelona,
+            note: readerStatusLine({ status: "ended", ended: true }),
+          },
+        },
         ppaLiveEventId: PPA_LIVE_EVENT_ID,
         neverFakeScores: true,
       },

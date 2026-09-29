@@ -3,6 +3,12 @@
   functions = "netlify/functions"
   command = "echo no-build"
 
+# Powered by Netlify badge (edge inject of /.netlify/scripts/hud) has no
+# netlify.toml switch. Turn it off for every visitor in the Netlify UI:
+# Project configuration → General → Powered by Netlify badge → Off → Save.
+# The change applies on the next request. No redeploy. CSS cannot hide it
+# (the badge renders in an isolated frame). Repo HTML does not include it.
+
 [functions]
   node_bundler = "esbuild"
   included_files = [

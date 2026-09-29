@@ -86,8 +86,8 @@ if ("Notification" in window && Notification.permission === "granted") {
   setTimeout(() => { syncPushSubscription(); }, 2500);
 }
 
-const SAFE_SW = "/sw.js?v=20260928a";
-const SAFE_SW_MARK = "20260928a";
+const SAFE_SW = "/sw.js?v=20260929a";
+const SAFE_SW_MARK = "20260929a";
 const GIJON_DRAW_URL = "https://toppickleballtour.com/wp-content/uploads/2026/09/TOP-PICKLEBALL-TOUR-GIJON-GRUPOS.pdf";
 /** Application-server VAPID public key (safe to embed). Private stays in Netlify env. */
 const VAPID_PUBLIC_KEY = "BEuWn2rcxKeLXPFa3KJzys7rLOtFX8GUZ9ckfFhsqEVO0Y2PE3WfnOivmFJV3EUVCf1c1g31qSiVoNDbcJQO8GQ";
@@ -930,6 +930,24 @@ function officialDrawCta(url, label){
   if (!url) return "";
   return `<a class="btn gold draw-cta" href="${esc(url)}" target="_blank" rel="noopener">${esc(label || "Official draw")}</a>`;
 }
+/** Drop desk prose if a feed field still carries it. Clock notes stay. */
+function publicProse(s){
+  const n = String(s||"");
+  if(!n) return "";
+  if(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(n)) return "";
+  if(/external-tournament|\/api\/ppa|\btournamentId\b|\bintake\b|\bradar\b|\bblocker\b/i.test(n)) return "";
+  return n;
+}
+/** Reader board only. Desk notes, ids, and API paths never become card body. */
+function readerStatusLine(e){
+  if(!e) return "";
+  if(e.onLive || e.status==="live-path") return "";
+  if(e.ended || e.status==="ended") return "Event ended";
+  if(e.status==="delayed") return "Scores delayed";
+  const blob=[e.note,e.statusNote,e.blurb,e.detail,e.description].filter(Boolean).join(" ");
+  if(!e.drawUrl && /draw/i.test(blob) && /not published|unpublished|no official/i.test(blob)) return "Draw not published yet";
+  return "Results will appear when available";
+}
 function calEventRow(e){
   const start=(e.start||e.tournament_date||'').toString().slice(0,10);
   const end=(e.end||e.end_date||start).toString().slice(0,10);
@@ -941,7 +959,8 @@ function calEventRow(e){
   const draw=officialDrawCta(e.drawUrl);
   const official=e.officialUrl?`<a class="chip" href="${esc(e.officialUrl)}" target="_blank" rel="noopener">Official</a>`:"";
   const follow=`<button class="chip ${following?"on":""}" data-follow="${esc(fk)}">${following?"Following":"Follow"}</button>`;
-  const hint=e.note?`<span class="games">${esc(e.note)}</span>`:"";
+  const line=readerStatusLine(e);
+  const hint=line?`<span class="games">${esc(line)}</span>`:"";
   return `<div class="rank-row cal-row">
     <b></b>
     <div>
@@ -958,12 +977,12 @@ function calEventRow(e){
 }
 function slateFilterMeta(filter){
   return {
-    tpb: { title:"TOP Pickleball", copy:"TOP Pickleball Tour (powered by APP, not APP Den). Scores delayed — no live path. Official draw PDF only.", match:e => e.tour==="tpb" || /gij[oó]n/i.test(e.name||"") },
-    "ppa-eu": { title:"PPA Europe", kicker:"ended", copy:"PPA Tour Europe. Barcelona window ended 27 Sep 2026 with no scores. Not the live board — Rate Las Vegas Open is /api/ppa.", match:e => e.tour==="ppa-eu" || /barcelona/i.test(e.name||"") },
-    "app-asia": { title:"APP Asia", copy:"APP Asia Tour — not MLP Asia. No Den Live id yet. Results-only.", match:e => e.tour==="app-asia" || (/\bAPP\b/i.test(e.name||"") && /Asia|Chongqing|Taipei|Bangkok|Ho Chi Minh|India Open/i.test(e.name||"")) },
-    "mlp-asia": { title:"MLP Asia", copy:"MLP Asia is the PPA/MLP franchise, not APP. APP Asia Tour stays on the APP Asia chip. No live board.", match:e => e.tour==="mlp-asia" || /\bMLP\b/i.test(e.name||e.host||"") },
-    asia: { title:"PPA Asia", copy:"PPA Asia — results-only until a working ticker is wired. Not APP Asia, not MLP Asia.", match:e => e.tour==="asia" || /PPA Asia|PPA-ASIA/i.test(e.host||"") },
-    gpa: { title:"GPA events", copy:"GPA calendar. Live only when intake passes (name · venue · tz · score path).", match:e => e.tour==="gpa" || /D-JOY|DJOY/i.test(e.host||e.name||"") }
+    tpb: { title:"TOP Pickleball", kicker:"scores delayed", copy:"Scores delayed", match:e => e.tour==="tpb" || /gij[oó]n/i.test(e.name||"") },
+    "ppa-eu": { title:"PPA Europe", kicker:"ended", copy:"Event ended", match:e => e.tour==="ppa-eu" || /barcelona/i.test(e.name||"") },
+    "app-asia": { title:"APP Asia", kicker:"results-only", copy:"Results will appear when available", match:e => e.tour==="app-asia" || (/\bAPP\b/i.test(e.name||"") && /Asia|Chongqing|Taipei|Bangkok|Ho Chi Minh|India Open/i.test(e.name||"")) },
+    "mlp-asia": { title:"MLP Asia", kicker:"results-only", copy:"Results will appear when available", match:e => e.tour==="mlp-asia" || /\bMLP\b/i.test(e.name||e.host||"") },
+    asia: { title:"PPA Asia", kicker:"results-only", copy:"Results will appear when available", match:e => e.tour==="asia" || /PPA Asia|PPA-ASIA/i.test(e.host||"") },
+    gpa: { title:"GPA events", kicker:"results-only", copy:"Results will appear when available", match:e => e.tour==="gpa" || /D-JOY|DJOY/i.test(e.host||e.name||"") }
   }[filter] || null;
 }
 function slateEmpty(filter){
@@ -974,10 +993,10 @@ function slateEmpty(filter){
   const rows=cal.filter(e => meta.match(e) && (e.end||e.start||"")>=today).slice(0,8);
   const drawUrl = (rows.find(e => e.drawUrl)||{}).drawUrl || (filter==="tpb" ? GIJON_DRAW_URL : "");
   const draw = officialDrawCta(drawUrl, filter==="tpb" ? "Official draw" : "Draw PDF");
+  const body = rows.length ? rows.map(calEventRow).join("") : `<p class="games">${esc(meta.copy)}</p>`;
   return `<section class="comp-card">
-    <div class="comp-head"><div><h3>${meta.title}</h3><span>${meta.kicker || "upcoming / scores delayed"}</span></div></div>
-    <p class="games">${meta.copy}</p>
-    ${rows.length?rows.map(calEventRow).join(""):`<p class="empty">${meta.copy}</p>`}
+    <div class="comp-head"><div><h3>${meta.title}</h3><span>${meta.kicker || "results-only"}</span></div></div>
+    ${body}
     ${draw}
     <a class="chip" href="/calendar">Calendar</a>
   </section>`;
@@ -1051,7 +1070,7 @@ function viewMatch(id){
         return `<tr class="${l.live?"live":""}"><td>${l.disc}${l.live?" · LIVE":""}</td><td>${pts[0]||""}</td><td>${pts[1]||""}</td><td>${l.winner||l.court||""}</td></tr>`;
       }).join("")}</tbody></table>`:""}
       <p class="updated">${scheduledLocalLabel(m)?scheduledLocalLabel(m)+(m.tz?" "+String(m.tz).split("/").pop():"")+" local":""}${courtOnCard(m)?" · "+courtOnCard(m):""}${state.updated?" · Updated "+new Date(state.updated).toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"}):""}</p>
-      <p class="games">${m.note||""}</p>
+      <p class="games">${publicProse(m.note)}</p>
       <div class="watchbar">
         ${w?`<a class="btn gold" href="${w.href}">${w.label}</a>`:""}
         ${(m.tags||[]).map(t=>`<button class="btn ghost" data-follow="${t}">${state.selected[t]?"Following":"Follow"} ${t}</button>`).join("")}
@@ -1201,7 +1220,7 @@ function waveRecentPanel(rec){
       </div>
       ${score}
     </div>`;
-  }).join("") : `<p class="empty">No public recent tour matches parsed yet${wave.notes && wave.notes.length ? " · " + wave.notes[0] : ""}.</p>`;
+  }).join("") : `<p class="empty">No public recent tour matches parsed yet.</p>`;
   const watch = (wave.watch || []).slice(0, 4);
   const watchHtml = watch.length ? `<div class="chips" style="margin-top:12px">${watch.map(w =>
     `<a class="chip" href="${w.url}" target="_blank" rel="noopener">${(w.title||"Watch").slice(0,42)}</a>`
@@ -1615,6 +1634,11 @@ function viewSearch(){
   const th=teams.filter(t=>(t.team||"").toLowerCase().includes(n)).map(t=>`<a class="rank-row" href="/team/${encodeURIComponent(t.team)}"><b>${t.rank}</b><div><strong>${t.team}</strong><span>MLP 2026 · ${t.pts} pts</span></div></a>`);
   return `<div class="hero"><h2>SEARCH</h2><p>${q}</p></div><div class="wrap"><div class="panel">${hits.join("")||th.join("")||"<p class='empty'>No profile yet.</p>"}${th.join("")}</div></div>`;
 }
+function deskNoteValue(e){
+  const n = String((e && e.note) || "").trim();
+  if (n === "Event ended" || n === "Scores delayed" || n === "Draw not published yet" || n === "Results will appear when available") return n;
+  return "";
+}
 function viewCalendar(){
   const data = state.calendar;
   if (!data) return `<div class="wrap"><p class="empty">Loading calendar…</p></div>`;
@@ -1664,7 +1688,7 @@ function viewCalendar(){
         <label class="games">PPA event id<br><input class="field" name="ppaEventId" value="${esc(c.ppaEventId||'')}" placeholder="uuid"></label>
         <label class="games">Score URL / path<br><input class="field" name="scoreUrl" value="${esc(c.scoreUrl||c.scorePath||'')}" placeholder="/api/…"></label>
         <label class="games"><input type="checkbox" name="delayed" ${e.status==="delayed"?"checked":""}> Mark scores delayed (even if path set)</label>
-        <label class="games">Note<br><input class="field" name="note" value="${esc(e.note||'')}"></label>
+        <label class="games">Note<br><input class="field" name="note" value="${esc(deskNoteValue(e))}"></label>
         <label class="games">Desk key<br><input class="field" name="key" id="calDeskKey" type="password" value="${esc(state.deskKey)}"></label>
         <div class="cal-actions">
           <button class="btn" type="submit">Arm / save</button>

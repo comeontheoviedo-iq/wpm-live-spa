@@ -44,3 +44,9 @@
 - **PPA P250 Barcelona Open** `1655a7c9-904a-44c9-aa29-b279fca900e8` window ended 27 Sep. Scores API **0** matches. Marked ended / unparked. Do not cut `/api/ppa` there.
 - Client `wpm-20260928a.js` · SW `wpm-static-20260928a`. Shop stays Coming soon.
 
+## 2026-09-29 — Reader cards, desk notes stay on radar
+
+- Public board no longer prints radar/intake prose. PPA Europe card: **Event ended** (once). Columbus-style results-only rows: **Results will appear when available**. Gijón: **Scores delayed** + official draw PDF.
+- Desk detail (Barcelona UUID, Columbus `external-tournament/8057937`, `/api/ppa` cutover) stays in this log, `docs/slate-europe.md`, and `FILTER_COPY` / seed `note` fields. `GET /api/calendar` maps `note` / `statusNote` / `blurb` / `detail` / `description` through `toReaderEvent`.
+- Client `wpm-20260929a.js` · SW `wpm-static-20260929a`. Shop stays Coming soon. No fake LIVE. No phantom 0–0.
+
