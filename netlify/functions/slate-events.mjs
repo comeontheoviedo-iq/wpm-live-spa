@@ -215,12 +215,17 @@ export const FILTER_COPY = {
   gpa: "GPA calendar. Live only when intake passes (name \u00b7 venue \u00b7 tz \u00b7 score path).",
 };
 
-/** The only prose the reader board may show on a results-only / ended / parked card. */
+/**
+ * Public reader sentences.
+ * Results-only / ended / parked cards use ended, delayed, draw, results.
+ * A live-armed board with nothing in progress uses soon — never a LIVE chip.
+ */
 export const READER_LINES = {
   ended: "Event ended",
   delayed: "Scores delayed",
   draw: "Draw not published yet",
   results: "Results will appear when available",
+  soon: "Play starts soon",
 };
 
 export const READER_FILTER_COPY = {
@@ -290,6 +295,94 @@ export function toReaderEvent(row) {
 
 export function isReaderStatusLine(value) {
   return READER_LINE_VALUES.has(String(value || "").trim());
+}
+
+/** Den match tokens that may paint a LIVE chip. Pending brackets are not in this set. */
+export const DEN_LIVE_STATUSES = ["RUNNING", "IN_PROGRESS", "INPROGRESS", "STARTED", "PLAYING"];
+
+const DEN_DONE_STATUSES = ["COMPLETED", "COMPLETE", "FINISHED", "CLOSED"];
+
+export function denStatusToken(raw) {
+  return String(raw ?? "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "_");
+}
+
+export function isDenLiveStatus(raw) {
+  return DEN_LIVE_STATUSES.includes(denStatusToken(raw));
+}
+
+/** Bracket list status. "Running" / RUNNING counts. "Pending" does not. */
+export function isDenRunningBracket(status) {
+  return isDenLiveStatus(status);
+}
+
+export function isDenPendingBracket(status) {
+  const s = denStatusToken(status);
+  if (!s) return true;
+  if (isDenRunningBracket(status)) return false;
+  if (DEN_DONE_STATUSES.includes(s)) return false;
+  return true;
+}
+
+/**
+ * A match paints LIVE only when WPM status is LIVE and Den said it is running.
+ * A pending / scheduled row with a leaked LIVE label does not count.
+ * Legacy rows with no denStatus keep status === "LIVE".
+ */
+export function matchCountsAsLive(m) {
+  if (!m || m.status === "FT") return false;
+  const token = m.denStatus == null ? "" : String(m.denStatus);
+  if (token) return m.status === "LIVE" && isDenLiveStatus(token);
+  return m.status === "LIVE";
+}
+
+/**
+ * Live-armed board with nothing in progress.
+ * Empty pending brackets before first serve, or a next-only list: reader line, not LIVE.
+ * A failed fetch (delayed) stays "Scores delayed". An ended window stays quiet.
+ */
+export function appBoardPhase({
+  liveCount = 0,
+  matches = [],
+  brackets = [],
+  startDate = "",
+  endDate = "",
+  today = "",
+  delayed = false,
+} = {}) {
+  if (delayed) return { preServe: false, reader: READER_LINES.delayed, live: false };
+  const rows = Array.isArray(matches) ? matches : [];
+  const bracketRows = Array.isArray(brackets) ? brackets : [];
+  const live = rows.some(matchCountsAsLive);
+  if (live) return { preServe: false, reader: "", live: true };
+  const ended = !!(endDate && today && String(endDate) < String(today));
+  if (ended) return { preServe: false, reader: "", live: false };
+  const pending = bracketRows.filter((b) =>
+    isDenPendingBracket(typeof b === "string" ? b : b && b.status)
+  );
+  const nextLike = (m) => {
+    if (!m || matchCountsAsLive(m) || m.status === "FT") return false;
+    if (m.denStatus && !isDenLiveStatus(m.denStatus)) return true;
+    const st = String(m.status || "").toUpperCase();
+    return st === "NEXT" || st === "PENDING" || st === "SCHEDULED";
+  };
+  const onlyNext = rows.length > 0 && rows.every(nextLike);
+  const empty = rows.length === 0;
+  const start = String(startDate || "");
+  const day = String(today || "");
+  const onOrBeforeStart = !!(start && day && start >= day);
+  const preServe =
+    onlyNext ||
+    (empty && pending.length > 0) ||
+    (empty && bracketRows.length === 0 && onOrBeforeStart);
+  // liveCount cannot invent a LIVE board when no match is actually running.
+  void liveCount;
+  return {
+    preServe,
+    reader: preServe ? READER_LINES.soon : "",
+    live: false,
+  };
 }
 
 export const SLATE_FILTERS = ["tpb", "ppa-eu", "app-asia", "mlp-asia", "asia", "gpa"];

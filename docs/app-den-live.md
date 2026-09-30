@@ -156,6 +156,19 @@ Prod blob `wpm-app` / `active-tournament` was still Overland (`idSource: wpm-app
 { "tournamentId": "18448", "name": "APP Columbus Open presented by The James", "venue": "Pickle & Chill, Columbus, OH", "timezone": "America/New_York" }
 ```
 
+## Empty LIVE board — Columbus before first serve
+
+Play starts **1 Oct 2026**. Until Den reports a match as RUNNING / IN_PROGRESS / STARTED / PLAYING, the reader board does not show a LIVE chip and does not sit blank.
+
+| Surface | What the reader sees |
+|---------|----------------------|
+| Live tab, or APP / APP Pro, with 0 in-progress matches | **Play starts soon** — pending brackets and an empty match list, or a slate that is only scheduled NEXT |
+| Results tab in that same window | **Results will appear when available** |
+| Draw, before any sides are up | **Play starts soon** |
+| Calendar, week strip, Following | Columbus stays armed (live-path, Den 18448). The strip still lists it on WPM LIVE |
+
+Pending bracket status is never a LIVE chip. The live path stays armed. Shop stays Coming soon. Client `wpm-20260930b.js`.
+
 ## Ship note — APP day truth · 2026-09-18 (h)
 
 **Miss:** Men's/Women's Pro Singles Final/Bronze are **Sunday 20 Sep 2026** (Den `tournament.endDate`, America/Chicago). Prod dated WAITING_FOR_COURT onto Friday, so Wazir–Dussault / Bower–Camron sat on today's board as NEXT with blank scores.

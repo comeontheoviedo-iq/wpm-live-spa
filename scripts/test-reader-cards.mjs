@@ -15,7 +15,11 @@ import {
   READER_LINES,
   asCalendarRow,
   columbusArmedRow,
+  appBoardPhase,
+  isDenLiveStatus,
+  isDenPendingBracket,
   isReaderStatusLine,
+  matchCountsAsLive,
   readerStatusLine,
   textHasDeskJargon,
   toReaderEvent,
@@ -138,8 +142,8 @@ assert.equal(chongqing.note, "Results will appear when available");
 assert.equal(chongqing.onLive, false);
 assert.equal(JSON.stringify(chongqing).includes("18448"), false);
 
-const js = fs.readFileSync("js/wpm-20260930a.js", "utf8");
-const siteJs = fs.readFileSync("site/js/wpm-20260930a.js", "utf8");
+const js = fs.readFileSync("js/wpm-20260930b.js", "utf8");
+const siteJs = fs.readFileSync("site/js/wpm-20260930b.js", "utf8");
 assert.equal(siteJs, js);
 assert.equal(js.includes("Barcelona window ended"), false);
 assert.equal(js.includes("Rate Las Vegas Open is /api/ppa"), false);
@@ -159,4 +163,91 @@ const emptyFn = js.slice(js.indexOf("function slateEmpty"), js.indexOf("function
 assert.equal(emptyFn.split("meta.copy").length - 1, 1, "status sentence is printed once");
 assert.equal(emptyFn.includes("<p class=\"empty\">${meta.copy}"), false);
 
-console.log("ok reader-cards · Event ended · Results will appear when available · no desk prose");
+assert.equal(isDenLiveStatus("RUNNING"), true);
+assert.equal(isDenLiveStatus("IN_PROGRESS"), true);
+assert.equal(isDenLiveStatus("STARTED"), true);
+assert.equal(isDenLiveStatus("PLAYING"), true);
+assert.equal(isDenLiveStatus("Pending"), false);
+assert.equal(isDenLiveStatus("PENDING"), false);
+assert.equal(isDenLiveStatus("SCHEDULED"), false);
+assert.equal(isDenPendingBracket("Pending"), true);
+assert.equal(isDenPendingBracket("Running"), false);
+assert.equal(matchCountsAsLive({ status: "LIVE", denStatus: "PENDING" }), false);
+assert.equal(matchCountsAsLive({ status: "LIVE", denStatus: "RUNNING" }), true);
+assert.equal(matchCountsAsLive({ status: "LIVE", denStatus: "IN_PROGRESS" }), true);
+assert.equal(matchCountsAsLive({ status: "FT", denStatus: "RUNNING" }), false);
+
+const columbusQuiet = appBoardPhase({
+  liveCount: 0,
+  matches: [],
+  brackets: [{ status: "Pending" }, { status: "Pending" }],
+  startDate: "2026-10-01",
+  endDate: "2026-10-04",
+  today: "2026-09-30",
+});
+assert.equal(columbusQuiet.preServe, true);
+assert.equal(columbusQuiet.live, false);
+assert.equal(columbusQuiet.reader, "Play starts soon");
+assert.equal(textHasDeskJargon(columbusQuiet.reader), false);
+
+const nextOnly = appBoardPhase({
+  liveCount: 0,
+  matches: [{ status: "NEXT", denStatus: "SCHEDULED" }],
+  brackets: [{ status: "Pending" }],
+  startDate: "2026-10-01",
+  endDate: "2026-10-04",
+  today: "2026-10-01",
+});
+assert.equal(nextOnly.preServe, true);
+assert.equal(nextOnly.reader, "Play starts soon");
+assert.equal(nextOnly.live, false);
+
+const running = appBoardPhase({
+  liveCount: 1,
+  matches: [{ status: "LIVE", denStatus: "RUNNING" }],
+  brackets: [{ status: "Running" }],
+  startDate: "2026-10-01",
+  endDate: "2026-10-04",
+  today: "2026-10-01",
+});
+assert.equal(running.live, true);
+assert.equal(running.preServe, false);
+assert.equal(running.reader, "");
+
+const leaked = appBoardPhase({
+  liveCount: 1,
+  matches: [{ status: "LIVE", denStatus: "PENDING" }],
+  brackets: [{ status: "Pending" }],
+  startDate: "2026-10-01",
+  endDate: "2026-10-04",
+  today: "2026-09-30",
+});
+assert.equal(leaked.live, false);
+assert.equal(leaked.preServe, true);
+assert.equal(leaked.reader, "Play starts soon");
+
+const delayedFeed = appBoardPhase({
+  delayed: true,
+  matches: [],
+  startDate: "2026-10-01",
+  today: "2026-09-30",
+});
+assert.equal(delayedFeed.preServe, false);
+assert.equal(delayedFeed.reader, "Scores delayed");
+
+assert.equal(liveColumbus.onLive, true);
+assert.equal(liveColumbus.status, "live-path");
+assert.ok(js.includes("Play starts soon"));
+assert.ok(js.includes("function preServeBoard"));
+assert.ok(js.includes("function isDenLiveStatus"));
+assert.ok(js.includes("Pending brackets stay NEXT"));
+assert.equal(js.includes("Den has no bracket sides"), false);
+assert.ok(js.includes("Coming soon"));
+assert.equal(js.includes("92d37566"), false);
+const preFn = js.slice(js.indexOf("function preServeCard"), js.indexOf("function heroLine"));
+assert.equal(preFn.includes("LIVE"), false, "pre-serve card must not paint a LIVE chip");
+assert.equal(preFn.includes("Play starts soon"), false, "status sentence is the line argument");
+assert.equal(preFn.split("${line}").length - 1, 1, "status sentence is printed once");
+assert.ok(js.includes('return "Play starts soon"'));
+
+console.log("ok reader-cards · Event ended · Play starts soon · Results will appear when available · no desk prose");
