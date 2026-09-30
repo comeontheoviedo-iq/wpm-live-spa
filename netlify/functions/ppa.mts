@@ -1,5 +1,5 @@
 import type { Config } from "@netlify/functions";
-import { tagsFor } from "./follow-tags.mjs";
+import { rosterText, tagsFor } from "./follow-tags.mjs";
 import { discFromDivName } from "./app-rounds.mjs";
 import { PPA_LIVE } from "./slate-events.mjs";
 import { keepPpaMatch, mergePpaDateKey, ppaBoardDate } from "./ppa-keep.mjs";
@@ -82,6 +82,7 @@ function toMatch(m: any) {
   const t1 = (m.teams || [])[1] || {};
   const a = sideName(t0);
   const b = sideName(t1);
+  const roster = rosterText([t0, t1]);
   const st = mapStatus(m.status);
   const date = ppaBoardDate(m);
   const lines = linesFrom(m, t0, t1);
@@ -100,7 +101,8 @@ function toMatch(m: any) {
     session: m.court ? "Court " + m.court : "",
     a,
     b,
-    tags: tagsFor(a, b),
+    roster,
+    tags: tagsFor(`${a} ${b} ${roster}`),
     status: st,
     start: m.plannedStart || "",
     hasClock: !!m.plannedStart,

@@ -182,7 +182,7 @@ nav.tabbar a.on{color:var(--gold)}
 .comp-head span{color:var(--mute);font-size:12px}
 .comp-head .livecount{color:var(--live);font-weight:800;font-size:11px;letter-spacing:.08em}
 .match{padding:10px 14px}
-.line{grid-template-columns:54px 1fr auto;text-align:left}
+.line{grid-template-columns:76px 1fr auto;text-align:left}
 .line .a,.line .b{font-size:15px;font-weight:650}
 .line .b{text-align:left;color:var(--mute);font-weight:500;grid-column:2}
 .scorecol{text-align:right;font-family:Syne,sans-serif;font-size:20px;min-width:42px}
@@ -260,3 +260,13 @@ nav.tabbar a.on{color:var(--gold)}
 .cal-form label{display:block;margin:8px 0}
 .cal-dates{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
 .cal-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px}
+
+.slate-kicker{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 14px 0;font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--mute)}
+.slate-kicker span{letter-spacing:0;font-weight:650}
+.slate-kicker.slate-time{padding-top:12px;color:var(--navy);letter-spacing:.06em}
+.slate-sub{margin:2px 14px 8px;font-size:12px;color:var(--mute)}
+.pre-serve-line{margin:0;padding:12px 14px;font-weight:700;color:var(--navy);background:#f7f4ee;border-bottom:1px solid var(--line)}
+.tier-chip{font-style:normal;display:inline-block;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--navy);background:#efe6c4;border-radius:999px;padding:1px 6px;margin-right:6px}
+.card-facts{font-weight:650;color:var(--ink)}
+.match.followed{background:#fbf8f1;box-shadow:inset 3px 0 0 #c4a35a}
+.follow-day{border-color:#e4d7b5}

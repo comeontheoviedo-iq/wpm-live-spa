@@ -167,7 +167,23 @@ Play starts **1 Oct 2026**. Until Den reports a match as RUNNING / IN_PROGRESS /
 | Draw, before any sides are up | **Play starts soon** |
 | Calendar, week strip, Following | Columbus stays armed (live-path, Den 18448). The strip still lists it on WPM LIVE |
 
-Pending bracket status is never a LIVE chip. The live path stays armed. Shop stays Coming soon. Client `wpm-20260930b.js`.
+Pending bracket status is never a LIVE chip. The live path stays armed. Shop stays Coming soon. Client `wpm-20260930c.js`.
+
+## Match-day density — Columbus slate
+
+Den 18448 can publish a full SCHEDULED / NEXT slate with **0 LIVE** until play starts 1 Oct 2026 (`America/New_York`).
+
+| Surface | What the reader sees |
+|---------|----------------------|
+| **Live** tab, 0 in progress | **Play starts soon**. No LIVE chip. The slate is not dumped here. |
+| **Matches** tab, rows on the selected day | One card per APP Pro and APP. Sections: **Live**, **Upcoming**, **Results**. Upcoming is grouped by Den clock when several matches share a time. Court and time stay on the card when Den sent them. No invented clock. |
+| **Matches** tab, today empty but a later day has NEXT | That upcoming slate, labelled with the date. **Play starts soon** sits above the rows. It does not replace them. |
+| **Results** tab, nothing finished | **Results will appear when available** |
+| **All** | Pro rows. A line counts amateur matches and points at the **APP** chip. |
+| **APP Pro** / **APP** | Pro vs amateur split, plus a **Pro** chip on pro rows. |
+| **Following** | Left rail, and a strip in the main column (phones hide the rail). Followed players sort above the rest. Follow Columbus from the card. |
+
+`node scripts/test-match-day.mjs` covers event-follow push and the client markers. Scores are still only Den game lines.
 
 ## Ship note — APP day truth · 2026-09-18 (h)
 

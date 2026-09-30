@@ -34,7 +34,7 @@
 5. Click the notification → should focus/open `/match/<id>`.
 
 ## Residual gaps
-- **Web Push shipped 2026-09-18** — see `docs/web-push.md`. Closed-tab alerts require Notification permission + successful `POST /api/push-subscribe` (follows synced to Blobs `wpm-push`). Cron every 5 min.
+- **Web Push** — see `docs/web-push.md`. Closed-tab alerts require Notification permission + successful `POST /api/push-subscribe`. Player keys and event keys (`ev:app:18448`) both sync. Cron every 5 min. APP pushes only on Den RUNNING / IN_PROGRESS / STARTED / PLAYING.
 - Page `maybeNotify` still used when a tab is open (12s poll).
 - OS / browser may still suppress notifications when permission is denied or Do Not Disturb is on.
 - Tag coverage expanded 2026-09-18e (`follow-tags.mjs` + name-token match) — see `docs/web-push.md`.

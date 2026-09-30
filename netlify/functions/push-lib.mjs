@@ -8,10 +8,13 @@ import { createHash } from "node:crypto";
 import { getStore } from "@netlify/blobs";
 import webpush from "web-push";
 import { matchFollowKeys } from "./follow-tags.mjs";
+import { matchCountsAsLive } from "./slate-events.mjs";
 
 export const PUSH_STORE = "wpm-push";
 export const NOTIFIED_TTL_MS = 6 * 60 * 60 * 1000; // ~6h
 export const VAPID_BLOB_KEY = "vapid";
+/** Event-follow bursts drip. Player hits are ranked ahead and are not deferred by this cap. */
+export const MAX_PUSH_PER_SUB_PER_RUN = 6;
 
 export function pushStore() {
   return getStore({ name: PUSH_STORE, consistency: "strong" });
@@ -92,10 +95,61 @@ export function pruneNotified(notified, now = Date.now()) {
 }
 
 export function isMatchLive(m) {
-  if (!m) return false;
+  if (!m || m.status === "FT") return false;
+  // APP: LIVE only when Den said RUNNING / IN_PROGRESS / STARTED / PLAYING.
+  // A leaked LIVE label on SCHEDULED or a line flag must not push.
+  if (m.tour === "app" || (m.denStatus != null && String(m.denStatus) !== "")) {
+    return matchCountsAsLive(m);
+  }
   if (m.status === "LIVE") return true;
   if ((m.lines || []).some((l) => l && l.live)) return true;
   return false;
+}
+
+export function pushCandidateRank(m, who) {
+  const keys = who || [];
+  const player = keys.some((k) => !String(k).startsWith("ev:"));
+  if (player) return 0;
+  if (m && m.tier === "pro") return 1;
+  return 2;
+}
+
+/** Player matches first, then Pro event matches. The rest wait for the next cron — not marked sent. */
+export function selectPushBatch(candidates, limit = MAX_PUSH_PER_SUB_PER_RUN) {
+  const ranked = [...(candidates || [])].sort((a, b) => {
+    const ra = pushCandidateRank(a.m, a.who);
+    const rb = pushCandidateRank(b.m, b.who);
+    if (ra !== rb) return ra - rb;
+    const sa = a.m && a.m.start ? String(a.m.start) : "";
+    const sb = b.m && b.m.start ? String(b.m.start) : "";
+    if (sa !== sb) return sa.localeCompare(sb);
+    return String(a.m && a.m.id).localeCompare(String(b.m && b.m.id));
+  });
+  const players = ranked.filter((c) => pushCandidateRank(c.m, c.who) === 0);
+  const events = ranked.filter((c) => pushCandidateRank(c.m, c.who) !== 0);
+  const cap = Math.max(0, limit);
+  return {
+    send: players.concat(events.slice(0, cap)),
+    defer: events.slice(cap),
+  };
+}
+
+export function followLabel(k) {
+  const s = String(k || "");
+  if (!s.startsWith("ev:")) return s;
+  let decoded = s;
+  try {
+    decoded = decodeURIComponent(s);
+  } catch (_) {}
+  const blob = decoded.toLowerCase();
+  if (/18448|columbus/.test(blob)) return "Columbus";
+  if (/18453|overland/.test(blob)) return "Overland";
+  if (/las vegas|86926aef/.test(blob) || s === "ev:ppa") return "Las Vegas";
+  if (/gij/.test(blob)) return "Gijón";
+  if (s === "ev:wc") return "World Cup";
+  if (s === "ev:app") return "APP";
+  const bit = decoded.replace(/^ev:/, "").split(":").filter(Boolean).pop() || "event";
+  return bit.replace(/%20/g, " ").slice(0, 42);
 }
 
 export function matchFollows(m, follows) {
@@ -116,7 +170,8 @@ export function notifyPayload(m, who) {
   const div = m.div || m.round || "";
   const meta = [tour, div].filter(Boolean).join(" · ");
   const line = meta ? `${m.a} vs ${m.b} · ${meta}` : `${m.a} vs ${m.b} is live`;
-  const body = `${line}\nFollowing · ${who.join(", ") || "follow"}`;
+  const labels = (who || []).map(followLabel);
+  const body = `${line}\nFollowing · ${labels.join(", ") || "follow"}`;
   return {
     title: "WPM LIVE",
     body,

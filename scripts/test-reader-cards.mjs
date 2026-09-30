@@ -142,8 +142,8 @@ assert.equal(chongqing.note, "Results will appear when available");
 assert.equal(chongqing.onLive, false);
 assert.equal(JSON.stringify(chongqing).includes("18448"), false);
 
-const js = fs.readFileSync("js/wpm-20260930b.js", "utf8");
-const siteJs = fs.readFileSync("site/js/wpm-20260930b.js", "utf8");
+const js = fs.readFileSync("js/wpm-20260930c.js", "utf8");
+const siteJs = fs.readFileSync("site/js/wpm-20260930c.js", "utf8");
 assert.equal(siteJs, js);
 assert.equal(js.includes("Barcelona window ended"), false);
 assert.equal(js.includes("Rate Las Vegas Open is /api/ppa"), false);

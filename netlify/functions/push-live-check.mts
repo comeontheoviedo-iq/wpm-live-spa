@@ -12,6 +12,7 @@ import {
   matchFollows,
   notifyPayload,
   fetchLiveMatches,
+  selectPushBatch,
   NOTIFIED_TTL_MS,
 } from "./push-lib.mjs";
 
@@ -74,6 +75,7 @@ export default async () => {
       keys: { p256dh: rec.keys.p256dh, auth: rec.keys.auth },
     };
 
+    const fresh = [];
     for (const m of live) {
       const who = matchFollows(m, follows);
       if (!who.length) continue;
@@ -82,7 +84,14 @@ export default async () => {
         skipped++;
         continue;
       }
+      fresh.push({ m, who });
+    }
+    // Player follows go out first. A followed event does not dump every court in one tick.
+    const batch = selectPushBatch(fresh);
+    skipped += batch.defer.length;
 
+    for (const { m, who } of batch.send) {
+      const mid = String(m.id);
       const payload = notifyPayload(m, who);
       try {
         await webpush.sendNotification(
