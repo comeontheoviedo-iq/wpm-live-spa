@@ -50,3 +50,17 @@
 - Desk detail (Barcelona UUID, Columbus `external-tournament/8057937`, `/api/ppa` cutover) stays in this log, `docs/slate-europe.md`, and `FILTER_COPY` / seed `note` fields. `GET /api/calendar` maps `note` / `statusNote` / `blurb` / `detail` / `description` through `toReaderEvent`.
 - Client `wpm-20260929a.js` · SW `wpm-static-20260929a`. Shop stays Coming soon. No fake LIVE. No phantom 0–0.
 
+## 2026-09-30 — APP cut to Columbus Open (Den 18448)
+
+- Event radar: Den Live `tournamentId` **18448** is APP Columbus Open presented by The James (1–4 Oct 2026, Pickle & Chill, Columbus OH, `America/New_York`). GPA short name “APP Columbus Open”, row `gpa:app%20columbus%20open:2026-10-01`.
+- `/api/app` default, `WIRED.app`, and the code-armed calendar row move off ended Overland **18453** onto **18448**. Overland is disarmed (`onLive` false, status ended).
+- Smoke before the cut: `GET /api/app?tournamentId=18448` returns the event. Brackets Pending, 0 matches. Not LIVE. No phantom 0–0.
+- Prod `/api/app` at cut time was still Overland via Blobs `wpm-app` / `active-tournament` (`idSource: wpm-app:active-tournament`). Code skips ended `18453` on that blob and on `calendar-armed`. A blob rewrite is not required for the cut; write this so the store matches:
+
+```json
+{ "tournamentId": "18448", "name": "APP Columbus Open presented by The James", "venue": "Pickle & Chill, Columbus, OH", "timezone": "America/New_York" }
+```
+
+- **APP Asia Chongqing Open** — Den id still **not found**. Calendar/results-only only. No fake LIVE.
+- Client `wpm-20260930a.js` · SW `wpm-static-20260930a`. Shop stays Coming soon.
+

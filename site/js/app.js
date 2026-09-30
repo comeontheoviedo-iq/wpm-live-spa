@@ -86,8 +86,8 @@ if ("Notification" in window && Notification.permission === "granted") {
   setTimeout(() => { syncPushSubscription(); }, 2500);
 }
 
-const SAFE_SW = "/sw.js?v=20260929a";
-const SAFE_SW_MARK = "20260929a";
+const SAFE_SW = "/sw.js?v=20260930a";
+const SAFE_SW_MARK = "20260930a";
 const GIJON_DRAW_URL = "https://toppickleballtour.com/wp-content/uploads/2026/09/TOP-PICKLEBALL-TOUR-GIJON-GRUPOS.pdf";
 /** Application-server VAPID public key (safe to embed). Private stays in Netlify env. */
 const VAPID_PUBLIC_KEY = "BEuWn2rcxKeLXPFa3KJzys7rLOtFX8GUZ9ckfFhsqEVO0Y2PE3WfnOivmFJV3EUVCf1c1g31qSiVoNDbcJQO8GQ";
@@ -233,7 +233,7 @@ function addDaysIso(iso, n){
   if (!y || !m || !d) return "";
   return new Date(Date.UTC(y, m-1, d+n)).toISOString().slice(0,10);
 }
-/** Prefer APP event tz (Overland America/Chicago) so "today" matches Den's calendar day. */
+/** Prefer APP event tz (Columbus America/New_York) so "today" matches Den's calendar day. */
 function boardTz(){
   const ev = state.appEvent || {};
   if (ev.tz) return ev.tz;
@@ -418,7 +418,7 @@ function competition(m){
     const ev = state.appEvent || {};
     const pro = appTier(m) === "pro";
     const name = ev.name || m.comp || "APP";
-    const place = ev.venue || m.venue || "Overland Park, KS";
+    const place = ev.venue || m.venue || "Pickle & Chill, Columbus, OH";
     return pro
       ? {id:"app-pro", title:"APP Pro · "+shortEventLabel(name, eventFollowKey(m)), place, rank:1, eventKey: eventFollowKey(m)}
       : {id:"app", title:"APP · "+shortEventLabel(name, eventFollowKey(m)), place, rank:2, eventKey: eventFollowKey(m)};
@@ -493,6 +493,7 @@ function shortEventLabel(name, key){
   const n = String(name || "");
   const k = String(key || "");
   const blob = n + " " + k;
+  if (/columbus/i.test(blob) || /18448/.test(k)) return "Columbus";
   if (/overland/i.test(blob) || /18453/.test(k)) return "Overland";
   if (/arizona|mesa/i.test(n) || /62c01642/i.test(k)) return "Arizona";
   if (/las vegas|darling/i.test(n) || /86926aef/i.test(k) || k === "ev:ppa") return "Las Vegas";
@@ -551,7 +552,7 @@ function followingRail(){
     : (events.length ? "" : `<p class="empty rail-empty">Follow a player or an event — they land here.</p>`);
   const eventsHtml = events.length
     ? events.map(e => `<button class="league ${state.filter===e.filter?"on":""}" data-f="${e.filter}">${esc(e.label)}</button>`).join("")
-    : (people.length ? `<p class="empty rail-empty">Follow Overland, Las Vegas or a slate event from its card.</p>` : "");
+    : (people.length ? `<p class="empty rail-empty">Follow Columbus, Las Vegas or a slate event from its card.</p>` : "");
   return `<div class="panel rail-card follow-box">
     <div class="kicker">Following</div>
     <div class="follow-people">${peopleHtml}</div>
@@ -1329,7 +1330,7 @@ function viewFollowing(){
     ${alertsCta()}
     ${eventCards}
     <div class="chips" style="margin:14px 0">${followChips()}</div>
-    <div class="panel">${list.length?list.map(matchRow).join(""):"<p class='empty'>Follow a player or tap Follow on Overland / Las Vegas / Gijón. This tab then becomes your board.</p>"}</div>
+    <div class="panel">${list.length?list.map(matchRow).join(""):"<p class='empty'>Follow a player or tap Follow on Columbus / Las Vegas / Gijón. This tab then becomes your board.</p>"}</div>
     ${shop.length?`<div class="panel"><div class="kicker">On court with your follows</div>${shop.map(productCard).join("")}</div>`:""}
     <div class="panel">
       <div class="kicker">Watch</div>
@@ -1661,7 +1662,7 @@ function viewCalendar(){
         <input type="hidden" name="id" value="${esc(e.id||'')}">
         <label class="games">Display name<br><input class="field" name="name" required value="${esc(e.name||'')}"></label>
         <label class="games">Venue<br><input class="field" name="venue" value="${esc(e.venue||e.location||'')}" placeholder="City / venue"></label>
-        <label class="games">Timezone (IANA)<br><input class="field" name="timezone" value="${esc(e.timezone||'')}" placeholder="America/Chicago"></label>
+        <label class="games">Timezone (IANA)<br><input class="field" name="timezone" value="${esc(e.timezone||'')}" placeholder="America/New_York"></label>
         <div class="cal-dates">
           <label class="games">Start<br><input class="field" name="start" required value="${esc((e.start||'').toString().slice(0,10))}"></label>
           <label class="games">End<br><input class="field" name="end" value="${esc((e.end||e.start||'').toString().slice(0,10))}"></label>
@@ -1684,7 +1685,7 @@ function viewCalendar(){
             <option value="djoy" ${c.type==="djoy"?"selected":""}>D-Joy (URL when published)</option>
           </select>
         </label>
-        <label class="games">Den tournamentId (APP)<br><input class="field" name="denTournamentId" value="${esc(c.denTournamentId||'')}" placeholder="18453"></label>
+        <label class="games">Den tournamentId (APP)<br><input class="field" name="denTournamentId" value="${esc(c.denTournamentId||'')}" placeholder="18448"></label>
         <label class="games">PPA event id<br><input class="field" name="ppaEventId" value="${esc(c.ppaEventId||'')}" placeholder="uuid"></label>
         <label class="games">Score URL / path<br><input class="field" name="scoreUrl" value="${esc(c.scoreUrl||c.scorePath||'')}" placeholder="/api/…"></label>
         <label class="games"><input type="checkbox" name="delayed" ${e.status==="delayed"?"checked":""}> Mark scores delayed (even if path set)</label>

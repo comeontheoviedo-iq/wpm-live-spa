@@ -2,11 +2,12 @@ import type { Config, Context } from "@netlify/functions";
 import { tagsFor } from "./follow-tags.mjs";
 import { discFromAppBracket, isKnockoutBracket, polishAppRound } from "./app-rounds.mjs";
 import { addDays, keepAppMatch, matchBoardDate, matchHasClock, ymdInTz as ymdInTzShared } from "./app-dates.mjs";
+import { APP_LIVE, ENDED_APP, applyAppCalendarCut, isEndedAppDenId } from "./slate-events.mjs";
 import { getStore } from "@netlify/blobs";
 
 /** APP (Association of Pickleball Professionals) via Den Live proxies. */
 const DEN = "https://denlive.pickleballden.com";
-const FALLBACK_ID = "18453"; // APP Dillons Overland Park Open — last known live stop
+const FALLBACK_ID = APP_LIVE.eventId; // APP Columbus Open presented by The James
 const UA = { "User-Agent": "WPM-LIVE/1.0", Accept: "application/json" };
 const BLOB_STORE = "wpm-app";
 const DESK_STORE = "wpm-desk";
@@ -16,10 +17,15 @@ const PROFILES: Record<
   string,
   { name: string; venue: string; tz: string }
 > = {
-  "18453": {
-    name: "APP Dillons Overland Park Open",
-    venue: "AdventHealth Sports Park at Bluhawk, Overland Park, KS",
-    tz: "America/Chicago",
+  [APP_LIVE.eventId]: {
+    name: APP_LIVE.name,
+    venue: APP_LIVE.venue,
+    tz: APP_LIVE.tz,
+  },
+  [ENDED_APP.overland.denTournamentId]: {
+    name: ENDED_APP.overland.name,
+    venue: ENDED_APP.overland.venue,
+    tz: ENDED_APP.overland.timezone,
   },
   "18442": {
     name: "APP Detroit Open",
@@ -129,7 +135,8 @@ async function readCalendarArmed(): Promise<ActiveEvent | null> {
         connector?: { type?: string; denTournamentId?: string };
       }>;
     } | null;
-    const events = Array.isArray(data?.events) ? data!.events! : [];
+    const raw = Array.isArray(data?.events) ? data!.events! : [];
+    const events = applyAppCalendarCut(raw);
     const appRows = events.filter(
       (e) =>
         e?.connector?.type === "app" &&
@@ -156,12 +163,17 @@ async function readCalendarArmed(): Promise<ActiveEvent | null> {
 
     const best = ranked[0];
     const id = String(best.connector!.denTournamentId!).replace(/\D/g, "");
+    if (isEndedAppDenId(id)) return null;
     const base = profileFor(id, {
-      name: best.name,
+      name: id === APP_LIVE.eventId ? APP_LIVE.name : best.name,
       venue: best.venue,
       timezone: best.timezone,
     });
-    return { ...base, source: "calendar-armed" };
+    const rawHadLive = raw.some((e) => {
+      const den = String(e?.connector?.denTournamentId || "").replace(/\D/g, "");
+      return den === id && (e.onLive || e.status === "live-path");
+    });
+    return { ...base, source: rawHadLive ? "calendar-armed" : "app-live-seed" };
   } catch {
     return null;
   }
@@ -170,7 +182,9 @@ async function readCalendarArmed(): Promise<ActiveEvent | null> {
 /**
  * Resolve active Den tournamentId.
  * Priority: ?tournamentId= → env APP_DEN_TOURNAMENT_ID → Blobs wpm-app active-tournament
- * → Blobs wpm-desk calendar-armed (APP connector) → fallback 18453.
+ * → Blobs wpm-desk calendar-armed (APP connector, code-seeds Columbus) → fallback 18448.
+ * Ended Overland 18453 is ignored on env and blobs so a stale pin cannot keep the live path.
+ * Query still accepts 18453 for historical smoke. LIVE only from Den RUNNING statuses.
  */
 async function resolveActive(req?: Request): Promise<ActiveEvent> {
   const q = req ? new URL(req.url).searchParams.get("tournamentId") : null;
@@ -178,13 +192,13 @@ async function resolveActive(req?: Request): Promise<ActiveEvent> {
     return { ...profileFor(q), source: "query" };
   }
   const envId = envGet("APP_DEN_TOURNAMENT_ID") || envGet("DEN_TOURNAMENT_ID");
-  if (envId && /^\d+$/.test(envId.trim())) {
+  if (envId && /^\d+$/.test(envId.trim()) && !isEndedAppDenId(envId)) {
     return { ...profileFor(envId.trim()), source: "env" };
   }
   const fromApp = await readAppConfig();
-  if (fromApp) return fromApp;
+  if (fromApp && !isEndedAppDenId(fromApp.id)) return fromApp;
   const fromCal = await readCalendarArmed();
-  if (fromCal) return fromCal;
+  if (fromCal && !isEndedAppDenId(fromCal.id)) return fromCal;
   return { ...profileFor(FALLBACK_ID), source: "fallback" };
 }
 

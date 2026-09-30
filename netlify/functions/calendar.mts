@@ -2,11 +2,14 @@ import type { Config, Context } from "@netlify/functions";
 import { getStore } from "@netlify/blobs";
 import {
   SLATE,
+  APP_LIVE,
+  ENDED_APP,
   ENDED_PPA,
   PARKED_PPA,
   PPA_LIVE,
   PPA_LIVE_EVENT_ID,
   GIJON,
+  applyAppCalendarCut,
   asCalendarRow,
   isBlockedPpaEventId,
   isParkedPpaEventId,
@@ -22,12 +25,23 @@ const GPA = "https://prneedhqinudasngkqqi.supabase.co/rest/v1";
 
 /** Known shipped live connectors — status live-path when desk arms with these ids. */
 const KNOWN = {
+  app18448: {
+    type: "app",
+    denTournamentId: APP_LIVE.eventId,
+    scorePath: APP_LIVE.scorePath,
+    timezone: APP_LIVE.tz,
+    name: APP_LIVE.shortName,
+    venue: APP_LIVE.venue,
+    live: true,
+  },
   app18453: {
     type: "app",
-    denTournamentId: "18453",
-    scorePath: "/api/app",
-    timezone: "America/Chicago",
-    name: "APP Dillons Overland Park Open",
+    denTournamentId: ENDED_APP.overland.denTournamentId,
+    scorePath: null,
+    timezone: ENDED_APP.overland.timezone,
+    name: ENDED_APP.overland.name,
+    live: false,
+    ended: true,
   },
   app18442: {
     type: "app",
@@ -236,7 +250,7 @@ function mergeCalendar(gpaRows: any[], armed: ArmedEvent[]) {
     const venue = e.venue || e.location || "";
     const host = e.host || "";
     const tour = guessTour(host, name);
-    let status: ArmedEvent["status"] = "results-only";
+    let status: "live-path" | "delayed" | "results-only" | "ended" = "results-only";
     let onLive = false;
     let connector: Connector | null = null;
     let timezone = "";
@@ -251,9 +265,14 @@ function mergeCalendar(gpaRows: any[], armed: ArmedEvent[]) {
       note = armedRow.note || "";
       armedAt = armedRow.armedAt;
     } else {
-      // Soft hints for known wired events (not persisted until desk arms)
+      // Soft hints. Columbus is code-armed above. Overland is ended. Chongqing has no Den id.
       if (/Overland Park/i.test(name) && tour === "app") {
-        note = "Known Den id 18453 — arm via desk; /api/app reads calendar-armed";
+        note =
+          "Ended 20 Sep 2026. Den 18453 is disarmed (not onLive). Live APP is Columbus Open 18448.";
+        status = "ended";
+        onLive = false;
+        connector = null;
+        timezone = timezone || ENDED_APP.overland.timezone;
       } else if (/Louisville/i.test(name) && tour === "app") {
         note = "Known Den id 18454 — arm when week-of (tz America/New_York)";
       } else if (/Detroit/i.test(name) && tour === "app") {
@@ -262,17 +281,17 @@ function mergeCalendar(gpaRows: any[], armed: ArmedEvent[]) {
         note =
           "No Den Live tournamentId — hosted on Tournated/Japan pickleball (games.japanpickleball.org/11359), not Den";
         status = "results-only";
-      } else if (/Columbus/i.test(name) && tour === "app") {
-        note =
-          "Den registration external-tournament/8057937 exists; Den Live tournamentId not published yet (no denlive link on APP page)";
-        status = "results-only";
       } else if (/Chongqing/i.test(name)) {
         note =
-          "APP Asia Tour (not MLP Asia). No Den Live / registration Den link found on APP page — score path unknown";
+          "APP Asia Tour (not MLP Asia). Den Live tournamentId not found — calendar/results-only only. Do not fake LIVE.";
         status = "results-only";
+        onLive = false;
+        connector = null;
       } else if (isAppAsiaName(name)) {
-        note = "APP Asia Tour — not MLP Asia. No live Den path yet; results-only.";
+        note = "APP Asia Tour — not MLP Asia. No Den Live id. Results-only. Do not fake LIVE.";
         status = "results-only";
+        onLive = false;
+        connector = null;
       }
     }
 
@@ -288,7 +307,7 @@ function mergeCalendar(gpaRows: any[], armed: ArmedEvent[]) {
       name,
       start,
       end,
-      venue: venue || seedHit?.venue || "",
+      venue: (armedRow && armedRow.venue) || venue || seedHit?.venue || "",
       location: e.location || "",
       tier: e.tier || "",
       host,
@@ -297,7 +316,7 @@ function mergeCalendar(gpaRows: any[], armed: ArmedEvent[]) {
       registration_url: e.registration_url || seedHit?.officialUrl || "",
       armed: Boolean(armedRow),
       onLive,
-      status: armedRow ? status : end < today ? "results-only" : status,
+      status: armedRow ? status : status === "ended" ? "ended" : end < today ? "results-only" : status,
       timezone,
       connector,
       note,
@@ -376,13 +395,14 @@ export default async (req: Request, _context: Context) => {
       loadArmed(),
     ]);
     const today = new Date().toISOString().slice(0, 10);
-    const events = mergeCalendar(gpa, armedStore.events).map(toReaderEvent);
+    const armedEvents = applyAppCalendarCut(armedStore.events);
+    const events = mergeCalendar(gpa, armedEvents).map(toReaderEvent);
     return Response.json(
       {
         updated: new Date().toISOString(),
         armedUpdated: armedStore.updated,
         events,
-        armed: armedStore.events.map((row) => toReaderEvent(row)),
+        armed: armedEvents.map((row) => toReaderEvent(row)),
         intake: {
           rule: "name + venue + timezone + working score path",
           doc: "/docs/coverage-intake.md",

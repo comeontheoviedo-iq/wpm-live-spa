@@ -88,7 +88,7 @@ Body:
 - iOS Safari needs Add to Home Screen / recent iOS for Web Push.
 - Rotating VAPID requires new client subscribe (old PushSubscriptions invalidate).
 - Client + server may both notify when a tab is open (different channels); SW `tag` = match id limits duplicate OS banners somewhat.
-- **Event follows** (`ev:app:18453`, `ev:ppa:…`, `ev:slate:tpb-gijon-2026`) live in `wpm-follows` and the Following rail only. `followTagsList()` strips `ev:` before `POST /api/push-subscribe` — player/team keys are unchanged.
+- **Event follows** (`ev:app:18448` Columbus, previously `ev:app:18453` Overland, `ev:ppa:…`, `ev:slate:tpb-gijon-2026`) live in `wpm-follows` and the Following rail only. `followTagsList()` strips `ev:` before `POST /api/push-subscribe` — player/team keys are unchanged.
 
 ## Non-goals
 

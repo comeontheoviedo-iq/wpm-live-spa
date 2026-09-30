@@ -8,6 +8,8 @@ import {
   PPA_LIVE,
   PPA_LIVE_EVENT_ID,
   PPA_APRIL_LAS_VEGAS_PREFIX,
+  APP_LIVE,
+  ENDED_APP,
   ENDED_PPA,
   PARKED_PPA,
   GIJON,
@@ -15,6 +17,9 @@ import {
   SLATE,
   MLP_ASIA_NOTE,
   FILTER_COPY,
+  applyAppCalendarCut,
+  columbusArmedRow,
+  isEndedAppDenId,
   isParkedPpaEventId,
   isEndedPpaEventId,
   isBlockedPpaEventId,
@@ -113,4 +118,63 @@ assert.equal(WIRED.ppa.scorePath, "/api/ppa");
 assert.notEqual(WIRED.ppa.eventId, BCN);
 assert.equal(String(WIRED.ppa.eventId).startsWith(PPA_APRIL_LAS_VEGAS_PREFIX), false);
 
-console.log("ok slate-events · Gijón delayed · Barcelona ended · Las Vegas live · MLP ≠ APP");
+assert.equal(APP_LIVE.eventId, "18448");
+assert.equal(APP_LIVE.name, "APP Columbus Open presented by The James");
+assert.equal(APP_LIVE.shortName, "APP Columbus Open");
+assert.equal(APP_LIVE.venue, "Pickle & Chill, Columbus, OH");
+assert.equal(APP_LIVE.tz, "America/New_York");
+assert.equal(APP_LIVE.scorePath, "/api/app");
+assert.equal(APP_LIVE.start, "2026-10-01");
+assert.equal(APP_LIVE.end, "2026-10-04");
+assert.equal(APP_LIVE.calendarId, "gpa:app%20columbus%20open:2026-10-01");
+assert.equal(ENDED_APP.overland.denTournamentId, "18453");
+assert.equal(ENDED_APP.overland.ended, true);
+assert.equal(isEndedAppDenId("18453"), true);
+assert.equal(isEndedAppDenId("18448"), false);
+assert.equal(WIRED.app.eventId, "18448");
+assert.equal(WIRED.app.name, APP_LIVE.name);
+assert.equal(WIRED.app.venue, APP_LIVE.venue);
+assert.equal(WIRED.app.tz, "America/New_York");
+assert.equal(WIRED.app.scorePath, "/api/app");
+assert.notEqual(WIRED.app.eventId, "18453");
+
+const seeded = columbusArmedRow();
+assert.equal(seeded.id, APP_LIVE.calendarId);
+assert.equal(seeded.status, "live-path");
+assert.equal(seeded.onLive, true);
+assert.equal(seeded.connector.type, "app");
+assert.equal(seeded.connector.denTournamentId, "18448");
+assert.equal(seeded.connector.scorePath, "/api/app");
+const cut = applyAppCalendarCut([
+  {
+    id: "gpa:app%20overland%20park%20open:2026-09-17",
+    name: "APP Overland Park Open",
+    onLive: true,
+    status: "live-path",
+    connector: { type: "app", denTournamentId: "18453", scorePath: "/api/app" },
+  },
+  {
+    id: "gpa:app%20asia%20chongqing%20open:2026-10-02",
+    name: "APP Asia Chongqing Open",
+    onLive: false,
+    status: "results-only",
+    connector: { type: "none" },
+  },
+]);
+assert.equal(cut.some((e) => /overland/i.test(e.name)), false);
+assert.equal(cut.some((e) => String(e.connector?.denTournamentId) === "18453"), false);
+const col = cut.find((e) => e.id === APP_LIVE.calendarId);
+assert.ok(col);
+assert.equal(col.onLive, true);
+assert.equal(col.status, "live-path");
+assert.equal(col.venue, "Pickle & Chill, Columbus, OH");
+assert.equal(col.timezone, "America/New_York");
+const cq = cut.find((e) => /chongqing/i.test(e.name));
+assert.ok(cq);
+assert.equal(cq.onLive, false);
+assert.equal(cq.status, "results-only");
+assert.notEqual(cq.connector?.denTournamentId, "18448");
+assert.equal(isAppAsiaName("APP Asia Chongqing Open"), true);
+assert.equal(isAppAsiaName("APP Columbus Open"), false);
+
+console.log("ok slate-events · Gijón delayed · Barcelona ended · Las Vegas live · Columbus 18448 · MLP ≠ APP");
