@@ -46,5 +46,6 @@ The ticker moved to Rate Las Vegas Open. Radar must not raise a cutover to Barce
 - Radar: `netlify/functions/radar-lib.mjs`
 - UI: competitions empty cards + **Official draw** CTA + calendar follow (`wpm-20260929a.js`)
 - Reader board (`readerStatusLine` / `toReaderEvent`): **Event ended**, **Scores delayed**, **Draw not published yet**, or **Results will appear when available**. One sentence. Desk `note` / UUID / `/api/ppa` stay off the card.
+- A live-armed tour with nothing in progress (Columbus before first serve, or only NEXT) uses **Play starts soon** on the empty Live board. That line is not a LIVE chip, and it does not disarm the event.
 
 Intake rule unchanged: name + venue + timezone + **working** score path. An ended UUID is not a working path.

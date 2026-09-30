@@ -2,7 +2,16 @@ import type { Config, Context } from "@netlify/functions";
 import { tagsFor } from "./follow-tags.mjs";
 import { discFromAppBracket, isKnockoutBracket, polishAppRound } from "./app-rounds.mjs";
 import { addDays, keepAppMatch, matchBoardDate, matchHasClock, ymdInTz as ymdInTzShared } from "./app-dates.mjs";
-import { APP_LIVE, ENDED_APP, applyAppCalendarCut, isEndedAppDenId } from "./slate-events.mjs";
+import {
+  APP_LIVE,
+  ENDED_APP,
+  applyAppCalendarCut,
+  appBoardPhase,
+  denStatusToken,
+  isDenLiveStatus,
+  isDenRunningBracket,
+  isEndedAppDenId,
+} from "./slate-events.mjs";
 import { getStore } from "@netlify/blobs";
 
 /** APP (Association of Pickleball Professionals) via Den Live proxies. */
@@ -202,8 +211,7 @@ async function resolveActive(req?: Request): Promise<ActiveEvent> {
   return { ...profileFor(FALLBACK_ID), source: "fallback" };
 }
 
-/** Align with Den Live isRunningMatch — never clock-promote. */
-const LIVE_STATUSES = new Set(["RUNNING", "IN_PROGRESS", "INPROGRESS", "STARTED", "PLAYING"]);
+/** Align with Den Live isRunningMatch — never clock-promote. Pending is not LIVE. */
 const SKIP_STATUSES = new Set(["BYE", "WAITING_FOR_OPPONENT", "WAITINGFOROPPONENT"]);
 const BRACKET_FETCH_CONCURRENCY = 6;
 const BRACKET_FETCH_MS = 8000;
@@ -214,9 +222,7 @@ function ymdInTz(d: Date, tz: string): string {
 }
 
 function statusToken(raw: any): string {
-  return String(raw ?? "")
-    .toUpperCase()
-    .replace(/[^A-Z0-9]+/g, "_");
+  return denStatusToken(raw);
 }
 
 /** Pro brackets name "Pro"; skill-rating / Amateur brackets are amateur. */
@@ -324,7 +330,7 @@ function sideName(team: any): string {
  */
 function mapStatus(raw: string, completed: boolean): "LIVE" | "FT" | "NEXT" {
   const s = statusToken(raw);
-  if (LIVE_STATUSES.has(s) && !completed) return "LIVE";
+  if (isDenLiveStatus(s) && !completed) return "LIVE";
   if (completed || s === "COMPLETED" || s === "COMPLETE" || s === "FINISHED" || s === "CLOSED") return "FT";
   return "NEXT";
 }
@@ -449,6 +455,7 @@ function toMatch(m: any, bracket: any, ev: ActiveEvent) {
     b,
     tags: tagsFor(a, b),
     status: st,
+    denStatus: statusToken(raw),
     start,
     // Never emit phantom 0-0: FT with no played games (walkover/empty Den row) stays score-blank.
     score: !w0 && !w1 && !liveLine ? "" : `${w0}-${w1}`,
@@ -490,7 +497,43 @@ export default async (req: Request, _context?: Context) => {
     active.startDate = brRes?.tournament?.startDate || active.startDate || "";
     active.endDate = brRes?.tournament?.endDate || active.endDate || "";
     const brackets: any[] = brRes?.brackets?.content || [];
+    const todayTz = ymdInTz(new Date(), TZ);
+    const eventPayload = {
+      id: TOURNAMENT_ID,
+      name: COMP,
+      venue: venueName,
+      tz: TZ,
+      startDate: active.startDate,
+      endDate: active.endDate,
+      idSource: active.source,
+      eventKey: "ev:app:" + TOURNAMENT_ID,
+    };
     if (!brackets.length) {
+      const phase = appBoardPhase({
+        liveCount: 0,
+        matches: [],
+        brackets: [],
+        startDate: active.startDate,
+        endDate: active.endDate,
+        today: todayTz,
+        delayed: false,
+      });
+      // Upcoming event with no bracket list yet is pre-serve, not a broken live board.
+      if (phase.preServe) {
+        return Response.json(
+          {
+            updated: new Date().toISOString(),
+            source: "den-live",
+            delayed: false,
+            preServe: true,
+            reader: phase.reader,
+            liveCount: 0,
+            matches: [],
+            event: eventPayload,
+          },
+          { headers: { "Cache-Control": "public, max-age=15" } }
+        );
+      }
       return Response.json(
         {
           updated: new Date().toISOString(),
@@ -499,23 +542,17 @@ export default async (req: Request, _context?: Context) => {
           message: "scores delayed",
           matches: [],
           degraded: ["brackets:empty"],
-          event: { id: TOURNAMENT_ID, name: COMP, venue: venueName, tz: TZ, eventKey: "ev:app:" + TOURNAMENT_ID },
+          event: eventPayload,
         },
         { headers: { "Cache-Control": "public, max-age=15" } }
       );
     }
 
-    const todayTz = ymdInTz(new Date(), TZ);
     const window = new Set([addDays(todayTz, -1), todayTz, addDays(todayTz, 1)]);
     const selected = brackets
-      .filter(
-        (b) =>
-          b.status === "Running" ||
-          window.has(b.startDate) ||
-          LIVE_STATUSES.has(statusToken(b.status))
-      )
-      // Prefer Running brackets first so LIVE lands even if later fetches time out.
-      .sort((a, b) => Number(b.status === "Running") - Number(a.status === "Running"));
+      .filter((b) => isDenRunningBracket(b.status) || window.has(b.startDate))
+      // Prefer running brackets first so LIVE lands even if later fetches time out.
+      .sort((a, b) => Number(isDenRunningBracket(b.status)) - Number(isDenRunningBracket(a.status)));
 
     const settled = await mapPool(selected, BRACKET_FETCH_CONCURRENCY, async (b) => {
       const { content, fromCache, error } = await cachedBracketMatches(TOURNAMENT_ID, String(b.bracketId));
@@ -557,7 +594,16 @@ export default async (req: Request, _context?: Context) => {
       });
     }
 
-    const liveCount = matches.filter((m) => m.status === "LIVE").length;
+    const liveCount = matches.filter((m) => m.status === "LIVE" && isDenLiveStatus(m.denStatus)).length;
+    const phase = appBoardPhase({
+      liveCount,
+      matches,
+      brackets,
+      startDate: active.startDate,
+      endDate: active.endDate,
+      today: todayTz,
+      delayed: false,
+    });
     const partial = hardFail > 0 && matches.length > 0;
 
     return Response.json(
@@ -567,19 +613,12 @@ export default async (req: Request, _context?: Context) => {
         matches,
         brackets: bracketsOut,
         liveCount,
+        preServe: phase.preServe,
+        reader: phase.reader || undefined,
         degraded: failNotes.length ? failNotes : undefined,
         note: softNotes.length ? softNotes.join(" · ") : undefined,
         partial: partial || undefined,
-        event: {
-          id: TOURNAMENT_ID,
-          name: COMP,
-          venue: venueName,
-          tz: TZ,
-          startDate: brRes?.tournament?.startDate,
-          endDate: brRes?.tournament?.endDate,
-          idSource: active.source,
-          eventKey: "ev:app:" + TOURNAMENT_ID,
-        },
+        event: eventPayload,
       },
       { headers: { "Cache-Control": "public, max-age=15" } }
     );

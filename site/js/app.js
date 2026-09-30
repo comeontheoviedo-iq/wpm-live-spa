@@ -66,7 +66,9 @@ const state = {
   drawTour: "ppa",
   drawDiv: "",
   appEvent: null,
-  ppaEvent: null
+  ppaEvent: null,
+  appBoard: null,
+  ppaBoard: null
 };
 try { state.selected = JSON.parse(localStorage.getItem("wpm-follows") || "{}"); } catch(e) { state.selected = {}; }
 try { state.notified = JSON.parse(sessionStorage.getItem("wpm-notified-live") || "{}"); } catch(e) { state.notified = {}; }
@@ -86,8 +88,8 @@ if ("Notification" in window && Notification.permission === "granted") {
   setTimeout(() => { syncPushSubscription(); }, 2500);
 }
 
-const SAFE_SW = "/sw.js?v=20260930a";
-const SAFE_SW_MARK = "20260930a";
+const SAFE_SW = "/sw.js?v=20260930b";
+const SAFE_SW_MARK = "20260930b";
 const GIJON_DRAW_URL = "https://toppickleballtour.com/wp-content/uploads/2026/09/TOP-PICKLEBALL-TOUR-GIJON-GRUPOS.pdf";
 /** Application-server VAPID public key (safe to embed). Private stays in Netlify env. */
 const VAPID_PUBLIC_KEY = "BEuWn2rcxKeLXPFa3KJzys7rLOtFX8GUZ9ckfFhsqEVO0Y2PE3WfnOivmFJV3EUVCf1c1g31qSiVoNDbcJQO8GQ";
@@ -279,10 +281,29 @@ function relTime(iso){
   if (t > -60000) return "now";
   return "";
 }
+function denStatusToken(raw){
+  return String(raw == null ? "" : raw).toUpperCase().replace(/[^A-Z0-9]+/g, "_");
+}
+/** Den live tokens only. Pending brackets stay NEXT — never a LIVE chip. */
+function isDenLiveStatus(raw){
+  const s = denStatusToken(raw);
+  return s === "RUNNING" || s === "IN_PROGRESS" || s === "INPROGRESS" || s === "STARTED" || s === "PLAYING";
+}
 function effectiveStatus(m){
   // API status is authority — never invent LIVE from the clock alone.
   // PPA ticker says upnext until live; promoting NEXT→LIVE from start age caused false LIVE.
+  if (!m) return "NEXT";
   if (m.status === "FT") return "FT";
+  // APP: LIVE chip only when Den says the match is running. Pending brackets stay NEXT.
+  if (m.tour === "app") {
+    const token = m.denStatus == null ? "" : String(m.denStatus);
+    if (token) {
+      if (m.status === "LIVE" && isDenLiveStatus(token)) return "LIVE";
+      return "NEXT";
+    }
+    if (m.status === "LIVE") return "LIVE";
+    return "NEXT";
+  }
   if (m.status === "LIVE") return "LIVE";
   if ((m.lines || []).some(l => l.live)) return "LIVE";
   // Soft window only for tours that supply an explicit end (desk/WC windows).
@@ -840,7 +861,7 @@ function viewHome(){
     <div class="desk" id="deskClock">${deskClock()}</div>
     <div class="days">${days}</div>
     <h2>${headline} IN PICKLEBALL</h2>
-    <p>${state.heroByDate[state.date]||""}</p>
+    <p>${heroLine()}</p>
   </div>
   <div class="wrap fot">
     <aside class="rail-left">${leagueRail()}</aside>
@@ -869,7 +890,7 @@ function viewHome(){
       </div>
       ${state.boardMode==="results"?`<div class="chips cat-chips">${RESULT_CATS.map(([id,l])=>`<button class="chip ${state.resultCat===id?"on":""}" data-cat="${id}">${l}</button>`).join("")}</div>`:""}
     </div>
-    <div class="panel">${state.boardMode==="draw" ? drawBoard() : (blocks || slateEmpty(state.filter))}</div>
+    <div class="panel">${state.boardMode==="draw" ? drawBoard() : (blocks || preServeBoard(state.filter, state.boardMode) || slateEmpty(state.filter))}</div>
     ${weekStrip()}
     </div>
     <aside class="rail-right">${tableRail()}</aside>
@@ -985,6 +1006,111 @@ function slateFilterMeta(filter){
     asia: { title:"PPA Asia", kicker:"results-only", copy:"Results will appear when available", match:e => e.tour==="asia" || /PPA Asia|PPA-ASIA/i.test(e.host||"") },
     gpa: { title:"GPA events", kicker:"results-only", copy:"Results will appear when available", match:e => e.tour==="gpa" || /D-JOY|DJOY/i.test(e.host||e.name||"") }
   }[filter] || null;
+}
+function armedCalendarRows(){
+  const cal = (state.calendar && state.calendar.events) || [];
+  return cal.filter(e => e && (e.onLive || e.status === "live-path"));
+}
+function armedRowForTour(tour){
+  return armedCalendarRows().find(e => e.tour === tour || (e.connector && e.connector.type === tour)) || null;
+}
+function dayTourMatches(tour){
+  const day = state.date || boardToday();
+  const today = boardToday();
+  return (state.matches || []).filter(m => {
+    if (!m || m.tour !== tour) return false;
+    if (m.date === day) return true;
+    return effectiveStatus(m) === "LIVE" && day === today;
+  });
+}
+function tourHasLive(tour){
+  return dayTourMatches(tour).some(m => effectiveStatus(m) === "LIVE");
+}
+/** Nothing in progress: empty before first serve, or only scheduled NEXT. */
+function tourPreServe(tour){
+  if (tourHasLive(tour)) return false;
+  const board = tour === "app" ? state.appBoard : state.ppaBoard;
+  if (board && board.delayed && !board.preServe) return false;
+  const rows = dayTourMatches(tour);
+  if (rows.length && rows.every(m => effectiveStatus(m) === "NEXT")) return true;
+  if (rows.length) return false;
+  if (board && board.preServe) return true;
+  const armed = armedRowForTour(tour);
+  const event = tour === "app" ? (state.appEvent || {}) : (state.ppaEvent || {});
+  const start = String((armed && armed.start) || event.startDate || "").slice(0, 10);
+  const end = String((armed && (armed.end || armed.start)) || event.endDate || "").slice(0, 10);
+  const day = state.date || boardToday();
+  if (end && day && end < day) return false;
+  if (start && day && start >= day) return true;
+  return false;
+}
+function preServeModel(tour){
+  const armed = armedRowForTour(tour) || {};
+  if (tour === "app") {
+    const ev = state.appEvent || {};
+    return {
+      tour: "app",
+      name: armed.name || ev.name || "APP Columbus Open",
+      venue: armed.venue || ev.venue || "Pickle & Chill, Columbus, OH",
+      start: String(armed.start || ev.startDate || "2026-10-01").slice(0, 10),
+      eventKey: ev.eventKey || "ev:app:18448"
+    };
+  }
+  const ev = state.ppaEvent || {};
+  return {
+    tour: "ppa",
+    name: armed.name || ev.name || "PPA Rate Las Vegas Open",
+    venue: armed.venue || ev.venue || "Darling Tennis Center, Las Vegas",
+    start: String(armed.start || "").slice(0, 10),
+    eventKey: ev.eventKey || "ev:ppa"
+  };
+}
+function filterWantsPreServe(filter, tour){
+  if (filter === "app" || filter === "app-pro") return tour === "app";
+  if (filter === "ppa") return tour === "ppa";
+  if (filter === "wc" || filter === "npl") return false;
+  if (slateFilterMeta(filter)) return false;
+  if (filter === "following") {
+    const model = preServeModel(tour);
+    const armed = armedRowForTour(tour);
+    const keys = [model.eventKey, armed && calendarFollowKey(armed.id)].filter(Boolean);
+    return keys.some(k => state.selected && state.selected[k]);
+  }
+  return tour === "app" || tour === "ppa";
+}
+function emptyBoardLine(tour, mode){
+  if (tourHasLive(tour)) return "";
+  const board = tour === "app" ? state.appBoard : state.ppaBoard;
+  if (board && board.delayed && !board.preServe) return "Scores delayed";
+  if (!tourPreServe(tour)) return "";
+  if (mode === "results") return "Results will appear when available";
+  return "Play starts soon";
+}
+function preServeCard(model, line){
+  const when = model.start ? dateChip(model.start) : "";
+  const place = [model.venue, when].filter(Boolean).join(" · ");
+  const ek = model.eventKey || "";
+  const followingEv = ek && state.selected[ek];
+  const followBtn = ek ? `<button class="chip ${followingEv?"on":""}" data-follow="${esc(ek)}">${followingEv?"Following":"Follow"}</button>` : "";
+  return `<section class="comp-card pre-serve">
+    <div class="comp-head"><div><h3>${esc(model.name)}</h3><span>${esc(place)}</span></div><div class="comp-actions">${followBtn}</div></div>
+    <p class="games">${line}</p>
+    <a class="chip" href="/calendar">Calendar</a>
+  </section>`;
+}
+function heroLine(){
+  const liveN = (state.matches||[]).filter(m => effectiveStatus(m)==="LIVE").length;
+  if (liveN) return liveN + " live now across the board.";
+  if (tourPreServe("app")) return "Play starts soon.";
+  return state.heroByDate[state.date] || "";
+}
+function preServeBoard(filter, mode){
+  return ["app", "ppa"].map(tour => {
+    if (!filterWantsPreServe(filter, tour)) return "";
+    const line = emptyBoardLine(tour, mode);
+    if (!line) return "";
+    return preServeCard(preServeModel(tour), line);
+  }).join("");
 }
 function slateEmpty(filter){
   const meta = slateFilterMeta(filter);
@@ -1596,9 +1722,11 @@ function drawBoard(){
   }).join("");
   let note = "World Cup wall · Sporttora Round N, sorted. Empty Round buckets hidden.";
   if (tour === "ppa") note = "Knockout wall · labels normalised to R64 / R32 / R16 / QF / SF / F / Bronze.";
-  if (tour === "app") note = "APP knockout wall · Den Round N mapped from matchType + totalRounds (Final / SF / QF). Pool play stays Round N. Empty later rounds hidden — never invent a bracket.";
-  const empty = tour === "app" && !divs.length
-    ? "<p class='empty'>APP draw is not on the feed for this event. Den has no bracket sides to hang a wall on — never invent one.</p>"
+  if (tour === "app") note = "APP knockout wall · rounds from the published draw. Empty later rounds stay hidden.";
+  const quietDraw = tour === "app" && !cols;
+  if (quietDraw) note = "";
+  const empty = quietDraw
+    ? `<p class="games">${tourPreServe("app") ? "Play starts soon" : "Results will appear when available"}</p>`
     : "<p class='empty'>No draw slots with both sides yet.</p>";
   return `
     <div class="seg" style="margin:0 0 12px">
@@ -1606,8 +1734,8 @@ function drawBoard(){
       <button data-drawtour="app" class="${tour==="app"?"on":""}">APP</button>
       <button data-drawtour="wc" class="${tour==="wc"?"on":""}">World Cup</button>
     </div>
-    <div class="seg draw-divs" style="margin:0 0 12px">${divs.map(d=>`<button data-draw="${d}" class="${d===div?"on":""}">${divChipLabel(d)}</button>`).join("")||"<span class='empty'>No divisions yet</span>"}</div>
-    <p class="draw-wall-note">${note}${div ? " · <strong>"+divChipLabel(div)+"</strong>" : ""}</p>
+    <div class="seg draw-divs" style="margin:0 0 12px">${divs.map(d=>`<button data-draw="${d}" class="${d===div?"on":""}">${divChipLabel(d)}</button>`).join("")||(quietDraw?"":"<span class='empty'>No divisions yet</span>")}</div>
+    ${note?`<p class="draw-wall-note">${note}${div ? " · <strong>"+divChipLabel(div)+"</strong>" : ""}</p>`:""}
     <div class="bracket">${cols || empty}</div>`;
 }
 function viewDraw(){
@@ -1637,7 +1765,7 @@ function viewSearch(){
 }
 function deskNoteValue(e){
   const n = String((e && e.note) || "").trim();
-  if (n === "Event ended" || n === "Scores delayed" || n === "Draw not published yet" || n === "Results will appear when available") return n;
+  if (n === "Event ended" || n === "Scores delayed" || n === "Draw not published yet" || n === "Results will appear when available" || n === "Play starts soon") return n;
   return "";
 }
 function viewCalendar(){
@@ -2084,7 +2212,32 @@ async function pull(){
       const data = await res.json();
       if (tour === "app" && data && data.event) state.appEvent = data.event;
       if (tour === "ppa" && data && data.event) state.ppaEvent = data.event;
-      if (!data || !Array.isArray(data.matches) || !data.matches.length) return;
+      if (tour === "app" && data) {
+        state.appBoard = {
+          preServe: !!data.preServe,
+          reader: data.reader || "",
+          liveCount: data.liveCount || 0,
+          delayed: !!data.delayed
+        };
+      }
+      if (tour === "ppa" && data) {
+        state.ppaBoard = {
+          preServe: !!data.preServe,
+          reader: data.reader || "",
+          liveCount: data.liveCount || 0,
+          delayed: !!data.delayed
+        };
+      }
+      if (!data || !Array.isArray(data.matches)) return;
+      // APP empty is real (pending brackets, no rows). Replace so a stale LIVE row cannot linger.
+      if (tour === "app") {
+        const ids = new Set(data.matches.map(m => m.id));
+        state.matches = (state.matches || []).filter(m => m.tour !== "app" && !ids.has(m.id)).concat(data.matches);
+        state.updated = data.updated || state.updated;
+        if (data.brackets) state.appBrackets = data.brackets;
+        return;
+      }
+      if (!data.matches.length) return;
       const ids = new Set(data.matches.map(m => m.id));
       state.matches = (state.matches || []).filter(m => m.tour !== tour && !ids.has(m.id)).concat(data.matches);
       state.updated = data.updated || state.updated;
@@ -2098,9 +2251,10 @@ async function pull(){
   await overlay("/api/app", "app");
   state.heroByDate = state.heroByDate || {};
   const liveN = (state.matches||[]).filter(m => effectiveStatus(m)==="LIVE").length;
+  const appQuiet = state.appBoard && state.appBoard.preServe && !liveN;
   const todayLine = liveN
     ? liveN + " live now across the board."
-    : "No live ties on the feed this minute. GPA rankings and the week calendar are below.";
+    : (appQuiet ? "Play starts soon." : "No live ties on the feed this minute. GPA rankings and the week calendar are below.");
   state.heroByDate[boardToday()] = todayLine;
 }
 
