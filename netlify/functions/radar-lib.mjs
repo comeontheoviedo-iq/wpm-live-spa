@@ -4,6 +4,8 @@
  */
 
 import {
+  APP_LIVE,
+  ENDED_APP,
   PPA_LIVE,
   PPA_LIVE_EVENT_ID,
   ENDED_PPA,
@@ -34,11 +36,11 @@ export const WIRED = {
   },
   app: {
     tour: "app",
-    eventId: "18453",
-    name: "APP Dillons Overland Park Open",
-    venue: "AdventHealth Sports Park at Bluhawk, Overland Park, KS",
-    tz: "America/Chicago",
-    scorePath: "/api/app",
+    eventId: APP_LIVE.eventId,
+    name: APP_LIVE.name,
+    venue: APP_LIVE.venue,
+    tz: APP_LIVE.tz,
+    scorePath: APP_LIVE.scorePath,
   },
   worldcup: {
     tour: "wc",
@@ -50,7 +52,8 @@ export const WIRED = {
   },
 };
 
-export const KNOWN_APP_DEN_IDS = ["18453", "18442", "18454"];
+/** Wired live id first. Overland 18453 stays known so radar can see it; it is ended, not live. */
+export const KNOWN_APP_DEN_IDS = [APP_LIVE.eventId, ENDED_APP.overland.denTournamentId, "18442", "18454"];
 
 const HORIZON_DAYS = 14;
 const LOOKBACK_DAYS = 2;
@@ -113,14 +116,46 @@ async function probeGpa(today) {
     const name = row.name || "";
     const venue = row.venue || row.location || "";
     const isApp = host.toUpperCase() === "APP" || /\bAPP\b/i.test(name);
-    const isWiredApp = isApp && /Overland Park/i.test(name);
+    const isWiredApp = isApp && /columbus open/i.test(name) && !isAppAsiaName(name);
+    const isEndedOverland = isApp && /overland park/i.test(name);
+    const appAsia = isAppAsiaName(name);
 
     if (isApp) {
       const scoreOk = isWiredApp;
-      const tz = isWiredApp ? WIRED.app.tz : "";
+      const tz = isWiredApp ? WIRED.app.tz : isEndedOverland ? ENDED_APP.overland.timezone : "";
       const inn = intake({ name, venue, tz, scoreOk });
+      let board = "blocked_by_intake";
+      let note =
+        "APP on GPA calendar — need Den tournamentId + tz + score smoke before live board";
+      let denId = null;
+      let scorePath = null;
+      if (isWiredApp) {
+        board = "on_board";
+        denId = WIRED.app.eventId;
+        scorePath = WIRED.app.scorePath;
+        note = "GPA row matches wired Den " + WIRED.app.eventId;
+      } else if (isEndedOverland) {
+        board = "results_only";
+        denId = ENDED_APP.overland.denTournamentId;
+        inn.scorePath = false;
+        inn.status = "fail";
+        note =
+          "Ended 20 Sep 2026. Den " +
+          ENDED_APP.overland.denTournamentId +
+          " disarmed — not onLive. Live APP is Columbus " +
+          WIRED.app.eventId +
+          ".";
+      } else if (appAsia) {
+        // Chongqing and the rest of APP Asia: no Den id. Calendar/results-only. Never fake LIVE.
+        board = "results_only";
+        inn.scorePath = false;
+        inn.timezone = false;
+        inn.status = "fail";
+        note =
+          "APP Asia Tour (not MLP Asia). Den tournamentId not found — calendar/results-only only. Do not fake LIVE.";
+      }
       events.push({
-        tour: isAppAsiaName(name) ? "app-asia" : "app",
+        tour: appAsia ? "app-asia" : "app",
         name,
         start,
         end,
@@ -128,15 +163,11 @@ async function probeGpa(today) {
         host,
         tier: row.tier || "",
         source: "gpa-tournaments",
-        denId: isWiredApp ? WIRED.app.eventId : null,
-        scorePath: isWiredApp ? WIRED.app.scorePath : null,
+        denId,
+        scorePath,
         intake: inn,
-        board: isWiredApp ? "on_board" : "blocked_by_intake",
-        note: isWiredApp
-          ? "GPA row matches wired Den " + WIRED.app.eventId
-          : isAppAsiaName(name)
-            ? "APP Asia Tour (not MLP Asia) — need Den tournamentId + tz + score smoke before live board"
-            : "APP on GPA calendar — need Den tournamentId + tz + score smoke before live board",
+        board,
+        note,
       });
     } else {
       const inn = intake({ name, venue: venue || host || "n/a", tz: "", scoreOk: false });
@@ -412,7 +443,7 @@ export async function buildRadarReport(opts = {}) {
   }
 
   for (const e of gpa.events || []) {
-    if (e.tour === "app" && (e.denId === WIRED.app.eventId || /Overland Park/i.test(e.name))) continue;
+    if (e.tour === "app" && (e.denId === WIRED.app.eventId || /columbus open/i.test(e.name))) continue;
     events.push(e);
   }
 
@@ -472,6 +503,8 @@ export async function buildRadarReport(opts = {}) {
         "Barcelona 1655a7c9 ended 27 Sep 2026 with no scores — unparked; do not cut /api/ppa there",
         "Do not wire the April Las Vegas UUID 92d37566-…",
         "Watch Gijón for Den/Tournated — until then scores delayed + draw PDF only",
+        "Live APP is Columbus Open Den 18448 (Pickle & Chill, America/New_York, /api/app). Overland 18453 ended — disarmed, not onLive.",
+        "Chongqing and other APP Asia rows have no Den id — calendar/results-only only. Do not fake LIVE.",
         "If new APP on GPA → find Den tournamentId → intake checklist → ship /api/app id",
         "MLP Asia ≠ APP Asia Tour — never merge those chips",
         "Never invent scores; shop stays closed; do not regress APP/Web Push",

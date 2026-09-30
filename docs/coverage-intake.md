@@ -26,9 +26,11 @@ MLP, PPA Asia, club opens as **live** boards. GPA calendar / history may show th
 **Europe slate:** TPB Gijón 2026 (scores delayed + [official draw PDF](https://toppickleballtour.com/wp-content/uploads/2026/09/TOP-PICKLEBALL-TOUR-GIJON-GRUPOS.pdf)); PPA Barcelona Open (`1655a7c9-904a-44c9-aa29-b279fca900e8`) **ended 27 Sep 2026 with no scores** and is unparked — do not cut `/api/ppa` there. Live PPA board is Rate Las Vegas Open (`86926aef-0566-4fbb-87cf-a48068a9f1c6`). See [`slate-europe.md`](./slate-europe.md).
 
 ## Live connectors (shipped)
-- **PPA** → `/api/ppa`
+- **PPA** → `/api/ppa` — Rate Las Vegas Open
 - **World Cup** → `/api/worldcup`
-- **APP / Den Live** → `/api/app` (see `docs/app-den-live.md`) — tour chip **APP**
+- **APP / Den Live** → `/api/app` (see `docs/app-den-live.md`) — tour chip **APP**. Live stop is **APP Columbus Open presented by The James**, Den **18448**, Pickle & Chill, Columbus, OH, `America/New_York`. Overland **18453** ended and is disarmed. LIVE only when Den status is RUNNING. Pending brackets are not a live board.
+
+**APP Asia Chongqing Open** has **no Den id**. Calendar/results-only only. Do not fake LIVE or 0–0.
 
 ## Desk calendar
 

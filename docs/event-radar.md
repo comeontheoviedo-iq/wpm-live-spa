@@ -56,7 +56,9 @@ Desk tick boxes before shipping a tour chip:
    - PPA ticker title ≠ wired EVENT → cut `EVENT` in `ppa.mts` same day (see radar-log).
    - Live PPA is **Rate Las Vegas Open** `86926aef-0566-4fbb-87cf-a48068a9f1c6` (Darling Tennis Center, `America/Los_Angeles`). Not April `92d37566-…`.
    - Barcelona `1655a7c9-…` ended 27 Sep 2026 with no scores. Unparked. Do **not** cut EVENT there.
-   - New APP on GPA without Den id → find `tournamentId` on Den Live → fill intake → ship `/api/app` id.
+   - Live APP is **Columbus Open** Den `18448` (Pickle & Chill, `America/New_York`, `/api/app`). Overland `18453` ended — disarmed, not onLive.
+   - **Chongqing** (APP Asia) still has **no Den id** — calendar/results-only only. Do not fake LIVE.
+   - New APP on GPA without Den id → find `tournamentId` on Den Live → fill intake → ship `/api/app` id. Do not invent one.
 4. **P1** (`missing`): connector/feed down — note residual, do not invent lines.
 5. Quiet **results_only**: Gijón (scores delayed + draw PDF), Barcelona ended (no scores, do not cut), MLP Asia label guard. Watch; do not invent LIVE.
 6. Append a one-liner to `docs/radar-log.md` when something changed; skip if no P0/P1.

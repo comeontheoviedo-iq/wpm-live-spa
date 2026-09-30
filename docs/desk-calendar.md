@@ -37,7 +37,7 @@ Shop stays closed. Tours stay labelled (APP / PPA / WC / GPA / …).
 1. On `/calendar`, click **Add** on a row (or open `/calendar?add=<id>`).
 2. Confirm **name**, **venue**, **timezone**.
 3. Set **score connector**:
-   - **APP / Den** → paste `tournamentId` (e.g. Overland Park `18453`)
+   - **APP / Den** → paste `tournamentId` (live: Columbus `18448`; Overland `18453` is ended)
    - **PPA** → paste ticker event UUID
    - **URL** → e.g. `/api/worldcup`
    - **none** → saves as **results-only**
@@ -51,14 +51,15 @@ Shop stays closed. Tours stay labelled (APP / PPA / WC / GPA / …).
 {
   "key": "DESK_KEY",
   "action": "arm",
-  "name": "APP Overland Park Open",
-  "venue": "Overland Park, KS",
-  "timezone": "America/Chicago",
-  "start": "2026-09-17",
-  "end": "2026-09-20",
+  "id": "gpa:app%20columbus%20open:2026-10-01",
+  "name": "APP Columbus Open",
+  "venue": "Pickle & Chill, Columbus, OH",
+  "timezone": "America/New_York",
+  "start": "2026-10-01",
+  "end": "2026-10-04",
   "host": "APP",
   "tour": "app",
-  "connector": { "type": "app", "denTournamentId": "18453" }
+  "connector": { "type": "app", "denTournamentId": "18448", "scorePath": "/api/app" }
 }
 ```
 
@@ -71,12 +72,13 @@ Public JSON: GPA events merged with armed flags (`armed`, `onLive`, `status`, `c
 ## Residual
 
 - **APP Japan – Sendai** — **no Den id** (Tournated / JPA). Cannot live-path via `/api/app`. See `docs/app-den-ids.md`.
-- **APP Columbus** — Den **registration** `external-tournament/8057937` only; Den Live scoring id not published yet.
-- **APP Asia Chongqing** — no Den link found. APP Asia Tour, **not** MLP Asia.
+- **APP Columbus Open** — armed live-path. Den **18448**, Pickle & Chill, `America/New_York`, `/api/app`. GPA id `gpa:app%20columbus%20open:2026-10-01`. Code seed (`applyAppCalendarCut`) arms this row on read. Registration external id `8057937` is not the scoring id.
+- **APP Overland Park** — ended 20 Sep 2026. Den `18453` disarmed, not `onLive`.
+- **APP Asia Chongqing** — Den id **not found**. Calendar/results-only only. APP Asia Tour, **not** MLP Asia. No fake LIVE.
 - **TPB Gijón 2026** — seeded slate, scores delayed, official draw PDF. No Den id. See `docs/slate-europe.md`.
 - **PPA Barcelona Open** — ended 27 Sep 2026, UUID `1655a7c9-904a-44c9-aa29-b279fca900e8`, no scores, unparked. Do not cut `/api/ppa` there.
 - **PPA Rate Las Vegas Open** — live `/api/ppa` UUID `86926aef-0566-4fbb-87cf-a48068a9f1c6`, Darling Tennis Center, `America/Los_Angeles`. Not April `92d37566-…`.
-- **`/api/app` now follows** Blobs `calendar-armed` / `wpm-app` `active-tournament` / env / query (fallback 18453). Arming an APP row with `denTournamentId` drives the live connector when intake passes.
+- **`/api/app` follows** query / env / Blobs `wpm-app` `active-tournament` / `calendar-armed` / fallback **18448**. Stale Overland `18453` on env or blobs is skipped. LIVE only when Den matches are RUNNING.
 - D-Joy Leg 3 still awaits a published live URL (`connector: djoy`).
 - Cross-link: [`app-den-ids.md`](./app-den-ids.md)
 

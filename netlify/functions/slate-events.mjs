@@ -20,6 +20,121 @@ export const PPA_LIVE = {
 };
 
 /**
+ * Live /api/app Den tournament.
+ * GPA calendar row is the short name "APP Columbus Open" (id below).
+ * Den Live title is the presented-by name. Brackets may be Pending with 0 matches —
+ * that is not LIVE and not a phantom 0–0.
+ */
+export const APP_LIVE = {
+  eventId: "18448",
+  name: "APP Columbus Open presented by The James",
+  shortName: "APP Columbus Open",
+  venue: "Pickle & Chill, Columbus, OH",
+  tz: "America/New_York",
+  start: "2026-10-01",
+  end: "2026-10-04",
+  scorePath: "/api/app",
+  /** eventId("APP Columbus Open", "2026-10-01") — gpa:app columbus open / 2026-10-01 */
+  calendarId: "gpa:app%20columbus%20open:2026-10-01",
+};
+
+/** Overland ended 20 Sep 2026. Disarmed — not onLive, not the /api/app fallback. */
+export const ENDED_APP = {
+  overland: {
+    denTournamentId: "18453",
+    name: "APP Dillons Overland Park Open",
+    gpaName: "APP Overland Park Open",
+    venue: "AdventHealth Sports Park at Bluhawk, Overland Park, KS",
+    timezone: "America/Chicago",
+    start: "2026-09-17",
+    end: "2026-09-20",
+    ended: true,
+  },
+};
+
+export function isEndedAppDenId(id) {
+  const s = String(id || "").replace(/\D/g, "");
+  return s === ENDED_APP.overland.denTournamentId;
+}
+
+export function isEndedOverlandRow(row) {
+  if (!row || typeof row !== "object") return false;
+  const den = String(row?.connector?.denTournamentId || row?.denTournamentId || "").replace(/\D/g, "");
+  if (den === ENDED_APP.overland.denTournamentId) return true;
+  return /overland park/i.test(String(row.name || ""));
+}
+
+/** Code-armed calendar row. GPA short name so the id matches the slate. */
+export function columbusArmedRow() {
+  return {
+    id: APP_LIVE.calendarId,
+    name: APP_LIVE.shortName,
+    venue: APP_LIVE.venue,
+    timezone: APP_LIVE.tz,
+    tour: "app",
+    host: "APP",
+    tier: "",
+    start: APP_LIVE.start,
+    end: APP_LIVE.end,
+    connector: {
+      type: "app",
+      denTournamentId: APP_LIVE.eventId,
+      scorePath: APP_LIVE.scorePath,
+    },
+    status: "live-path",
+    onLive: true,
+    note: "",
+    armedAt: "2026-09-30T00:00:00.000Z",
+    gpaName: APP_LIVE.shortName,
+    gpaStart: APP_LIVE.start,
+  };
+}
+
+/**
+ * Arm Columbus 18448. Drop Overland 18453 so a stale blob cannot keep it onLive.
+ * Does not invent a Den id for Chongqing or any other APP Asia row.
+ */
+export function applyAppCalendarCut(events) {
+  const kept = [];
+  let columbus = null;
+  for (const e of events || []) {
+    if (isEndedOverlandRow(e)) continue;
+    const den = String(e?.connector?.denTournamentId || "").replace(/\D/g, "");
+    const isColumbus =
+      e?.id === APP_LIVE.calendarId ||
+      (den === APP_LIVE.eventId && /columbus/i.test(String(e?.name || "")));
+    if (isColumbus) {
+      const seed = columbusArmedRow();
+      columbus = {
+        ...seed,
+        ...e,
+        name: APP_LIVE.shortName,
+        venue: APP_LIVE.venue,
+        timezone: APP_LIVE.tz,
+        start: APP_LIVE.start,
+        end: APP_LIVE.end,
+        tour: "app",
+        host: e.host || "APP",
+        connector: {
+          ...seed.connector,
+          ...(e.connector || {}),
+          type: "app",
+          denTournamentId: APP_LIVE.eventId,
+          scorePath: APP_LIVE.scorePath,
+        },
+        status: "live-path",
+        onLive: true,
+        id: APP_LIVE.calendarId,
+      };
+      continue;
+    }
+    kept.push(e);
+  }
+  kept.push(columbus || columbusArmedRow());
+  return kept;
+}
+
+/**
  * Barcelona window closed 27 Sep 2026. Official scores API returned no matches.
  * Unparked: not a cutover target. Do not point /api/ppa here.
  */

@@ -1,9 +1,13 @@
 # APP / Den Live score path
 
-**Event (Sep 2026):** APP Dillons Overland Park Open · tournamentId **18453**  
-**Venue:** AdventHealth Sports Park at Bluhawk, Overland Park, KS  
-**Timezone:** `America/Chicago` (derived from venue; Den Live info payload has no IANA field)  
-**WPM connector:** `netlify/functions/app.mts` → `/api/app` · tour chip **`app`**
+**Event (1–4 Oct 2026):** APP Columbus Open presented by The James · tournamentId **18448**  
+**Board short name:** APP Columbus Open (GPA row `gpa:app%20columbus%20open:2026-10-01`)  
+**Venue:** Pickle & Chill, Columbus, OH  
+**Timezone:** `America/New_York` (derived from venue; Den Live info payload has no IANA field)  
+**WPM connector:** `netlify/functions/app.mts` → `/api/app` · tour chip **`app`**  
+**Overland Park `18453` ended 20 Sep 2026** — disarmed, not `onLive`. Sections below that name Overland are the September ship history.
+
+**Truth:** LIVE only when Den status is RUNNING / IN_PROGRESS / STARTED / PLAYING. Pending brackets and 0 matches are not LIVE. No phantom 0–0. Shop stays Coming soon. Chongqing has no Den id — calendar/results-only only.
 
 ## Intake (pass)
 
@@ -127,9 +131,30 @@ Server tags each match `tier: "pro" | "amateur"` from bracket name (`\bPro\b` �
 - Web Push + APP Pro chips merged into the same client bust `wpm-20260918b.js` (2026-09-18).
 
 
-## Configurable tournamentId (2026-09-18)
+## Configurable tournamentId
 
-`/api/app` no longer hardcodes only `18453`. Resolution order: query `tournamentId` → env `APP_DEN_TOURNAMENT_ID` → Blobs `wpm-app`/`active-tournament` → Blobs `wpm-desk`/`calendar-armed` (APP connector) → fallback `18453`. See [`app-den-ids.md`](./app-den-ids.md).
+`/api/app` resolves the active Den id in order: query `tournamentId` → env `APP_DEN_TOURNAMENT_ID` → Blobs `wpm-app`/`active-tournament` → Blobs `wpm-desk`/`calendar-armed` (APP connector, code-seeds Columbus) → fallback **18448**.
+
+Ended Overland **18453** is ignored on env and blobs so a stale pin cannot keep the live path. `?tournamentId=18453` still works for historical smoke. See [`app-den-ids.md`](./app-den-ids.md).
+
+## Ship note — APP cut to Columbus · 2026-09-30
+
+| | |
+|--|--|
+| Event | APP Columbus Open presented by The James (Den `18448`) |
+| Venue / tz | Pickle & Chill, Columbus, OH · `America/New_York` |
+| Calendar | `gpa:app%20columbus%20open:2026-10-01` armed live-path, connector `{ type: "app", denTournamentId: "18448", scorePath: "/api/app" }` |
+| Ended | Overland `18453` disarmed (`onLive` false, status ended) |
+| Client | `wpm-20260930a.js` · SW `wpm-static-20260930a` |
+| Den smoke | `/api/app?tournamentId=18448` — event present, brackets Pending, 0 matches. Not LIVE. No phantom 0–0. |
+| Chongqing | No Den id. Calendar/results-only only. |
+| Shop | Coming soon |
+
+Prod blob `wpm-app` / `active-tournament` was still Overland (`idSource: wpm-app:active-tournament`, id `18453`) at cut time. Code skips that ended id. After deploy, `/api/app` uses Columbus even if the blob is stale. Parent should still write the blob so the store matches:
+
+```json
+{ "tournamentId": "18448", "name": "APP Columbus Open presented by The James", "venue": "Pickle & Chill, Columbus, OH", "timezone": "America/New_York" }
+```
 
 ## Ship note — APP day truth · 2026-09-18 (h)
 

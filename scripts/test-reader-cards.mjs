@@ -6,6 +6,7 @@
 import fs from "node:fs";
 import assert from "node:assert/strict";
 import {
+  APP_LIVE,
   BARCELONA,
   ENDED_PPA,
   FILTER_COPY,
@@ -13,6 +14,7 @@ import {
   READER_FILTER_COPY,
   READER_LINES,
   asCalendarRow,
+  columbusArmedRow,
   isReaderStatusLine,
   readerStatusLine,
   textHasDeskJargon,
@@ -108,12 +110,36 @@ assert.match(ENDED_PPA.barcelona.note, /\/api\/ppa/);
 assert.match(ENDED_PPA.barcelona.note, /86926aef/, "desk seed keeps the live UUID");
 
 const cal = fs.readFileSync("netlify/functions/calendar.mts", "utf8");
-assert.ok(cal.includes("external-tournament/8057937"), "desk hint stays in the function");
+assert.ok(cal.includes("applyAppCalendarCut"));
+assert.ok(cal.includes("18448"));
+assert.equal(cal.includes("not published yet"), false);
+assert.ok(cal.includes("Chongqing"));
+assert.ok(cal.includes("calendar/results-only only"));
 assert.ok(cal.includes(".map(toReaderEvent)"));
 assert.ok(cal.includes("readerStatusLine({ status: \"ended\", ended: true })"));
 
-const js = fs.readFileSync("js/wpm-20260929a.js", "utf8");
-const siteJs = fs.readFileSync("site/js/wpm-20260929a.js", "utf8");
+const liveColumbus = toReaderEvent(columbusArmedRow());
+assert.equal(liveColumbus.id, APP_LIVE.calendarId);
+assert.equal(liveColumbus.onLive, true);
+assert.equal(liveColumbus.status, "live-path");
+assert.equal(liveColumbus.note, "");
+assert.equal(liveColumbus.connector.denTournamentId, "18448");
+assert.equal(JSON.stringify(liveColumbus).includes("8057937"), false);
+
+const chongqing = toReaderEvent({
+  name: "APP Asia Chongqing Open",
+  tour: "app-asia",
+  status: "results-only",
+  onLive: false,
+  connector: null,
+  note: "APP Asia Tour (not MLP Asia). Den Live tournamentId not found — calendar/results-only only. Do not fake LIVE.",
+});
+assert.equal(chongqing.note, "Results will appear when available");
+assert.equal(chongqing.onLive, false);
+assert.equal(JSON.stringify(chongqing).includes("18448"), false);
+
+const js = fs.readFileSync("js/wpm-20260930a.js", "utf8");
+const siteJs = fs.readFileSync("site/js/wpm-20260930a.js", "utf8");
 assert.equal(siteJs, js);
 assert.equal(js.includes("Barcelona window ended"), false);
 assert.equal(js.includes("Rate Las Vegas Open is /api/ppa"), false);
