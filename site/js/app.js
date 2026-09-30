@@ -390,11 +390,13 @@ function effectiveStatus(m){
     if (m.status === "LIVE") return "LIVE";
     return "NEXT";
   }
+  // APP Asia / SportsSync: results only. No proven in-progress token, so never LIVE.
+  if (m.tour === "app-asia") return m.status === "FT" ? "FT" : "NEXT";
   if (m.status === "LIVE") return "LIVE";
   if ((m.lines || []).some(l => l.live)) return "LIVE";
   // Soft window only for tours that supply an explicit end (desk/WC windows).
   // PPA + APP: API status is authority — never clock-promote NEXT→LIVE.
-  if (m.tour !== "ppa" && m.tour !== "app") {
+  if (m.tour !== "ppa" && m.tour !== "app" && m.tour !== "app-asia") {
     const now = Date.now();
     const start = parseUtc(m.start);
     const end = parseUtc(m.end);
@@ -527,6 +529,16 @@ function competition(m){
       ? {id:"app-pro", tour:"app", title:"APP Pro · "+shortEventLabel(name, eventFollowKey(m)), place, rank:1, eventKey: eventFollowKey(m)}
       : {id:"app", tour:"app", title:"APP · "+shortEventLabel(name, eventFollowKey(m)), place, rank:2, eventKey: eventFollowKey(m)};
   }
+  if (m.tour === "app-asia") {
+    return {
+      id: "app-asia",
+      tour: "app-asia",
+      title: "APP Asia · "+shortEventLabel(m.comp || "APP Asia", eventFollowKey(m)),
+      place: m.venue || "",
+      rank: 3,
+      eventKey: eventFollowKey(m)
+    };
+  }
   const d = ((m.div||"")+" "+(m.cat||"")).toLowerCase();
   if (d.includes("open")) return {id:"wc-open", tour:"wc", title:"World Cup · Open", place:"Da Nang", rank:2};
   if (d.includes("junior")) return {id:"wc-jr", tour:"wc", title:"World Cup · Juniors", place:"Da Nang", rank:3};
@@ -596,6 +608,9 @@ function shortEventLabel(name, key){
   if (/overland/i.test(blob) || /18453/.test(k)) return "Overland";
   if (/arizona|mesa/i.test(n) || /62c01642/i.test(k)) return "Arizona";
   if (/las vegas|darling/i.test(n) || /86926aef/i.test(k) || k === "ev:ppa") return "Las Vegas";
+  if (/chongqing/i.test(blob)) return "Chongqing";
+  if (/kuala lumpur/i.test(blob)) return "Kuala Lumpur";
+  if (/penang/i.test(blob)) return "Penang";
   if (/gij/i.test(blob)) return "Gijón";
   if (/barcelona/i.test(blob)) return "Barcelona";
   if (/world cup|^ev:wc$/i.test(blob)) return "World Cup";
@@ -2006,9 +2021,11 @@ function viewCalendar(){
             <option value="ppa" ${c.type==="ppa"?"selected":""}>PPA event id → /api/ppa</option>
             <option value="url" ${c.type==="url"?"selected":""}>URL / path (e.g. /api/worldcup)</option>
             <option value="djoy" ${c.type==="djoy"?"selected":""}>D-Joy (URL when published)</option>
+            <option value="sportssync" ${c.type==="sportssync"?"selected":""}>SportsSync tournamentId → /api/sportssync (results only)</option>
           </select>
         </label>
         <label class="games">Den tournamentId (APP)<br><input class="field" name="denTournamentId" value="${esc(c.denTournamentId||'')}" placeholder="18448"></label>
+        <label class="games">SportsSync tournamentId (APP Asia results)<br><input class="field" name="sportsSyncTournamentId" value="${esc(c.sportsSyncTournamentId||'')}" placeholder="blank until Chongqing is listed"></label>
         <label class="games">PPA event id<br><input class="field" name="ppaEventId" value="${esc(c.ppaEventId||'')}" placeholder="uuid"></label>
         <label class="games">Score URL / path<br><input class="field" name="scoreUrl" value="${esc(c.scoreUrl||c.scorePath||'')}" placeholder="/api/…"></label>
         <label class="games"><input type="checkbox" name="delayed" ${e.status==="delayed"?"checked":""}> Mark scores delayed (even if path set)</label>
@@ -2376,6 +2393,7 @@ function bind(){
       connector: {
         type: connType,
         denTournamentId: fd.get("denTournamentId") || "",
+        sportsSyncTournamentId: fd.get("sportsSyncTournamentId") || "",
         ppaEventId: fd.get("ppaEventId") || "",
         scoreUrl: fd.get("scoreUrl") || ""
       }
@@ -2458,6 +2476,16 @@ async function pull(){
         if (data.brackets) state.appBrackets = data.brackets;
         return;
       }
+      if (tour === "app-asia") {
+        // FT only. Unarmed / empty clears so a dry-run cannot linger. Never paint LIVE.
+        const incoming = (data.armed && Array.isArray(data.matches))
+          ? data.matches.filter(m => m && m.status === "FT")
+          : [];
+        const ids = new Set(incoming.map(m => m.id));
+        state.matches = (state.matches || []).filter(m => m.tour !== "app-asia" && !ids.has(m.id)).concat(incoming);
+        if (data.updated) state.updated = data.updated;
+        return;
+      }
       if (!data.matches.length) return;
       const ids = new Set(data.matches.map(m => m.id));
       state.matches = (state.matches || []).filter(m => m.tour !== tour && !ids.has(m.id)).concat(data.matches);
@@ -2470,6 +2498,7 @@ async function pull(){
   await overlay("/api/worldcup", "wc");
   await overlay("/api/ppa", "ppa");
   await overlay("/api/app", "app");
+  await overlay("/api/sportssync", "app-asia");
   state.heroByDate = state.heroByDate || {};
   const liveN = (state.matches||[]).filter(m => effectiveStatus(m)==="LIVE").length;
   const appQuiet = state.appBoard && state.appBoard.preServe && !liveN;

@@ -35,6 +35,12 @@ Functions publish from `netlify/functions`; static from `site/` (`netlify.toml`)
 
 Scheduled function `wave-snap-refresh` runs **06:00 UTC**, scrapes public boards + top players, writes JSON to **Netlify Blobs** store `wpm-wave` key `snap`. `/api/rankings` reads Blobs first, then falls back to bundled `wave-snap.json`. See `docs/picklewave-ingest.md` and `docs/ops-git.md`.
 
+## APP Asia / SportsSync (results only)
+
+Chongqing has **no** Den id and **no** SportsSync id yet. Do not invent one. Organizer https://www.sportssync.asia/organizers/1645900 listed only KL **89** and Penang **222** on 2026-09-30.
+
+`/api/sportssync` maps scores (or schedule HTML) into match cards as **FT / NEXT**. It does not mark LIVE. Arm a real Chongqing id from `/calendar` when the organizer page shows that event. Full steps: [`docs/sportssync-asia.md`](./docs/sportssync-asia.md).
+
 ## Local
 
 ```bash
