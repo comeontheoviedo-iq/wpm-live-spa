@@ -1,6 +1,6 @@
 import type { Config, Context } from "@netlify/functions";
 import { rosterText, tagsFor } from "./follow-tags.mjs";
-import { discFromAppBracket, isKnockoutBracket, polishAppRound } from "./app-rounds.mjs";
+import { bracketIndexEntry, discFromAppBracket, isKnockoutBracket, polishAppRound } from "./app-rounds.mjs";
 import { addDays, keepAppMatch, matchBoardDate, matchHasClock, ymdInTz as ymdInTzShared } from "./app-dates.mjs";
 import {
   APP_LIVE,
@@ -441,16 +441,21 @@ function toMatch(m: any, bracket: any, ev: ActiveEvent) {
   const tier = bracketTier(bracket.bracketName || "");
   const disc = discFromAppBracket(bracket);
   const format = isKnockoutBracket(bracket.bracketType) ? "ko" : "pool";
+  const poolNum = Number(bracket.poolNumber);
+  const poolCount = Number(bracket.poolCount);
+  const pool = Number.isFinite(poolNum) && poolNum > 0 ? poolNum : null;
   return {
     id: "app-" + m.matchId,
     date,
     tour: "app",
     tier,
     comp: ev.name,
-    div: [bracket.bracketName, round].filter(Boolean).join(" · "),
+    div: [bracket.bracketName, pool ? "Pool " + pool : "", round].filter(Boolean).join(" · "),
     round,
     disc,
     format,
+    pool,
+    poolCount: Number.isFinite(poolCount) && poolCount > 1 ? poolCount : null,
     session: court ? court : "",
     a,
     b,
@@ -499,6 +504,7 @@ export default async (req: Request, _context?: Context) => {
     active.startDate = brRes?.tournament?.startDate || active.startDate || "";
     active.endDate = brRes?.tournament?.endDate || active.endDate || "";
     const brackets: any[] = brRes?.brackets?.content || [];
+    const bracketIndex = brackets.map((b) => bracketIndexEntry(b)).filter(Boolean);
     const todayTz = ymdInTz(new Date(), TZ);
     const eventPayload = {
       id: TOURNAMENT_ID,
@@ -531,6 +537,8 @@ export default async (req: Request, _context?: Context) => {
             reader: phase.reader,
             liveCount: 0,
             matches: [],
+            brackets: {},
+            bracketIndex,
             event: eventPayload,
           },
           { headers: { "Cache-Control": "public, max-age=15" } }
@@ -543,6 +551,8 @@ export default async (req: Request, _context?: Context) => {
           delayed: true,
           message: "scores delayed",
           matches: [],
+          brackets: {},
+          bracketIndex,
           degraded: ["brackets:empty"],
           event: eventPayload,
         },
@@ -593,6 +603,7 @@ export default async (req: Request, _context?: Context) => {
         tier: m.tier,
         disc: m.disc,
         format: m.format,
+        pool: m.pool || null,
       });
     }
 
@@ -614,6 +625,7 @@ export default async (req: Request, _context?: Context) => {
         source: "den-live",
         matches,
         brackets: bracketsOut,
+        bracketIndex,
         liveCount,
         preServe: phase.preServe,
         reader: phase.reader || undefined,

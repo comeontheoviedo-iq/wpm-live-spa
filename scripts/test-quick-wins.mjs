@@ -8,7 +8,8 @@ import assert from "node:assert/strict";
 import { matchHasClock, matchBoardDate } from "../netlify/functions/app-dates.mjs";
 import { GIJON, asCalendarRow } from "../netlify/functions/slate-events.mjs";
 
-const js = fs.readFileSync("js/wpm-20261001a.js", "utf8");
+const js = fs.readFileSync("js/wpm-20261002a.js", "utf8");
+const prev01 = fs.readFileSync("js/wpm-20261001a.js", "utf8");
 const prevC = fs.readFileSync("js/wpm-20260930c.js", "utf8");
 const prevBust = fs.readFileSync("js/wpm-20260930b.js", "utf8");
 const prevA = fs.readFileSync("js/wpm-20260930a.js", "utf8");
@@ -18,7 +19,7 @@ const index = fs.readFileSync("index.html", "utf8");
 const sw = fs.readFileSync("sw.js", "utf8");
 const siteIndex = fs.readFileSync("site/index.html", "utf8");
 const siteSw = fs.readFileSync("site/sw.js", "utf8");
-const siteJs = fs.readFileSync("site/js/wpm-20261001a.js", "utf8");
+const siteJs = fs.readFileSync("site/js/wpm-20261002a.js", "utf8");
 const ppa = fs.readFileSync("netlify/functions/ppa.mts", "utf8");
 const appFn = fs.readFileSync("netlify/functions/app.mts", "utf8");
 
@@ -27,21 +28,24 @@ assert.ok(prev.includes('SAFE_SW_MARK = "20260929a"'), "previous bundle 29a stay
 assert.ok(prevA.includes('SAFE_SW_MARK = "20260930a"'), "previous bundle 30a stays on disk");
 assert.ok(prevBust.includes('SAFE_SW_MARK = "20260930b"'), "previous bundle 30b stays on disk");
 assert.ok(prevC.includes('SAFE_SW_MARK = "20260930c"'), "previous bundle 30c stays on disk");
-assert.ok(js.includes('SAFE_SW_MARK = "20261001a"'));
-assert.ok(js.includes("/sw.js?v=20261001a"));
-assert.ok(index.includes("wpm-20261001a.js"));
-assert.ok(index.includes("sw.js?v=20261001a"));
-assert.ok(index.includes("app.css?v=20261001a"));
+assert.ok(prev01.includes('SAFE_SW_MARK = "20261001a"'), "previous bundle 01a stays on disk");
+assert.ok(js.includes('SAFE_SW_MARK = "20261002a"'));
+assert.ok(js.includes("/sw.js?v=20261002a"));
+assert.ok(index.includes("wpm-20261002a.js"));
+assert.ok(index.includes("sw.js?v=20261002a"));
+assert.ok(index.includes("app.css?v=20261002a"));
+assert.equal(index.includes("wpm-20261001a.js"), false);
 assert.equal(index.includes("wpm-20260930c.js"), false);
 assert.equal(index.includes("wpm-20260930b.js"), false);
 assert.equal(index.includes("wpm-20260930a.js"), false);
 assert.equal(index.includes("wpm-20260929a.js"), false);
 assert.equal(index.includes("wpm-20260928a.js"), false);
 assert.equal(index.includes("wpm-20260918i.js"), false);
-assert.ok(sw.includes("wpm-static-20261001a"));
+assert.ok(sw.includes("wpm-static-20261002a"));
 assert.equal(index.includes("20260918f"), false, "index must not pin old SW f");
-assert.ok(siteIndex.includes("wpm-20261001a.js"));
-assert.ok(siteSw.includes("wpm-static-20261001a"));
+assert.ok(siteIndex.includes("wpm-20261002a.js"));
+assert.ok(siteSw.includes("wpm-static-20261002a"));
+assert.equal(siteIndex.includes("wpm-20261001a.js"), false);
 assert.equal(siteJs, js);
 
 assert.ok(js.includes("function tourFollowHit"));
@@ -94,4 +98,4 @@ const wazirFinal = { matchType: "FINAL", startTime: null, scheduledTime: null };
 assert.equal(matchHasClock(wazirFinal), false, "no invented clock");
 assert.equal(matchBoardDate(wazirFinal, { bracketDate: "2026-09-17", eventEndDate: "2026-09-20" }), "2026-09-20");
 
-console.log("ok quick-wins · 20261001a bust · 30c kept · tour follow · Gijón draw · Las Vegas labels · no invented APP clock");
+console.log("ok quick-wins · 20261002a bust · 01a kept · tour follow · Gijón draw · Las Vegas labels · no invented APP clock");

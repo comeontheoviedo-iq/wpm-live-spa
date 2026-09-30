@@ -65,7 +65,10 @@ const state = {
   appBrackets: {},
   drawTour: "ppa",
   drawDiv: "",
+  drawPhase: "",
+  drawPool: "",
   appEvent: null,
+  appBracketIndex: [],
   ppaEvent: null,
   appBoard: null,
   ppaBoard: null
@@ -88,8 +91,8 @@ if ("Notification" in window && Notification.permission === "granted") {
   setTimeout(() => { syncPushSubscription(); }, 2500);
 }
 
-const SAFE_SW = "/sw.js?v=20261001a";
-const SAFE_SW_MARK = "20261001a";
+const SAFE_SW = "/sw.js?v=20261002a";
+const SAFE_SW_MARK = "20261002a";
 const GIJON_DRAW_URL = "https://toppickleballtour.com/wp-content/uploads/2026/09/TOP-PICKLEBALL-TOUR-GIJON-GRUPOS.pdf";
 /** Application-server VAPID public key (safe to embed). Private stays in Netlify env. */
 const VAPID_PUBLIC_KEY = "BEuWn2rcxKeLXPFa3KJzys7rLOtFX8GUZ9ckfFhsqEVO0Y2PE3WfnOivmFJV3EUVCf1c1g31qSiVoNDbcJQO8GQ";
@@ -825,7 +828,7 @@ function collectPlayerRankings(fullName){
   });
   ((data.elo || {}).singles || []).forEach(r => {
     if (!rankingNameMatches(fullName, r.name)) return;
-    cards.push({ source:"WPR", cat: "Open mixed", rank:r.rank, detail:(r.elo!=null?r.elo+" WPR":"")+(r.dupr?" · DUPR "+r.dupr:""), name:r.name });
+    cards.push({ source:"WPR", cat: "Open mixed", rank:r.rank, elo:r.elo, dupr:r.dupr||"", detail:wprText(r.elo), name:r.name });
   });
   Object.entries(data.ppaWorld || {}).forEach(([sex, rows]) => {
     (rows||[]).forEach(r => {
@@ -858,6 +861,21 @@ function teamPath(name){
 function entityPath(name){
   if (resolveTeamKey(name)) return teamPath(name);
   return playerPath(name);
+}
+function splitSides(side){
+  return String(side||"").split(/\s*\/\s*/).map(s => s.trim()).filter(Boolean);
+}
+function sideLinks(side){
+  const parts = splitSides(side);
+  if (!parts.length) return esc(side);
+  return `<span class="side-links">${parts.map(p => {
+    if (/^(tbd|tba|bye)$/i.test(p)) return esc(p);
+    return `<a href="${entityPath(p)}">${esc(p)}</a>`;
+  }).join(" / ")}</span>`;
+}
+function wprText(elo){
+  if (elo == null || elo === "") return "";
+  return String(elo) + " WPR";
 }
 function courtOnCard(m){
   return String((m && m.court) || "").trim();
@@ -910,8 +928,8 @@ function matchRow(raw, opts){
     <div class="line">
       <a class="statuscol st ${st}" href="/match/${m.id}">${st==="LIVE"?"<span class='dot'></span>":""}${when}</a>
       <div class="pair">
-        <a class="a" href="${entityPath(m.a)}">${m.a}</a>
-        <a class="b" href="${entityPath(m.b)}">${m.b}</a>
+        <div class="a">${sideLinks(m.a)}</div>
+        <div class="b">${sideLinks(m.b)}</div>
       </div>
       <a class="scorecol" href="/match/${m.id}">${st==="NEXT" && !m.score ? "<span class='kick'>vs</span>" : `<div>${sa}</div><div>${sb}</div>`}</a>
     </div>
@@ -1137,8 +1155,8 @@ function leagueRail(){
 function tableRail(){
   const gpa=((state.rankings||{}).gpa||{}).mens_singles||[];
   const wpr=((state.rankings||{}).elo||{}).singles||[];
-  const g=gpa.slice(0,6).map(r=>`<a class="rank-row" href="${playerPath(r.name)}"><b>${r.rank}</b><div><strong>${r.name}</strong><span>${r.country||""}</span></div><em>${r.points||""}</em></a>`).join("");
-  const e=wpr.slice(0,6).map(r=>`<a class="rank-row" href="${playerPath(r.name)}"><b>${r.rank}</b><div><strong>${r.name}</strong><span>Open mixed</span></div><em>${r.elo||""}</em></a>`).join("");
+  const g=gpa.slice(0,6).map(r=>`<a class="rank-row" href="${playerPath(r.name)}"><b>${r.rank}</b><div><strong>${r.name}</strong><span>${r.country||""}</span></div><em>${r.points!=null&&r.points!==""?r.points+" pts":""}</em></a>`).join("");
+  const e=wpr.slice(0,6).map(r=>`<a class="rank-row" href="${playerPath(r.name)}"><b>${r.rank}</b><div><strong>${r.name}</strong><span>Open mixed</span></div><em>${wprText(r.elo)}</em></a>`).join("");
   return `<div class="panel rail-card"><div class="kicker">GPA table</div>${g||"<p class='empty'>Loading table…</p>"}<a class="chip" href="/rankings">Full table</a><a class="chip" href="/history">Archive</a></div><div class="panel rail-card"><div class="kicker">WPR</div>${e||"<p class='empty'>WPR loading…</p>"}</div>`;
 }
 function weekStrip(){
@@ -1350,32 +1368,46 @@ function tourChoiceButtons(){
   }).join("");
 }
 
-function drawHref(tour, div){
+function drawHref(tour, div, opts){
+  opts = opts || {};
   const p = new URLSearchParams();
   if (tour === "wc" || tour === "ppa" || tour === "app") p.set("tour", tour);
   if (div) p.set("div", div);
+  if (tour === "app" && (opts.phase === "pool" || opts.phase === "elim")) p.set("phase", opts.phase);
+  if (tour === "app" && opts.pool) p.set("pool", String(opts.pool));
   const q = p.toString();
   return "/draw" + (q ? "?" + q : "");
+}
+function drawHrefForMatch(m){
+  const div = String((m && m.div) || "").split(" · ")[0].trim();
+  if (!m || m.tour !== "app") return drawHref(m && m.tour, div);
+  const phase = appSlotPhase(m) === "pool" ? "pool" : "elim";
+  return drawHref("app", div, { phase, pool: m.pool || "" });
 }
 function applyDrawQuery(){
   const qt = qs("tour");
   const qd = qs("div");
+  const qp = qs("phase");
+  const qpool = qs("pool");
   if (qt === "wc" || qt === "ppa" || qt === "app") {
     state.drawTour = qt;
     state.filter = qt === "app" ? "app-pro" : qt;
   }
   if (qd) state.drawDiv = qd;
+  if (qt === "app" && (qp === "pool" || qp === "elim")) state.drawPhase = qp;
+  if (qt === "app" && qpool) state.drawPool = qpool;
 }
 function syncDrawUrl(){
   if (state.boardMode !== "draw" && path() !== "/draw") return;
   const tour = state.drawTour === "wc" ? "wc" : state.drawTour === "app" ? "app" : "ppa";
-  const href = drawHref(tour, state.drawDiv || "");
+  const opts = tour === "app" ? { phase: state.drawPhase === "pool" ? "pool" : "elim", pool: state.drawPool || "" } : {};
+  const href = drawHref(tour, state.drawDiv || "", opts);
   if ((location.pathname + location.search) !== href) history.replaceState({}, "", href);
 }
 function drawNext(m){
   if (m.tour !== "ppa" && m.tour !== "wc" && m.tour !== "app") return "";
   const div = String(m.div||"").split(" · ")[0].trim();
-  const wall = drawHref(m.tour, div);
+  const wall = drawHrefForMatch(m);
   const nameBits = (m.a+" "+m.b).split(/[\/ ]+/).filter(w => w.length>2);
   const all = [];
   [state.brackets, state.wcBrackets, state.appBrackets].forEach(br => Object.values(br||{}).forEach(rounds => Object.values(rounds).forEach(arr => all.push(...arr))));
@@ -1403,7 +1435,7 @@ function viewMatch(id){
     <p class="kicker"><a href="/">Live</a> · ${m.comp}</p>
     <div class="match-hero">
       <div class="comp"><span class="st ${st}">${st==="LIVE"?"<span class='dot'></span>":""}${st}</span> · ${m.div}</div>
-      <div class="names"><h2>${m.a}</h2><div></div><h2>${m.b}</h2></div>
+      <div class="names"><h2>${sideLinks(m.a)}</h2><div></div><h2>${sideLinks(m.b)}</h2></div>
       <div class="big">${centerScore(m)}</div>
       <div class="gamepills">${(m.lines&&m.lines.length?m.lines.map(l=>`${l.disc} ${l.score||""} ${l.live?"LIVE":l.winner||""}`.trim()):games).map(g=>`<span>${g}</span>`).join("")}</div>
       ${m.lines&&m.lines.length?`<table class="scorecard"><thead><tr><th>Discipline</th><th>${m.a}</th><th>${m.b}</th><th></th></tr></thead><tbody>${m.lines.map(l=>{
@@ -1470,17 +1502,37 @@ function storiesForPerson(rec, followKey){
   }).slice(0, 6);
 }
 function rankingCardsHtml(cards){
+  if (!state.rankings) return `<p class="empty">Rankings loading…</p>`;
   if (!cards || !cards.length) {
     return `<p class="empty">No labelled ranking row yet on GPA, WPR or PPA World.</p>`;
   }
   return `<div class="rank-cards">${cards.map(c => `
     <div class="rank-card">
-      <div class="src">${c.source}</div>
-      <b>#${c.rank}</b>
-      <div class="cat">${c.cat||""}</div>
-      <div class="detail">${c.detail||""}</div>
+      <div class="src">${esc(c.source)}</div>
+      <b>#${esc(c.rank)}</b>
+      <div class="cat">${esc(c.cat||"")}</div>
+      ${c.detail?`<div class="detail">${esc(c.detail)}</div>`:""}
+      ${c.source==="WPR" && c.dupr?`<div class="detail">DUPR ${esc(c.dupr)}</div>`:""}
     </div>`).join("")}</div>
     <p class="games" style="margin-top:10px">Sources stay labelled — GPA, WPR and PPA World are different boards, not one world #1.</p>`;
+}
+function personInitials(name){
+  const t = nameTokens(name);
+  if (!t.length) return "·";
+  if (t.length === 1) return t[0].slice(0, 2).toUpperCase();
+  return (t[0][0] + t[t.length - 1][0]).toUpperCase();
+}
+function personOnSide(side, rec){
+  const name = (rec && rec.name) || "";
+  return splitSides(side).some(p => personInText(name, p) || rankingNameMatches(name, p) || normName(p) === normName(name));
+}
+function wprSnapshot(rec){
+  const card = (rec.rankings || []).find(c => c.source === "WPR");
+  const wave = wavePlayerForProfile(rec);
+  const elo = card && card.elo != null && card.elo !== "" ? card.elo : (wave && wave.elo != null && wave.elo !== "" ? wave.elo : null);
+  const rank = card && card.rank ? card.rank : null;
+  if (elo == null) return null;
+  return { elo, rank };
 }
 function lookupPerson(kind, id){
   id = decodeURIComponent(id||"");
@@ -1531,23 +1583,22 @@ function formatWaveSide(people){
   if (!people || !people.length) return "—";
   return people.map(p => {
     const label = (p.name || "").trim() || "Player";
-    return `<a href="${playerPath(label)}" style="color:inherit;text-decoration:underline;text-underline-offset:2px">${label}</a>`;
+    return `<a href="${playerPath(label)}">${esc(label)}</a>`;
   }).join(" / ");
 }
 function waveRecentPanel(rec){
+  if (!state.rankings) return "";
   const wave = wavePlayerForProfile(rec);
-  if (!wave) {
+  const rows = wave ? (wave.recent || []).slice(0, 8) : [];
+  if (!rows.length) {
     const degraded = ((state.rankings || {}).waveMeta || {}).degraded;
-    const note = degraded && degraded.length
-      ? "Pro tour pool unavailable this minute (PickleWave scrape degraded)."
-      : "Pro tour pool loading…";
+    if (!(degraded && degraded.length)) return "";
     return `<div class="panel" style="margin-top:18px">
-      <div class="kicker">Recent (Pro tour pool)</div>
-      <p class="empty">${note}</p>
-      <p class="games">Source: PickleWave public boards · labelled WPR / tour pool — not GPA or PPA World.</p>
+      <div class="kicker">Pro tour</div>
+      <p class="empty">Pro tour pool unavailable this minute.</p>
+      <p class="games">Source: public boards · labelled WPR — not GPA or PPA World.</p>
     </div>`;
   }
-  const rows = (wave.recent || []).slice(0, 8);
   const list = rows.length ? rows.map(r => {
     const opp = formatWaveSide(r.opponent);
     const partner = (r.partner && r.partner.length) ? ` <span class="games">with ${formatWaveSide(r.partner)}</span>` : "";
@@ -1567,45 +1618,77 @@ function waveRecentPanel(rec){
     `<a class="chip" href="${w.url}" target="_blank" rel="noopener">${(w.title||"Watch").slice(0,42)}</a>`
   ).join("")}</div>` : "";
   return `<div class="panel" style="margin-top:18px">
-    <div class="kicker">Recent (Pro tour pool)</div>
-    <p class="games" style="margin-bottom:10px">PickleWave public tour cards · restyled in WPM · ${wave.elo!=null ? "WPR "+wave.elo : "WPR"} · not an iframe</p>
+    <div class="kicker">Pro tour</div>
+    <p class="games" style="margin-bottom:10px">Public tour cards · restyled in WPM · ${wave.elo!=null ? wprText(wave.elo) : "WPR"} · Open mixed · not an iframe</p>
     ${list}
     ${watchHtml}
   </div>`;
 }
 
+function personResultRow(m, rec){
+  const st = effectiveStatus(m);
+  const onA = personOnSide(m.a, rec);
+  const onB = personOnSide(m.b, rec);
+  const opp = onA && !onB ? sideLinks(m.b) : onB && !onA ? sideLinks(m.a) : `${sideLinks(m.a)} <span class="games">vs</span> ${sideLinks(m.b)}`;
+  const when = m.date && m.date !== boardToday() ? dateChip(m.date) : "";
+  const meta = [m.comp, String(m.div||"").split(" · ")[0], when].filter(Boolean).map(s => esc(s)).join(" · ");
+  const wall = (m.tour === "app" || m.tour === "ppa" || m.tour === "wc") ? ` · <a href="${drawHrefForMatch(m)}">Draw</a>` : "";
+  const score = m.score ? esc(m.score) : (st === "NEXT" ? "vs" : "");
+  const label = st === "LIVE" ? "LIVE" : st === "FT" ? "FT" : "NEXT";
+  return `<div class="result-row">
+    <a class="statuscol st ${st}" href="/match/${esc(m.id)}">${st==="LIVE"?"<span class='dot'></span>":""}${label}</a>
+    <div>
+      <div class="opp">${onA !== onB ? "vs " : ""}${opp}</div>
+      <span class="meta">${meta}${wall}</span>
+    </div>
+    <a class="scorecol" href="/match/${esc(m.id)}">${score}</a>
+  </div>`;
+}
+function personMatchList(list, rec){
+  if (!list.length) {
+    return `<div class="panel" style="margin-top:18px"><div class="kicker">Matches</div><p class="empty">No matches on the live board yet.</p></div>`;
+  }
+  const todayStr = boardToday();
+  const rank = { LIVE:0, NEXT:1, FT:2 };
+  const today = list.filter(m => m.date === todayStr).sort((a,b) => {
+    const d = (rank[effectiveStatus(a)] ?? 3) - (rank[effectiveStatus(b)] ?? 3);
+    if (d) return d;
+    return (parseUtc(a.start)?.getTime()||0) - (parseUtc(b.start)?.getTime()||0);
+  });
+  const earlier = list.filter(m => m.date !== todayStr).sort((a,b) => (parseUtc(b.start)?.getTime()||0) - (parseUtc(a.start)?.getTime()||0));
+  const rows = today.concat(earlier).slice(0, 12);
+  return `<div class="panel" style="margin-top:18px"><div class="kicker">Matches</div>${rows.map(m => personResultRow(m, rec)).join("")}</div>`;
+}
 function viewPerson(kind, id){
   id = decodeURIComponent(id||"");
   const rec = lookupPerson(kind, id);
   if (!rec) return `<div class="wrap"><p class="empty">Not found.</p></div>`;
   const followKey = rec.followKey || id;
   const list = matchesForPerson(kind, id, rec);
-  const todayStr = boardToday();
-  const today = list.filter(m => m.date === todayStr).sort((a,b)=>(parseUtc(a.start)?.getTime()||0)-(parseUtc(b.start)?.getTime()||0));
-  const recent = list.filter(m => m.date !== todayStr || effectiveStatus(m) === "FT").slice(0, 12);
   const stories = storiesForPerson(rec, followKey);
   const following = !!state.selected[followKey];
+  const snap = kind === "player" ? wprSnapshot(rec) : null;
+  const badge = snap ? `<div class="wpr-badge"><b>${esc(snap.elo)}</b><span>WPR · Open mixed${snap.rank ? " · #"+esc(snap.rank) : ""}</span></div>` : "";
   return `<div class="wrap">
-    <div class="person-head">
-      <p class="kicker">${kind==="player"?"Player":"Team"} · WPM LIVE</p>
-      <h2 style="font-family:Syne,sans-serif;font-size:32px;letter-spacing:-.03em">${rec.name}</h2>
-      <p class="games">${rec.role}</p>
-      <p style="margin:10px 0 16px;max-width:560px">${rec.blurb}</p>
-      <button class="btn ${following?"gold":""}" data-follow="${followKey}">${following?"Following":"Follow"}</button>
+    <div class="person-hero">
+      <div class="avatar" aria-hidden="true">${esc(personInitials(rec.name))}</div>
+      <div class="who">
+        <p class="kicker">${kind==="player"?"Player":"Team"}</p>
+        <h2>${esc(rec.name)}</h2>
+        <p class="role">${esc(rec.role||"")}</p>
+        ${rec.blurb?`<p class="blurb">${esc(rec.blurb)}</p>`:""}
+      </div>
+      <div class="person-actions">
+        ${badge}
+        <button class="btn ${following?"gold":""}" data-follow="${esc(followKey)}">${following?"Following":"Follow"}</button>
+      </div>
     </div>
     ${kind==="player"?`<div class="panel" style="margin-top:18px">
       <div class="kicker">Rankings</div>
       ${rankingCardsHtml(rec.rankings||[])}
     </div>`:""}
     ${kind==="player"?waveRecentPanel(rec):""}
-    <div class="panel" style="margin-top:18px">
-      <div class="kicker">Today</div>
-      ${today.length?today.map(matchRow).join(""):"<p class='empty'>Nothing on the board for today.</p>"}
-    </div>
-    <div class="panel">
-      <div class="kicker">Recent results</div>
-      ${recent.length?recent.map(matchRow).join(""):(list.length?list.map(matchRow).join(""):"<p class='empty'>No tagged matches yet.</p>")}
-    </div>
+    ${personMatchList(list, rec)}
     ${stories.length?`<div class="panel"><div class="kicker">From the magazine</div>${stories.map(magTease).join("")}</div>`:""}
     ${playerMedals(rec.name)}
   </div>`;
@@ -1796,7 +1879,7 @@ function hasDrawSides(m){
   if (bad.test(a) || bad.test(b)) return false;
   return true;
 }
-/** Map official PPA round strings and APP knockout polish → R64/R32/R16/QF/SF/F/Bronze. WC keeps Round N; never bare "Round". */
+/** Map official PPA round strings → R64/R32/R16/QF/SF/F/Bronze. APP keeps Final (not F). WC keeps Round N; never bare "Round". */
 function normalizeRoundLabel(tour, raw){
   const s = String(raw||"").trim();
   if (!s || /^round$/i.test(s) || s === "undefined" || s === "null") return null;
@@ -1809,7 +1892,7 @@ function normalizeRoundLabel(tour, raw){
     if (/quarter/.test(t) || t === "qf") return "QF";
     if (/semi/.test(t) || t === "sf") return "SF";
     if (/bronze|third\s*place|3rd/.test(t)) return "Bronze";
-    if (/^finals?$/.test(t) || t === "f") return "F";
+    if (/^finals?$/.test(t) || t === "f") return tour === "app" ? "Final" : "F";
     return s;
   }
   const num = s.match(/^round\s*(\d+)$/i);
@@ -1819,8 +1902,10 @@ function normalizeRoundLabel(tour, raw){
 }
 function roundSortKey(tour, label){
   if (tour === "ppa" || tour === "app") {
-    const order = ["R128","R64","R32","R16","QF","SF","Bronze","F"];
-    const i = order.indexOf(label === "Final" ? "F" : label);
+    const order = tour === "app"
+      ? ["R128","R64","R32","R16","QF","SF","Bronze","Final","F"]
+      : ["R128","R64","R32","R16","QF","SF","Bronze","F"];
+    const i = order.indexOf(tour === "app" ? label : (label === "Final" ? "F" : label));
     return i < 0 ? 80 + String(label).charCodeAt(0) : i;
   }
   const m = String(label).match(/^Round\s+(\d+)$/i);
@@ -1855,7 +1940,9 @@ function pushBracketMatch(out, div, round, m){
     score: m.score,
     status: effectiveStatus(m),
     games: m.games,
-    date: m.date
+    date: m.date,
+    format: m.format || "",
+    pool: m.pool || null
   });
 }
 function normalizeBracketTree(tour, stored){
@@ -1888,11 +1975,166 @@ function bracketsFromMatches(tour){
   });
   return out;
 }
+const APP_ELIM_LATE = ["R16", "QF", "SF", "F", "Final", "Bronze"];
+const APP_ELIM_EARLY = ["R128", "R64", "R32"];
+const APP_ELIM_ORDER = ["R128", "R64", "R32", "R16", "QF", "SF", "Bronze", "F", "Final"];
+function appRoundUsable(raw){
+  const s = String(raw || "").trim();
+  if (!s || /^round$/i.test(s) || s === "undefined" || s === "null") return "";
+  return s;
+}
+function appSlotPhase(m){
+  const fmt = String((m && m.format) || "");
+  if (fmt === "pool") return "pool";
+  if (fmt === "ko" || fmt === "elim") return "elim";
+  const round = appRoundUsable(m && m.round);
+  if (/^round\s+\d+$/i.test(round)) return "pool";
+  return "elim";
+}
+function appWallBands(slots){
+  const pool = [];
+  const elim = [];
+  const seenP = new Set();
+  const seenE = new Set();
+  const elimSlots = [];
+  (slots || []).forEach(m => {
+    const a = String((m && m.a) || "").trim();
+    const b = String((m && m.b) || "").trim();
+    if (!a || !b || /^(tbd|tba|winner|loser|bye|-|—|–)$/i.test(a) || /^(tbd|tba|winner|loser|bye|-|—|–)$/i.test(b)) return;
+    const round = appRoundUsable(m && m.round);
+    if (!round) return;
+    const phase = appSlotPhase(Object.assign({}, m, { round }));
+    if (phase === "pool") {
+      if (!seenP.has(round)) { seenP.add(round); pool.push(round); }
+    } else {
+      elimSlots.push(Object.assign({}, m, { round }));
+      if (!seenE.has(round)) { seenE.add(round); elim.push(round); }
+    }
+  });
+  const num = s => Number((String(s).match(/\d+/) || ["999"])[0]);
+  pool.sort((a, b) => num(a) - num(b) || String(a).localeCompare(String(b)));
+  const rank = label => {
+    const i = APP_ELIM_ORDER.indexOf(label);
+    if (i >= 0) return i;
+    const n = String(label).match(/^Round\s+(\d+)$/i);
+    if (n) return 100 + Number(n[1]);
+    return 400;
+  };
+  elim.sort((a, b) => rank(a) - rank(b) || String(a).localeCompare(String(b)));
+  const late = elim.filter(l => APP_ELIM_LATE.includes(l));
+  const early = elim.filter(l => APP_ELIM_EARLY.includes(l));
+  const other = elim.filter(l => !APP_ELIM_LATE.includes(l) && !APP_ELIM_EARLY.includes(l));
+  let elimShow = elim;
+  if (late.length) {
+    const hot = early.some(r => elimSlots.some(m => m.round === r && (m.status === "LIVE" || m.status === "NEXT")));
+    elimShow = (hot ? early : []).concat(late).concat(other);
+    elimShow.sort((a, b) => rank(a) - rank(b) || String(a).localeCompare(String(b)));
+  }
+  return { pool, elim: elimShow };
+}
+function appDivsForPhase(phase, brackets){
+  const names = new Set();
+  (state.appBracketIndex || []).forEach(b => { if (b && b.phase === phase && b.name) names.add(b.name); });
+  Object.keys(brackets || {}).forEach(div => {
+    const slots = [];
+    Object.entries(brackets[div] || {}).forEach(([round, arr]) => (arr || []).forEach(m => slots.push(Object.assign({ round }, m))));
+    if (slots.some(m => appSlotPhase(m) === phase && hasDrawSides(m))) names.add(div);
+  });
+  return sortDivKeys("app", [...names]);
+}
+function appPoolNumbers(div, brackets){
+  const nums = new Set();
+  (state.appBracketIndex || []).forEach(b => {
+    if (b && b.phase === "pool" && b.name === div && b.poolNumber) nums.add(Number(b.poolNumber));
+  });
+  Object.values((brackets || {})[div] || {}).forEach(arr => (arr || []).forEach(m => {
+    if (m && m.pool && appSlotPhase(m) === "pool") nums.add(Number(m.pool));
+  }));
+  return [...nums].filter(n => n > 0).sort((a, b) => a - b);
+}
+function appIndexRow(div, phase, pool){
+  return (state.appBracketIndex || []).find(b => b && b.name === div && b.phase === phase && (!pool || String(b.poolNumber) === String(pool))) || null;
+}
+function appIndexWord(row){
+  if (!row) return "";
+  if (row.status === "in-progress") return "In progress";
+  if (row.status === "complete") return "Complete";
+  return "Not started";
+}
+function appColumnHtml(tour, round, items){
+  if (!items.length) return "";
+  const heading = round === "F" ? "Final" : round;
+  const knockout = /^(QF|SF|F|Final|Bronze)$/.test(round);
+  const stLabel = m => {
+    const st = effectiveStatus(m);
+    return st === "LIVE" ? "LIVE" : st === "FT" ? "FT" : "Next";
+  };
+  return `<div class="bracket-col ${knockout?"knockout":""}"><h3>${esc(heading)}</h3>${items.map(m => `
+      <a class="bracket-match ${effectiveStatus(m)==="LIVE"?"live":""}" href="/match/${esc(m.id)}">
+        <div><b>${esc(m.a)}</b><span>${effectiveStatus(m)==="NEXT"?"":esc((m.score||"").split("-")[0]||"")}</span></div>
+        <div><b>${esc(m.b)}</b><span>${effectiveStatus(m)==="NEXT"?"":esc((m.score||"").split("-")[1]||"")}</span></div>
+        <em>${stLabel(m)}</em>
+      </a>`).join("")}</div>`;
+}
+function appDrawBoard(brackets){
+  const phase = state.drawPhase === "pool" ? "pool" : "elim";
+  state.drawPhase = phase;
+  const divs = appDivsForPhase(phase, brackets);
+  const prefer = divs.find(d => /\bpro\b/i.test(d) && !/backdraw/i.test(d)) || divs[0] || "";
+  const div = state.drawDiv && divs.includes(state.drawDiv) ? state.drawDiv : prefer;
+  state.drawDiv = div;
+  const pools = phase === "pool" ? appPoolNumbers(div, brackets) : [];
+  const poolOn = pools.length > 1;
+  let pool = poolOn ? (pools.map(String).includes(String(state.drawPool)) ? String(state.drawPool) : String(pools[0])) : "";
+  state.drawPool = pool;
+  const slots = [];
+  Object.entries((brackets || {})[div] || {}).forEach(([round, arr]) => {
+    (arr || []).forEach(m => slots.push(Object.assign({ round }, m)));
+  });
+  const filtered = slots.filter(m => appSlotPhase(m) === phase && (!pool || String(m.pool || "") === String(pool)));
+  const bands = appWallBands(filtered);
+  const labels = phase === "pool" ? bands.pool : bands.elim;
+  const cols = labels.map(r => {
+    const items = filtered.filter(m => m.round === r && hasDrawSides(m)).slice(0, 32);
+    return appColumnHtml("app", r, items);
+  }).join("");
+  const row = appIndexRow(div, phase, pool);
+  const structure = (row && row.line) || (phase === "pool" ? "Pools" : "Elimination");
+  const quiet = !cols;
+  const soon = tourPreServe("app") || (row && row.status === "pending");
+  const emptyLine = soon ? "Play starts soon" : "Results will appear when available";
+  const word = quiet ? appIndexWord(row) : "";
+  const note = div
+    ? `${esc(divChipLabel(div))} · ${esc(structure)}${word ? " · " + esc(word) : ""}`
+    : (phase === "pool" ? "Pools" : "Elimination");
+  const tourSeg = `<div class="seg" style="margin:0 0 12px">
+      <button data-drawtour="ppa">PPA</button>
+      <button data-drawtour="app" class="on">APP</button>
+      <button data-drawtour="wc">World Cup</button>
+    </div>`;
+  const phaseSeg = `<div class="seg" style="margin:0 0 12px">
+      <button data-drawphase="elim" class="${phase==="elim"?"on":""}">Elimination</button>
+      <button data-drawphase="pool" class="${phase==="pool"?"on":""}">Pools</button>
+    </div>`;
+  const divSeg = `<div class="seg draw-divs" style="margin:0 0 12px">${divs.map(d=>`<button data-draw="${escAttr(d)}" class="${d===div?"on":""}">${esc(divChipLabel(d))}</button>`).join("")}</div>`;
+  const poolSeg = poolOn ? `<div class="seg draw-divs" style="margin:0 0 12px">${pools.map(n=>`<button data-drawpool="${n}" class="${String(n)===String(pool)?"on":""}">Pool ${n}</button>`).join("")}</div>` : "";
+  const hint = quiet ? "" : (phase === "pool"
+    ? "Round robin stays Round N. Playoff rounds show under Elimination when both sides are published."
+    : "Elimination rounds from the published draw. Empty later rounds stay hidden.");
+  syncDrawUrl();
+  return `${tourSeg}${phaseSeg}${divSeg}${poolSeg}
+    <p class="draw-wall-note">${note}${hint ? " · " + hint : ""}</p>
+    <div class="bracket">${cols || `<p class="games">${emptyLine}</p>`}</div>`;
+}
 function drawBoard(){
   if (state.filter === "wc") state.drawTour = "wc";
   if (state.filter === "ppa") state.drawTour = "ppa";
   if (state.filter === "app" || state.filter === "app-pro") state.drawTour = "app";
   const tour = state.drawTour === "wc" ? "wc" : state.drawTour === "app" ? "app" : "ppa";
+  if (tour === "app") {
+    const brackets = bracketsFromMatches("app");
+    return appDrawBoard(brackets);
+  }
   const brackets = bracketsFromMatches(tour);
   const divs = sortDivKeys(tour, Object.keys(brackets));
   const prefer = tour === "app"
@@ -2103,19 +2345,23 @@ function viewRankings(){
     note = "GPA world rankings · rolling 12 months · best 10 · gpapickleball.org — labelled separately from PPA World and WPR.";
     catSeg = `<div class="seg" style="margin-top:10px;flex-wrap:wrap">${gpaCats.map(([id,l])=>`<button data-rankcat="${id}" class="${cat===id?"on":""}">${l}</button>`).join("")}</div>`;
   } else if (board === "elo") {
-    rows = ((data.elo||{}).singles||[]).map(r => ({...r, country:"Open mixed"}));
-    note = "WPR · open mixed rating (all players, not MS/WS/MD/WD). PickleWave public board. PPA World is the official PPA category ranking.";
+    rows = ((data.elo||{}).singles||[]).slice();
+    note = "WPR · open mixed rating (all players, not MS/WS/MD/WD). Public board. PPA World is the official PPA category ranking. GPA is a separate table.";
     catSeg = `<div class="seg" style="margin-top:10px"><button class="on" type="button">Open mixed</button></div>`;
   } else {
     rows = [];
     note = "";
   }
-  const list = rows.slice(0, 80).map(r => `
+  const list = rows.slice(0, 80).map(r => {
+    const sub = board === "elo" ? "Open mixed" : (r.country || "");
+    const value = board === "elo" ? wprText(r.elo) : (r.points != null ? r.points + " pts" : "");
+    return `
     <a class="rank-row" href="${playerPath(r.name)}">
       <b>${r.rank}</b>
-      <div><strong>${r.name}</strong><span>${r.country||""}${r.dupr?" · DUPR "+r.dupr:""}</span></div>
-      <em>${r.points!=null?r.points+" pts":(r.elo?r.elo+" WPR":"")}</em>
-    </a>`).join("");
+      <div><strong>${r.name}</strong><span>${sub}</span></div>
+      <em>${value}</em>
+    </a>`;
+  }).join("");
   const calEv = ((state.calendar||{}).events||[]).filter(e=>e.upcoming!==false).slice(0,8);
   const events = (calEv.length ? calEv : (data.events||[]).slice(0,8).map(e=>({
     name:e.name, start:(e.tournament_date||"").slice(0,10), venue:e.location||e.venue||"", tier:e.tier||"", host:e.host||"", status:"results-only"
@@ -2299,6 +2545,28 @@ function bind(){
     ev.preventDefault();
     ev.stopPropagation();
     state.drawDiv = b.getAttribute("data-draw") || "";
+    state.drawPool = "";
+    state.boardMode = "draw";
+    syncDrawUrl();
+    render();
+  }));
+  document.querySelectorAll("[data-drawphase]").forEach(b => b.addEventListener("click", ev => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    state.drawPhase = b.getAttribute("data-drawphase") === "pool" ? "pool" : "elim";
+    state.drawDiv = "";
+    state.drawPool = "";
+    state.drawTour = "app";
+    state.boardMode = "draw";
+    syncDrawUrl();
+    render();
+  }));
+  document.querySelectorAll("[data-drawpool]").forEach(b => b.addEventListener("click", ev => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    state.drawPool = b.getAttribute("data-drawpool") || "";
+    state.drawPhase = "pool";
+    state.drawTour = "app";
     state.boardMode = "draw";
     syncDrawUrl();
     render();
@@ -2308,6 +2576,8 @@ function bind(){
     ev.stopPropagation();
     state.drawTour = b.getAttribute("data-drawtour") || "ppa";
     state.drawDiv = "";
+    state.drawPool = "";
+    state.drawPhase = state.drawTour === "app" ? "elim" : "";
     state.boardMode = "draw";
     state.filter = state.drawTour === "wc" ? "wc" : (state.drawTour === "ppa" ? "ppa" : (state.drawTour === "app" ? "app-pro" : state.filter));
     syncDrawUrl();
@@ -2458,6 +2728,7 @@ async function pull(){
           liveCount: data.liveCount || 0,
           delayed: !!data.delayed
         };
+        if (Array.isArray(data.bracketIndex)) state.appBracketIndex = data.bracketIndex;
       }
       if (tour === "ppa" && data) {
         state.ppaBoard = {
@@ -2566,23 +2837,53 @@ window.addEventListener("load", async () => {
 
 
 document.addEventListener("click", function wpmClick(ev){
-  const el = ev.target && ev.target.closest ? ev.target.closest("[data-draw], [data-drawtour], [data-mode], [data-f], [data-shop], [data-day], [data-more], [data-cat]") : null;
+  const el = ev.target && ev.target.closest ? ev.target.closest("[data-draw], [data-drawphase], [data-drawpool], [data-drawtour], [data-mode], [data-f], [data-shop], [data-day], [data-more], [data-cat]") : null;
   if (!el) return;
+  if (el.hasAttribute("data-drawphase")) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    state.drawPhase = el.getAttribute("data-drawphase") === "pool" ? "pool" : "elim";
+    state.drawDiv = "";
+    state.drawPool = "";
+    state.drawTour = "app";
+    state.boardMode = "draw";
+    syncDrawUrl();
+    render();
+    return;
+  }
+  if (el.hasAttribute("data-drawpool")) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    state.drawPool = el.getAttribute("data-drawpool") || "";
+    state.drawPhase = "pool";
+    state.drawTour = "app";
+    state.boardMode = "draw";
+    syncDrawUrl();
+    render();
+    return;
+  }
   if (el.hasAttribute("data-draw")) {
     ev.preventDefault();
+    ev.stopPropagation();
     state.drawDiv = el.getAttribute("data-draw") || "";
+    state.drawPool = "";
     state.boardMode = "draw";
+    syncDrawUrl();
     render();
     return;
   }
   if (el.hasAttribute("data-drawtour")) {
     ev.preventDefault();
+    ev.stopPropagation();
     state.drawTour = el.getAttribute("data-drawtour") || "ppa";
     state.drawDiv = "";
+    state.drawPool = "";
+    state.drawPhase = state.drawTour === "app" ? "elim" : "";
     state.boardMode = "draw";
     if (state.drawTour === "wc") state.filter = "wc";
     if (state.drawTour === "ppa") state.filter = "ppa";
     if (state.drawTour === "app") state.filter = "app-pro";
+    syncDrawUrl();
     render();
     return;
   }
