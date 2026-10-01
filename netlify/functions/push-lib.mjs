@@ -7,7 +7,7 @@
 import { createHash } from "node:crypto";
 import { getStore } from "@netlify/blobs";
 import webpush from "web-push";
-import { matchFollowKeys } from "./follow-tags.mjs";
+import { isTourFollowKey, matchFollowKeys, normalizeFollowKey } from "./follow-tags.mjs";
 import { matchCountsAsLive } from "./slate-events.mjs";
 
 export const PUSH_STORE = "wpm-push";
@@ -106,15 +106,20 @@ export function isMatchLive(m) {
   return false;
 }
 
+function isCappedFollowKey(k) {
+  const n = normalizeFollowKey(k);
+  return isTourFollowKey(n) || String(k || "").startsWith("ev:") || String(k || "").startsWith("gpa:");
+}
+
 export function pushCandidateRank(m, who) {
   const keys = who || [];
-  const player = keys.some((k) => !String(k).startsWith("ev:"));
+  const player = keys.some((k) => !isCappedFollowKey(k));
   if (player) return 0;
   if (m && m.tier === "pro") return 1;
   return 2;
 }
 
-/** Player matches first, then Pro event matches. The rest wait for the next cron — not marked sent. */
+/** Player matches first, then Pro matches on a followed tour. The rest wait for the next cron. */
 export function selectPushBatch(candidates, limit = MAX_PUSH_PER_SUB_PER_RUN) {
   const ranked = [...(candidates || [])].sort((a, b) => {
     const ra = pushCandidateRank(a.m, a.who);
@@ -134,22 +139,23 @@ export function selectPushBatch(candidates, limit = MAX_PUSH_PER_SUB_PER_RUN) {
   };
 }
 
+const TOUR_LABELS = {
+  app: "APP",
+  ppa: "PPA",
+  wc: "World Cup",
+  gpa: "GPA",
+  npl: "NPL",
+  asia: "PPA Asia",
+  "ppa-eu": "PPA Europe",
+  "app-asia": "APP Asia",
+  "mlp-asia": "MLP Asia",
+  tpb: "TOP Pickleball",
+};
+
 export function followLabel(k) {
-  const s = String(k || "");
-  if (!s.startsWith("ev:")) return s;
-  let decoded = s;
-  try {
-    decoded = decodeURIComponent(s);
-  } catch (_) {}
-  const blob = decoded.toLowerCase();
-  if (/18448|columbus/.test(blob)) return "Columbus";
-  if (/18453|overland/.test(blob)) return "Overland";
-  if (/las vegas|86926aef/.test(blob) || s === "ev:ppa") return "Las Vegas";
-  if (/gij/.test(blob)) return "Gijón";
-  if (s === "ev:wc") return "World Cup";
-  if (s === "ev:app") return "APP";
-  const bit = decoded.replace(/^ev:/, "").split(":").filter(Boolean).pop() || "event";
-  return bit.replace(/%20/g, " ").slice(0, 42);
+  const n = normalizeFollowKey(k);
+  if (isTourFollowKey(n)) return TOUR_LABELS[n.slice(5)] || n.slice(5);
+  return n || String(k || "");
 }
 
 export function matchFollows(m, follows) {

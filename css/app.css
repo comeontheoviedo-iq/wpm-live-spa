@@ -226,9 +226,11 @@ nav.tabbar a.on{color:var(--gold)}
 .follow-item:hover{background:#f7f4ee}
 .rail-empty{padding:8px 0;font-size:12px}
 .cat-chips{margin-top:10px}
+.follow-inline{display:none}
 @media (max-width: 960px){
   .wrap.fot{grid-template-columns:1fr}
   .rail-left,.rail-right{display:none;position:static}
+  .follow-inline{display:block}
 }
 .pair .a,.pair .b{display:block}
 .pair a:hover{color:var(--navy);text-decoration:underline}

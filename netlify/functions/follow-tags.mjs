@@ -71,46 +71,52 @@ export function tagsFor(a, b) {
   return tags;
 }
 
-export function isEventFollowKey(k) {
-  return String(k || "").startsWith("ev:");
+/** Tour-level follows. Not a single tournament (no ev:app:18448). */
+export const TOUR_IDS = ["app", "ppa", "wc", "gpa", "npl", "asia", "ppa-eu", "app-asia", "mlp-asia", "tpb"];
+
+export function isTourFollowKey(k) {
+  const s = String(k || "");
+  return s.startsWith("tour:") && TOUR_IDS.includes(s.slice(5));
+}
+
+export function isLegacyEventFollowKey(k) {
+  const s = String(k || "");
+  return s.startsWith("ev:") || s.startsWith("gpa:");
 }
 
 /**
- * Event follow hits this match.
- * Exact eventKey, shared Den id (18448), or a calendar key that names the event.
- * Calendar dates contain years — 2020–2035 are not tournament ids.
- * Kept in sync with client eventFollowHit.
+ * Player/team keys pass through. tour:app stays.
+ * Legacy event keys upgrade to a tour (ev:app:18448 → tour:app) or drop.
+ * Kept in sync with the client normalizeFollowKey.
  */
-export function eventFollowMatches(m, key) {
-  const k = String(key || "");
-  if (!isEventFollowKey(k) || !m) return false;
-  const ek = String(m.eventKey || "");
-  if (ek && ek === k) return true;
+export function normalizeFollowKey(raw) {
+  const k = String(raw || "").trim();
+  if (!k) return "";
+  if (k.startsWith("tour:")) return isTourFollowKey(k) ? k : "";
+  if (!isLegacyEventFollowKey(k)) return k;
   let decoded = k;
   try {
     decoded = decodeURIComponent(k);
   } catch (_) {}
-  const kl = decoded.toLowerCase();
-  const hay = `${m.comp || ""} ${m.venue || ""} ${ek}`.toLowerCase();
-  const ids = (kl.match(/\d{4,6}/g) || []).filter((id) => {
-    const n = Number(id);
-    return !(n >= 2020 && n <= 2035);
-  });
-  const ekIds = ek.match(/\d{4,6}/g) || [];
-  if (ids.some((id) => ekIds.includes(id))) return true;
-  if (kl.includes("columbus") && hay.includes("columbus")) return true;
-  if (kl.includes("overland") && hay.includes("overland")) return true;
-  if (
-    (kl.includes("las vegas") || kl.includes("86926aef")) &&
-    (hay.includes("las vegas") || hay.includes("86926aef") || ek === "ev:ppa" || ek.startsWith("ev:ppa:"))
-  ) {
-    return true;
-  }
-  if (kl.includes("gij") && hay.includes("gij")) return true;
-  if (k === "ev:wc" && m.tour === "wc") return true;
-  if (k === "ev:ppa" && m.tour === "ppa") return true;
-  if (k === "ev:app" && m.tour === "app") return true;
-  return false;
+  const blob = decoded.toLowerCase();
+  if (/app-asia|chongqing|taipei|bangkok|ho chi minh/.test(blob)) return "tour:app-asia";
+  if (/\bmlp\b/.test(blob)) return "tour:mlp-asia";
+  if (/gij|tpb|top pickleball/.test(blob)) return "tour:tpb";
+  if (/barcelona|ppa-eu|ppa europe/.test(blob)) return "tour:ppa-eu";
+  if (/ppa asia|ppa-asia/.test(blob)) return "tour:asia";
+  if (/^ev:ppa\b|86926aef|las vegas|\bppa\b/.test(blob)) return "tour:ppa";
+  if (/^ev:wc\b|world cup/.test(blob)) return "tour:wc";
+  if (/^ev:app\b|\bapp\b|columbus|18448|overland|18453/.test(blob)) return "tour:app";
+  if (/\bnpl\b/.test(blob)) return "tour:npl";
+  if (/\bgpa\b|d-joy|djoy/.test(blob)) return "tour:gpa";
+  return "";
+}
+
+/** A followed tour hits every match on that tour's board. Not one tournament id. */
+export function tourFollowMatches(m, key) {
+  const nk = normalizeFollowKey(key);
+  if (!isTourFollowKey(nk) || !m) return false;
+  return String(m.tour || "") === nk.slice(5);
 }
 
 /** Full player names for tag/push matching when the card shows last names only. */
@@ -127,8 +133,8 @@ export function rosterText(teams) {
 }
 
 /**
- * Which follow keys match a match: tags hit, name token in a/b/games/roster,
- * or an event follow (ev:app:18448 / Columbus calendar key).
+ * Which follow keys match a match: player tags / name tokens, or a followed tour.
+ * Legacy ev:app:18448 upgrades to tour:app before the check.
  * Shared by push-live-check and kept in sync with client matchedFollowsFor.
  */
 export function matchFollowKeys(m, follows) {
@@ -139,9 +145,13 @@ export function matchFollowKeys(m, follows) {
   const hayTokens = new Set(nameTokens(hay).map((t) => t.toLowerCase()));
   const hayLower = hay.toLowerCase();
   const hit = [];
-  for (const k of keys) {
-    if (isEventFollowKey(k)) {
-      if (eventFollowMatches(m, k)) hit.push(k);
+  const seen = new Set();
+  for (const raw of keys) {
+    const k = normalizeFollowKey(raw);
+    if (!k || seen.has(k)) continue;
+    seen.add(k);
+    if (isTourFollowKey(k)) {
+      if (tourFollowMatches(m, k)) hit.push(k);
       continue;
     }
     if (tagSet.has(k)) {

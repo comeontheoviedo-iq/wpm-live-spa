@@ -10,6 +10,7 @@ import {
   resolveVapid,
   pruneNotified,
 } from "./push-lib.mjs";
+import { normalizeFollowKey } from "./follow-tags.mjs";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -58,7 +59,7 @@ export default async (req: Request, _context: Context) => {
   const follows = [
     ...new Set(
       followsRaw
-        .map((t: unknown) => String(t || "").trim())
+        .map((t: unknown) => normalizeFollowKey(String(t || "").trim()))
         .filter(Boolean)
         .slice(0, 80)
     ),

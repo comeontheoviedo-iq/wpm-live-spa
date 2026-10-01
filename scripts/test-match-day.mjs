@@ -5,7 +5,7 @@
  */
 import fs from "node:fs";
 import assert from "node:assert/strict";
-import { eventFollowMatches, matchFollowKeys, rosterText, tagsFor } from "../netlify/functions/follow-tags.mjs";
+import { matchFollowKeys, normalizeFollowKey, rosterText, tagsFor, tourFollowMatches } from "../netlify/functions/follow-tags.mjs";
 import {
   followLabel,
   isMatchLive,
@@ -14,8 +14,8 @@ import {
   MAX_PUSH_PER_SUB_PER_RUN,
 } from "../netlify/functions/push-lib.mjs";
 
-const js = fs.readFileSync("js/wpm-20260930c.js", "utf8");
-const siteJs = fs.readFileSync("site/js/wpm-20260930c.js", "utf8");
+const js = fs.readFileSync("js/wpm-20261001a.js", "utf8");
+const siteJs = fs.readFileSync("site/js/wpm-20261001a.js", "utf8");
 assert.equal(siteJs, js);
 
 const columbus = {
@@ -46,14 +46,24 @@ assert.equal(isMatchLive({ tour: "ppa", status: "LIVE", a: "Waters", b: "Bright"
 assert.equal(isMatchLive({ tour: "ppa", status: "NEXT", a: "Waters", b: "Bright" }), false);
 
 assert.deepEqual(matchFollowKeys(columbus, ["Waters"]), ["Waters"]);
-assert.deepEqual(matchFollowKeys(columbus, ["ev:app:18448"]), ["ev:app:18448"]);
+assert.equal(normalizeFollowKey("ev:app:18448"), "tour:app");
+assert.equal(normalizeFollowKey("ev:gpa:app%20columbus%20open:2026-10-01"), "tour:app");
+assert.equal(normalizeFollowKey("ev:ppa:86926aef"), "tour:ppa");
+assert.equal(normalizeFollowKey("ev:foo:nope"), "");
+assert.equal(normalizeFollowKey("Waters"), "Waters");
+assert.equal(normalizeFollowKey("tour:nope"), "");
+assert.deepEqual(matchFollowKeys(columbus, ["ev:app:18448"]), ["tour:app"]);
+assert.deepEqual(matchFollowKeys(columbus, ["tour:app"]), ["tour:app"]);
 assert.deepEqual(
   matchFollowKeys(columbus, ["ev:gpa:app%20columbus%20open:2026-10-01"]),
-  ["ev:gpa:app%20columbus%20open:2026-10-01"]
+  ["tour:app"]
 );
 assert.deepEqual(matchFollowKeys(columbus, ["ev:ppa:86926aef"]), []);
-assert.equal(eventFollowMatches(columbus, "ev:app:18453"), false);
-assert.deepEqual(matchFollowKeys({ ...columbus, status: "NEXT", denStatus: "SCHEDULED" }, ["ev:app:18448"]), ["ev:app:18448"]);
+assert.deepEqual(matchFollowKeys(columbus, ["tour:ppa"]), []);
+assert.equal(tourFollowMatches(columbus, "tour:ppa"), false);
+assert.equal(tourFollowMatches(columbus, "ev:app:18453"), true);
+assert.deepEqual(matchFollowKeys(columbus, ["ev:foo:nope"]), []);
+assert.deepEqual(matchFollowKeys({ ...columbus, status: "NEXT", denStatus: "SCHEDULED" }, ["tour:app"]), ["tour:app"]);
 
 const fullName = {
   ...columbus,
@@ -72,11 +82,12 @@ const roster = rosterText([
 assert.match(roster, /Anna Leigh Waters/);
 assert.match(roster, /Ben Johns/);
 
-assert.equal(followLabel("ev:app:18448"), "Columbus");
-assert.equal(followLabel("ev:gpa:app%20columbus%20open:2026-10-01"), "Columbus");
+assert.equal(followLabel("ev:app:18448"), "APP");
+assert.equal(followLabel("tour:app"), "APP");
+assert.equal(followLabel("ev:gpa:app%20columbus%20open:2026-10-01"), "APP");
 assert.equal(followLabel("Waters"), "Waters");
 const payload = notifyPayload(columbus, ["Waters", "ev:app:18448"]);
-assert.match(payload.body, /Following · Waters, Columbus/);
+assert.match(payload.body, /Following · Waters, APP/);
 assert.equal(payload.title, "WPM LIVE");
 assert.equal(payload.tag, "app-1");
 assert.equal(payload.data.url, "/match/app-1");
@@ -86,12 +97,12 @@ const flood = [];
 for (let i = 0; i < 20; i++) {
   flood.push({
     m: { id: "ev-" + i, tier: i % 2 ? "pro" : "amateur", start: "2026-10-01T" + String(10 + (i % 8)).padStart(2, "0") + ":00:00.000Z", status: "LIVE", denStatus: "RUNNING" },
-    who: ["ev:app:18448"],
+    who: ["tour:app"],
   });
 }
 flood.push({
   m: { id: "player-1", tier: "amateur", start: "2026-10-01T18:00:00.000Z", status: "LIVE", denStatus: "PLAYING" },
-  who: ["Waters", "ev:app:18448"],
+  who: ["Waters", "tour:app"],
 });
 const batch = selectPushBatch(flood);
 assert.equal(batch.send[0].m.id, "player-1");
@@ -108,7 +119,14 @@ assert.ok(js.includes('return "Play starts soon"'));
 assert.ok(js.includes("function cardFacts"));
 assert.ok(js.includes("function tierMark"));
 assert.ok(js.includes("class=\"tier-chip\">Pro"));
-assert.ok(js.includes("function matchDayFollowStrip"));
+assert.ok(js.includes("function tourFollowHit"));
+assert.ok(js.includes("function migrateFollows"));
+assert.ok(js.includes("function tourFollowButton"));
+assert.ok(js.includes("tour:app"));
+assert.ok(js.includes("Tours and players you follow show here."));
+assert.equal(js.includes("function matchDayFollowStrip"), false);
+assert.equal(js.includes("function followChips"), false);
+assert.equal(js.includes("Follow Columbus"), false);
 assert.ok(js.includes("Scheduled · not live until Den says so"));
 assert.ok(js.includes("Time to be assigned"));
 assert.ok(js.includes("amateur"));
@@ -128,4 +146,4 @@ assert.ok(appFn.includes("rosterText"));
 assert.ok(appFn.includes("isDenLiveStatus"));
 assert.equal(appFn.includes("clock-promote"), true);
 
-console.log("ok match-day · Columbus slate sections · event push · no fake LIVE");
+console.log("ok match-day · Columbus slate sections · tour push · no fake LIVE");
