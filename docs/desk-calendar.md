@@ -39,6 +39,7 @@ Shop stays closed. Tours stay labelled (APP / PPA / WC / GPA / …).
 3. Set **score connector**:
    - **APP / Den** → paste `tournamentId` (live: Columbus `18448`; Overland `18453` is ended)
    - **PPA** → paste ticker event UUID
+   - **SportsSync** → paste a numeric `tournamentId` from sportssync.asia. Saves as **results-only**, not on LIVE. Leave Chongqing blank until organizer 1645900 lists it. **89** and **222** are KL and Penang, not Chongqing. See [`sportssync-asia.md`](./sportssync-asia.md)
    - **URL** → e.g. `/api/worldcup`
    - **none** → saves as **results-only**
 4. Enter **Desk key** → **Arm / save**.
@@ -74,7 +75,7 @@ Public JSON: GPA events merged with armed flags (`armed`, `onLive`, `status`, `c
 - **APP Japan – Sendai** — **no Den id** (Tournated / JPA). Cannot live-path via `/api/app`. See `docs/app-den-ids.md`.
 - **APP Columbus Open** — armed live-path. Den **18448**, Pickle & Chill, `America/New_York`, `/api/app`. GPA id `gpa:app%20columbus%20open:2026-10-01`. Code seed (`applyAppCalendarCut`) arms this row on read. Registration external id `8057937` is not the scoring id.
 - **APP Overland Park** — ended 20 Sep 2026. Den `18453` disarmed, not `onLive`.
-- **APP Asia Chongqing** — Den id **not found**. Calendar/results-only only. APP Asia Tour, **not** MLP Asia. No fake LIVE.
+- **APP Asia Chongqing** — Den id **not found**. SportsSync id **not listed** (organizer 1645900: KL 89, Penang 222 only, 2026-09-30). Calendar/results-only. A later real SportsSync id arms `/api/sportssync` as results-only, never LIVE. APP Asia Tour, **not** MLP Asia. No fake LIVE. See [`sportssync-asia.md`](./sportssync-asia.md).
 - **TPB Gijón 2026** — seeded slate, scores delayed, official draw PDF. No Den id. See `docs/slate-europe.md`.
 - **PPA Barcelona Open** — ended 27 Sep 2026, UUID `1655a7c9-904a-44c9-aa29-b279fca900e8`, no scores, unparked. Do not cut `/api/ppa` there.
 - **PPA Rate Las Vegas Open** — live `/api/ppa` UUID `86926aef-0566-4fbb-87cf-a48068a9f1c6`, Darling Tennis Center, `America/Los_Angeles`. Not April `92d37566-…`.

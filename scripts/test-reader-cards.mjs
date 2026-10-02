@@ -118,7 +118,8 @@ assert.ok(cal.includes("applyAppCalendarCut"));
 assert.ok(cal.includes("18448"));
 assert.equal(cal.includes("not published yet"), false);
 assert.ok(cal.includes("Chongqing"));
-assert.ok(cal.includes("calendar/results-only only"));
+assert.ok(cal.includes("CHONGQING_DESK_NOTE"));
+assert.ok(cal.includes("Calendar/results-only only") || fs.readFileSync("netlify/functions/sportssync-map.mjs", "utf8").includes("Calendar/results-only only"));
 assert.ok(cal.includes(".map(toReaderEvent)"));
 assert.ok(cal.includes("readerStatusLine({ status: \"ended\", ended: true })"));
 

@@ -64,3 +64,10 @@
 - **APP Asia Chongqing Open** — Den id still **not found**. Calendar/results-only only. No fake LIVE.
 - Client `wpm-20260930a.js` · SW `wpm-static-20260930a`. Shop stays Coming soon.
 
+## 2026-09-30 — SportsSync results scaffold (Chongqing still unarmed)
+
+- APP Asia scoring site is SportsSync. Organizer `1645900` lists **KL 89** and **Penang 222** only. Chongqing is not on that page. No id invented.
+- Scores `GET /tournament/api/{id}/scores` for 89 and 222 returned `[]`. Schedule filter is `scheduled` | `completed` only. **No trustworthy in-progress signal.** `/api/sportssync` maps FT/NEXT and does not mark LIVE.
+- Calendar can store `connector.type=sportssync` once a real id exists. Chongqing + 89/222 is stripped. `onLive` stays false.
+- Client `wpm-20260930c.js` (desk field + FT-only overlay). Shop stays Coming soon.
+

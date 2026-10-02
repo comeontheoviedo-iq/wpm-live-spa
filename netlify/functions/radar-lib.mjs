@@ -16,6 +16,12 @@ import {
   ppaTickerTitleAligned,
   staticWatchEvents,
 } from "./slate-events.mjs";
+import {
+  APP_ASIA_ORGANIZER_URL,
+  CHONGQING_DESK_NOTE,
+  extractSportsSyncTournamentIds,
+  summarizeOrganizerListing,
+} from "./sportssync-map.mjs";
 
 const UA = { "User-Agent": "WPM-LIVE-radar/1.0", Accept: "application/json" };
 
@@ -146,13 +152,14 @@ async function probeGpa(today) {
           WIRED.app.eventId +
           ".";
       } else if (appAsia) {
-        // Chongqing and the rest of APP Asia: no Den id. Calendar/results-only. Never fake LIVE.
+        // Chongqing and the rest of APP Asia: no Den id, no SportsSync id yet. Never fake LIVE.
         board = "results_only";
         inn.scorePath = false;
         inn.timezone = false;
         inn.status = "fail";
-        note =
-          "APP Asia Tour (not MLP Asia). Den tournamentId not found — calendar/results-only only. Do not fake LIVE.";
+        note = /chongqing/i.test(name)
+          ? CHONGQING_DESK_NOTE
+          : "APP Asia Tour (not MLP Asia). No Den id. SportsSync /api/sportssync is results-only once a real tournamentId is listed. Do not fake LIVE.";
       }
       events.push({
         tour: appAsia ? "app-asia" : "app",
@@ -414,6 +421,63 @@ async function probeWorldCup(prodBase) {
   };
 }
 
+/** Watch APP Asia organizer 1645900. A new /tournament/{id} is not Chongqing until the name is checked. */
+async function probeSportsSyncOrganizer() {
+  const page = await fetchJson(APP_ASIA_ORGANIZER_URL, { Accept: "text/html" }, 12000);
+  const ids = page.ok ? extractSportsSyncTournamentIds(page.text || "") : [];
+  const listing = summarizeOrganizerListing(ids);
+  const novel = listing.novel;
+  let note = CHONGQING_DESK_NOTE;
+  if (!page.ok) {
+    note = `SportsSync organizer page ${page.error || page.status}. Chongqing id stays unknown. Do not invent one. Do not fake LIVE.`;
+  } else if (novel.length) {
+    note =
+      `Organizer 1645900 listed new SportsSync tournament id(s) ${novel.join(", ")}. ` +
+      "Open the card and confirm the name is APP Asia Chongqing Open before arming /api/sportssync. " +
+      "Do not assume. Do not mark LIVE. KL 89 and Penang 222 are not Chongqing.";
+  } else {
+    note =
+      `Organizer 1645900 lists ${listing.found.join(", ") || "no tournaments"}. ` +
+      "Chongqing SportsSync id is not listed. /api/sportssync stays unarmed. Results-only. Do not fake LIVE.";
+  }
+  return {
+    ok: page.ok,
+    listing,
+    event: {
+      tour: "app-asia",
+      name: "APP Asia · SportsSync organizer",
+      start: "2026-10-02",
+      end: "2026-10-06",
+      venue: "Chongqing, China",
+      tz: "Asia/Shanghai",
+      source: "sportssync-organizer",
+      organizerUrl: APP_ASIA_ORGANIZER_URL,
+      sportsSyncTournamentId: null,
+      listedTournamentIds: listing.found,
+      novelTournamentIds: novel,
+      scorePath: null,
+      intake: {
+        name: true,
+        venue: true,
+        timezone: true,
+        scorePath: false,
+        status: "fail",
+      },
+      board: "results_only",
+      liveSafe: false,
+      note,
+    },
+    action: novel.length
+      ? {
+          priority: "P1",
+          tour: "app-asia",
+          name: "APP Asia Chongqing Open",
+          action: note,
+        }
+      : null,
+  };
+}
+
 /**
  * @param { now?: Date, prodBase?: string } [opts]
  */
@@ -422,12 +486,13 @@ export async function buildRadarReport(opts = {}) {
   const today = ymd(now);
   const prodBase = opts.prodBase || "https://live.worldpickleballmagazine.com";
 
-  const [gpa, ppa, app, wc, gijon] = await Promise.all([
+  const [gpa, ppa, app, wc, gijon, sportssync] = await Promise.all([
     probeGpa(today),
     probePpa(),
     probeAppDen(),
     probeWorldCup(prodBase),
     probeGijon(),
+    probeSportsSyncOrganizer(),
   ]);
   const barcelona = await probeEndedBarcelona(ppa.tickerTitle);
 
@@ -437,6 +502,7 @@ export async function buildRadarReport(opts = {}) {
   if (wc.event) events.push(wc.event);
   if (gijon.event) events.push(gijon.event);
   if (barcelona.event) events.push(barcelona.event);
+  if (sportssync.event) events.push(sportssync.event);
   for (const w of staticWatchEvents()) {
     if (w.tour === "tpb" || w.tour === "ppa-eu") continue;
     events.push(w);
@@ -455,6 +521,7 @@ export async function buildRadarReport(opts = {}) {
   };
 
   const actions = [];
+  if (sportssync.action) actions.push(sportssync.action);
   for (const e of events) {
     if (e.board === "blocked_by_intake") {
       actions.push({
@@ -485,6 +552,7 @@ export async function buildRadarReport(opts = {}) {
       denLive: app.ok,
       worldcup: wc.ok,
       gijonOfficial: gijon.event?.officialOk ?? null,
+      sportssyncOrganizer: sportssync.ok,
     },
     wired: WIRED,
     parkedPpa: PARKED_PPA,
@@ -504,7 +572,8 @@ export async function buildRadarReport(opts = {}) {
         "Do not wire the April Las Vegas UUID 92d37566-…",
         "Watch Gijón for Den/Tournated — until then scores delayed + draw PDF only",
         "Live APP is Columbus Open Den 18448 (Pickle & Chill, America/New_York, /api/app). Overland 18453 ended — disarmed, not onLive.",
-        "Chongqing and other APP Asia rows have no Den id — calendar/results-only only. Do not fake LIVE.",
+        "Chongqing has no Den id and no SportsSync id. Watch https://www.sportssync.asia/organizers/1645900 — as of 2026-09-30 only KL 89 and Penang 222. Do not invent Chongqing's id. Do not fake LIVE.",
+        "When a Chongqing SportsSync id is real, arm connector type sportssync on /calendar. /api/sportssync stays results-only (FT). LIVE is unsafe until a scores row proves an in-progress status.",
         "If new APP on GPA → find Den tournamentId → intake checklist → ship /api/app id",
         "MLP Asia ≠ APP Asia Tour — never merge those chips",
         "Never invent scores; shop stays closed; do not regress APP/Web Push",

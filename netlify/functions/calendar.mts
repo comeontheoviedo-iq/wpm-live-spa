@@ -18,6 +18,7 @@ import {
   readerStatusLine,
   toReaderEvent,
 } from "./slate-events.mjs";
+import { applySportsSyncArm, CHONGQING_DESK_NOTE } from "./sportssync-map.mjs";
 
 const GPA_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBybmVlZGhxaW51ZGFzbmdrcXFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1NDkzMDIsImV4cCI6MjA3NjEyNTMwMn0.U6VPCpYEtyFkVwxQ7yMAbGf_huWORMg_8iyyd-WkADc";
@@ -92,12 +93,27 @@ const KNOWN = {
     scorePath: "/api/worldcup",
     timezone: "Asia/Ho_Chi_Minh",
   },
+  /** Results path only. Chongqing has no id. 89 and 222 are KL and Penang, not Chongqing. */
+  sportssyncAsia: {
+    type: "sportssync",
+    scorePath: "/api/sportssync",
+    live: false,
+    resultsOnly: true,
+    organizerId: "1645900",
+    organizerUrl: "https://www.sportssync.asia/organizers/1645900",
+    listedAsOf: "2026-09-30",
+    listedTournamentIds: ["89", "222"],
+    chongqingSportsSyncId: null,
+    timezone: "Asia/Shanghai",
+    name: "APP Asia Chongqing Open",
+  },
 };
 
 type Connector = {
-  type: "none" | "app" | "ppa" | "url" | "djoy";
+  type: "none" | "app" | "ppa" | "url" | "djoy" | "sportssync";
   denTournamentId?: string;
   ppaEventId?: string;
+  sportsSyncTournamentId?: string;
   scoreUrl?: string;
   scorePath?: string;
 };
@@ -154,6 +170,7 @@ function hasScorePath(c: Connector | null | undefined): boolean {
   }
   if (c.type === "url" || c.type === "djoy")
     return Boolean((c.scoreUrl || c.scorePath) && String(c.scoreUrl || c.scorePath).trim());
+  if (c.type === "sportssync") return Boolean(String(c.sportsSyncTournamentId || "").trim());
   return false;
 }
 
@@ -161,6 +178,7 @@ function resolveScorePath(c: Connector): string | null {
   if (!hasScorePath(c)) return null;
   if (c.type === "app") return c.scorePath || "/api/app";
   if (c.type === "ppa") return c.scorePath || "/api/ppa";
+  if (c.type === "sportssync") return c.scorePath || "/api/sportssync";
   return c.scorePath || c.scoreUrl || null;
 }
 
@@ -282,13 +300,13 @@ function mergeCalendar(gpaRows: any[], armed: ArmedEvent[]) {
           "No Den Live tournamentId — hosted on Tournated/Japan pickleball (games.japanpickleball.org/11359), not Den";
         status = "results-only";
       } else if (/Chongqing/i.test(name)) {
-        note =
-          "APP Asia Tour (not MLP Asia). Den Live tournamentId not found — calendar/results-only only. Do not fake LIVE.";
+        note = CHONGQING_DESK_NOTE;
         status = "results-only";
         onLive = false;
         connector = null;
       } else if (isAppAsiaName(name)) {
-        note = "APP Asia Tour — not MLP Asia. No Den Live id. Results-only. Do not fake LIVE.";
+        note =
+          "APP Asia Tour — not MLP Asia. No Den Live id. SportsSync /api/sportssync is results-only once a real tournamentId is listed. Do not fake LIVE.";
         status = "results-only";
         onLive = false;
         connector = null;
@@ -367,21 +385,26 @@ function mergeCalendar(gpaRows: any[], armed: ArmedEvent[]) {
   }
 
   events.sort((a: any, b: any) => String(a.start).localeCompare(String(b.start)));
-  return events;
+  return events.map((e: any) => applySportsSyncArm(e));
 }
 
 function normalizeConnector(raw: any): Connector {
   const type = String(raw?.type || "none").toLowerCase();
   const c: Connector = {
-    type: (["none", "app", "ppa", "url", "djoy"].includes(type) ? type : "none") as Connector["type"],
+    type: (["none", "app", "ppa", "url", "djoy", "sportssync"].includes(type) ? type : "none") as Connector["type"],
   };
   if (raw?.denTournamentId) c.denTournamentId = String(raw.denTournamentId).trim();
   if (raw?.ppaEventId) c.ppaEventId = String(raw.ppaEventId).trim();
+  if (raw?.sportsSyncTournamentId) {
+    const ss = String(raw.sportsSyncTournamentId).replace(/\D/g, "");
+    if (ss) c.sportsSyncTournamentId = ss;
+  }
   if (raw?.scoreUrl) c.scoreUrl = String(raw.scoreUrl).trim();
   if (raw?.scorePath) c.scorePath = String(raw.scorePath).trim();
   // Convenience: numeric den id with type omitted
   if (c.type === "none" && c.denTournamentId) c.type = "app";
   if (c.type === "none" && c.ppaEventId) c.type = "ppa";
+  if (c.type === "none" && c.sportsSyncTournamentId) c.type = "sportssync";
   if (c.type === "none" && (c.scoreUrl || c.scorePath)) c.type = "url";
   const path = resolveScorePath(c);
   if (path) c.scorePath = path;
@@ -395,7 +418,7 @@ export default async (req: Request, _context: Context) => {
       loadArmed(),
     ]);
     const today = new Date().toISOString().slice(0, 10);
-    const armedEvents = applyAppCalendarCut(armedStore.events);
+    const armedEvents = applyAppCalendarCut(armedStore.events).map((row) => applySportsSyncArm(row));
     const events = mergeCalendar(gpa, armedEvents).map(toReaderEvent);
     return Response.json(
       {
@@ -457,8 +480,16 @@ export default async (req: Request, _context: Context) => {
     const tier = String(body.tier || "").trim();
     const tour = String(body.tour || guessTour(host, name)).trim().toLowerCase();
     const note = String(body.note || "").trim();
-    const connector = normalizeConnector(body.connector || {});
+    const normalized = normalizeConnector(body.connector || {});
     const delayed = Boolean(body.delayed);
+    const guarded = applySportsSyncArm({
+      name,
+      tour,
+      connector: normalized,
+      status: "results-only",
+      onLive: false,
+    });
+    const connector = (guarded.connector || { type: "none" }) as Connector;
 
     if (!name || !start) {
       return Response.json({ error: "need name and start date" }, { status: 400 });
@@ -466,16 +497,23 @@ export default async (req: Request, _context: Context) => {
 
     const id = String(body.id || eventId(name, start));
     const gate = intakeStatus({ name, venue, timezone, connector, delayed });
+    // SportsSync can return results, but it is not a LIVE board. Chongqing stays off LIVE.
+    let status = gate.status;
+    let onLive = gate.onLive;
+    if (connector.type === "sportssync" || /chongqing/i.test(name)) {
+      onLive = false;
+      if (status === "live-path") status = delayed ? "delayed" : "results-only";
+    }
 
     // Refuse claiming onLive without full intake — store as results-only / delayed instead
-    if (body.requireLive && !gate.onLive) {
+    if (body.requireLive && !onLive) {
       return Response.json(
         {
           error: "intake_failed",
           message:
-            "Event is on WPM LIVE only when name, venue, timezone, and a working score path all pass. Missing score path → results-only or scores delayed — never fake 0–0.",
+            "Event is on WPM LIVE only when name, venue, timezone, and a working score path all pass. SportsSync stays results-only until an in-progress signal is proven. Missing score path → results-only or scores delayed — never fake 0–0.",
           intake: gate.intake,
-          status: gate.status,
+          status,
         },
         { status: 422 }
       );
@@ -492,8 +530,8 @@ export default async (req: Request, _context: Context) => {
       start,
       end,
       connector,
-      status: gate.status,
-      onLive: gate.onLive,
+      status,
+      onLive,
       note,
       armedAt: new Date().toISOString(),
       gpaName: name,
