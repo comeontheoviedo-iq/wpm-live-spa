@@ -9,3 +9,7 @@ User-facing copy is **WPR**. Internal `/api/rankings` field remains `elo` (Pickl
 | **GPA** | GPA category tables (MS/WS/MD/WD). |
 
 Right rail: GPA and WPR are stacked (sticky is on the rail, not each card) so WPR no longer sits on top of GPA.
+
+## How the number is shown
+
+The same rating string everywhere a WPR row is painted: **`1842 WPR`** with the category **Open mixed**. The table does not add a second DUPR ranking. On a player page the header badge is that WPR rating (and the WPR place, when the board has one). DUPR, when the public feed includes it, is a separate line on the WPR card only. GPA points use **pts** on the rail and the full table. No board is merged into one world #1.

@@ -185,6 +185,10 @@ Den 18448 can publish a full SCHEDULED / NEXT slate with **0 LIVE** until play s
 
 `node scripts/test-match-day.mjs` covers event-follow push and the client markers. Scores are still only Den game lines.
 
+## Draw wall — pools then elimination · 2026-09-30
+
+`/api/app` now sends `bracketIndex` from the Den bracket list (no scores). The APP draw splits **Elimination** and **Pools**, keeps Round N on round robins, and deep-links `phase` and `pool`. Pending Columbus brackets with no sides show **Play starts soon**, not an empty slot dump. Client `wpm-20260930c.js`. See [`draw-app.md`](./draw-app.md).
+
 ## Ship note — APP day truth · 2026-09-18 (h)
 
 **Miss:** Men's/Women's Pro Singles Final/Bronze are **Sunday 20 Sep 2026** (Den `tournament.endDate`, America/Chicago). Prod dated WAITING_FOR_COURT onto Friday, so Wazir–Dussault / Bower–Camron sat on today's board as NEXT with blank scores.

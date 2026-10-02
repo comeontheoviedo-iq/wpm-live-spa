@@ -22,9 +22,10 @@ WPM LIVE should feel like FotMob for pickleball: live truth first, then identity
 
 - Seed follow keys: `Waters`, `Johns`, `Bright`, `Vietnam`, `USA`, `India`.
 - URLs accept short key **or** full/abbrev name (`/player/Anna%20Leigh%20Waters`, `/player/A.%20Waters`) and resolve to the same profile + follow key.
-- Profile: header + Follow · ranking cards (GPA / Pro ELO / PPA World) · **Recent (Pro tour pool)** from `wavePlayers` · Today · Recent results · magazine hits · archive medals.
+- Profile: header (initials, name, role, Follow) · WPR badge when the rating is on the board · ranking cards (GPA / WPR / PPA World) · pro-tour cards only when the public feed parsed them · one Matches list from the live board (no second empty “recent” dump) · magazine hits · archive medals.
+- Match cards link each player in a side (`Waters / Bright` is two profiles). The match page does the same. Result rows link the opponent, the match, and the draw when that tour has one.
 - Ranking table names link to `/player/<Name>` (short key when known).
-- Pro ELO / tour pool labelled as PickleWave public boards — never merged with GPA or PPA World.
+- WPR / tour pool labelled as public boards — never merged with GPA or PPA World.
 - **PPA World** is live from `ppatour.com/api/rankings` (1h Blobs cache + static fallback). See `docs/ppa-world-rankings.md`.
 
 ## Explicit non-goals (this slice)

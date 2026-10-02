@@ -232,6 +232,11 @@ nav.tabbar a.on{color:var(--gold)}
   .rail-left,.rail-right{display:none;position:static}
   .follow-inline{display:block}
 }
+@media (max-width: 700px){
+  .person-hero{flex-wrap:wrap}
+  .person-hero h2{font-size:26px}
+  .person-actions{margin-left:0;flex-direction:row;align-items:center;width:100%}
+}
 .pair .a,.pair .b{display:block}
 .pair a:hover{color:var(--navy);text-decoration:underline}
 
@@ -239,6 +244,20 @@ nav.tabbar a.on{color:var(--gold)}
 
 
 .person-head{padding:4px 0 8px}
+.person-hero{display:flex;gap:16px;align-items:flex-start;padding:8px 0 4px}
+.person-hero .avatar{width:64px;height:64px;border-radius:50%;background:var(--navy);color:var(--gold);display:grid;place-items:center;font-family:Syne,sans-serif;font-weight:800;font-size:22px;flex:0 0 auto}
+.person-hero h2{font-family:Syne,sans-serif;font-size:32px;letter-spacing:-.03em;line-height:1.05}
+.person-hero .role{color:var(--mute);margin-top:6px;font-size:14px}
+.person-hero .blurb{margin-top:8px;max-width:520px;line-height:1.45}
+.person-actions{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+.wpr-badge{background:#f7f4ee;border:1px solid var(--line);border-radius:14px;padding:8px 12px;text-align:right;min-width:120px}
+.wpr-badge b{font-family:Syne,sans-serif;font-size:28px;letter-spacing:-.03em;display:block;color:var(--navy);line-height:1}
+.wpr-badge span{display:block;font-size:10px;letter-spacing:.06em;text-transform:uppercase;font-weight:800;color:var(--mute);margin-top:4px}
+.result-row{display:grid;grid-template-columns:54px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.result-row .opp{font-weight:650}
+.result-row .meta{display:block;color:var(--mute);font-size:12px;font-weight:450;margin-top:2px}
+.result-row .meta a{text-decoration:underline;text-underline-offset:2px}
+.side-links a:hover{text-decoration:underline}
 .rank-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:8px}
 .rank-card{background:#f7f4ee;border:1px solid var(--line);border-radius:14px;padding:12px 14px}
 .rank-card .src{font-size:10px;letter-spacing:.12em;text-transform:uppercase;font-weight:800;color:var(--mute)}
