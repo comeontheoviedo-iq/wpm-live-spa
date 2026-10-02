@@ -3,7 +3,21 @@
 APP Asia software is **SportsSync** (`sportssync.asia`), not Den Live.  
 WPM connector: `netlify/functions/sportssync.mts` → **`/api/sportssync`**. Tour chip **`app-asia`**.
 
-**Truth (2026-09-30):** results only. Cards are **FT** or **NEXT**. `liveCount` is 0. Shop stays Coming soon. No DNS changes.
+**Truth (2026-10-02):** results only. Cards are **FT** or **NEXT**. `liveCount` is 0. Shop stays Coming soon. No DNS changes.
+
+## Hunt 2026-10-02 — Chongqing id not found
+
+| Surface | Result |
+|---------|--------|
+| Organizer [1645900](https://www.sportssync.asia/organizers/1645900) | Still only **89** (KL) and **222** (Penang) |
+| Sitemap `sportssync.asia/sitemap.xml` | 246 tournament ids, 91–471. Titles fetched. No Chongqing. APP-related hits were KL spectator **166**, Penang **222**, Paramount Cup qualifier **358** |
+| Id gaps 360–519 not in the sitemap | Pages that resolve are club events. **390** and **391** redirect to `/tournament/index` |
+| `theapp.asia` calendar | **390** labeled Taipei, **391** labeled Bangkok. Neither is Chongqing |
+| `theapp.global` schedule | No Chongqing card. Bangkok register link is **391**. Event URL for Chongqing **404** |
+| Den `tournament-brackets` | Prior scan ~18455–18670 empty. This pass 18671–18712 until HTTP 429. Named rows: Shootout 18672/18673, Lien Doan Chi Lang 18684, Pioneer Picklefest 18692. Not Chongqing |
+| Scores `GET /tournament/api/{id}/scores` | `[]` for any id, including 99999. An empty list is not proof a tournament exists |
+
+Do not arm 89, 222, 390, or 391 as Chongqing. Those ids are stripped. A new id that is actually named Chongqing can still be saved as results-only.
 
 ## Chongqing is not armed
 
@@ -17,7 +31,7 @@ WPM connector: `netlify/functions/sportssync.mts` → **`/api/sportssync`**. Tou
 
 Organizer page: https://www.sportssync.asia/organizers/1645900
 
-Checked 2026-09-30. That page lists two tournaments only:
+Checked 2026-09-30 and again 2026-10-02. That page lists two tournaments only:
 
 | Id | Event | Use |
 |----|--------|-----|

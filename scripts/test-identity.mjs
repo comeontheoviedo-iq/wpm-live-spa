@@ -11,8 +11,8 @@ import { appWallBands } from "../netlify/functions/app-rounds.mjs";
 const client = fs.readFileSync(new URL("../js/app.js", import.meta.url), "utf8");
 const shipped = fs.readFileSync(new URL("../site/index.html", import.meta.url), "utf8");
 
-assert.match(shipped, /wpm-20261002b\.js/);
-assert.match(shipped, /Coming soon|20261002b/);
+assert.match(shipped, /wpm-20261002c\.js/);
+assert.match(shipped, /Coming soon|20261002c/);
 assert.match(client, /function person-hero|class="person-hero"/);
 assert.match(client, /WPR · Open mixed/);
 assert.match(client, /Coming soon/);

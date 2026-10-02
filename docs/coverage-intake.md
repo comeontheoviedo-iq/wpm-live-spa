@@ -30,7 +30,9 @@ MLP, PPA Asia, club opens as **live** boards. GPA calendar / history may show th
 - **World Cup** → `/api/worldcup`
 - **APP / Den Live** → `/api/app` (see `docs/app-den-live.md`) — tour chip **APP**. Live stop is **APP Columbus Open presented by The James**, Den **18448**, Pickle & Chill, Columbus, OH, `America/New_York`. Overland **18453** ended and is disarmed. LIVE only when Den status is RUNNING. Pending brackets are not a live board.
 
-**APP Asia Chongqing Open** has **no Den id** and **no SportsSync id** (organizer `1645900` listed KL 89 and Penang 222 only, as of 2026-09-30). Calendar/results-only. `/api/sportssync` can attach a real numeric id later and still stays **FT / results-only** — do not fake LIVE or 0–0. See [`sportssync-asia.md`](./sportssync-asia.md).
+**APP Asia Chongqing Open** has **no Den id** and **no SportsSync id** (2026-10-02 hunt: organizer `1645900` still KL 89 and Penang 222; sitemap titles 91–471 have no Chongqing). Calendar/results-only. `/api/sportssync` can attach a real numeric id later and still stays **FT / results-only** — do not fake LIVE or 0–0. See [`sportssync-asia.md`](./sportssync-asia.md).
+
+**Next on the slate (not live pins):** PPA Chicago and Virginia Beach (do not cut Rate Las Vegas), APP Louisville Den **18454** (do not cut Columbus **18448**), APP Asia Bangkok / Taipei / India / HCMC results-only, MLP Asia 2026 labeled **MLP Asia**.
 
 ## Desk calendar
 

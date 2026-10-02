@@ -94,8 +94,8 @@ if ("Notification" in window && Notification.permission === "granted") {
   setTimeout(() => { syncPushSubscription(); }, 2500);
 }
 
-const SAFE_SW = "/sw.js?v=20261002b";
-const SAFE_SW_MARK = "20261002b";
+const SAFE_SW = "/sw.js?v=20261002c";
+const SAFE_SW_MARK = "20261002c";
 const GIJON_DRAW_URL = "https://toppickleballtour.com/wp-content/uploads/2026/09/TOP-PICKLEBALL-TOUR-GIJON-GRUPOS.pdf";
 /** Application-server VAPID public key (safe to embed). Private stays in Netlify env. */
 const VAPID_PUBLIC_KEY = "BEuWn2rcxKeLXPFa3KJzys7rLOtFX8GUZ9ckfFhsqEVO0Y2PE3WfnOivmFJV3EUVCf1c1g31qSiVoNDbcJQO8GQ";
@@ -125,18 +125,19 @@ function looksLikeStoredEvent(raw){
   if (s.indexOf("slate:") === 0 || s.indexOf("ev:") === 0 || s.indexOf("gpa:") === 0) return true;
   if (/^(overland|arizona|gij[oó]n|gijon|columbus|las vegas|barcelona|mesa)$/i.test(s)) return true;
   if (/\b(overland park|gij[oó]n|arizona open|las vegas open|columbus open|barcelona open)\b/i.test(s)) return true;
-  if (/^(APP|PPA|TPB|GPA|MLP)\b/.test(s) && /\b(open|tour)\b/i.test(s)) return true;
+  if (/^(APP|PPA|TPB|GPA|MLP)\b/.test(s) && /\b(open|tour|asia)\b/i.test(s)) return true;
   return false;
 }
 function tourFromEventBlob(raw){
   let decoded = String(raw || "");
   try { decoded = decodeURIComponent(decoded); } catch(e) {}
   const blob = decoded.toLowerCase();
-  if (/app-asia|chongqing|taipei|bangkok|ho chi minh/.test(blob)) return "tour:app-asia";
+  if (/app-asia|chongqing|taipei|bangkok|ho chi minh|india open/.test(blob)) return "tour:app-asia";
   if (/\bmlp\b|mlp-asia/.test(blob)) return "tour:mlp-asia";
   if (/gij|tpb|top pickleball/.test(blob)) return "tour:tpb";
   if (/barcelona|ppa-eu|ppa europe/.test(blob)) return "tour:ppa-eu";
   if (/ppa asia|ppa-asia/.test(blob)) return "tour:asia";
+  if (/\bapp\b/.test(blob) && /arizona/.test(blob) && !/\bppa\b/.test(blob)) return "tour:app";
   if (/arizona|mesa|62c01642|las vegas|86926aef|^ev:ppa\b|\bppa\b/.test(blob)) return "tour:ppa";
   if (/^ev:wc\b|world cup/.test(blob)) return "tour:wc";
   if (/overland|columbus|18448|18453|^ev:app\b|\bapp\b/.test(blob)) return "tour:app";
@@ -1365,7 +1366,9 @@ function weekStrip(){
   const today=ymd(new Date());
   let soon;
   if(cal.length){
-    soon=cal.filter(e=> (e.end||e.start||'') >= today).slice(0,6);
+    soon=cal.filter(e=> (e.end||e.start||'') >= today).slice(0,8);
+    const mlp=cal.find(e => (e.end||e.start||"")>=today && (e.tour==="mlp-asia" || /\bMLP\b/.test((e.name||"")+" "+(e.host||""))));
+    if(mlp && !soon.some(e => e===mlp || (e.id && e.id===mlp.id))) soon.push(mlp);
   } else {
     soon=fromRank.filter(e=> (e.tournament_date||'') >= today).slice(0,5).map(e=>({
       name:e.name, start:(e.tournament_date||'').slice(0,10), venue:e.location||e.venue||'', tier:e.tier||'', host:e.host||'', status:'results-only', onLive:false, armed:false
@@ -1376,7 +1379,7 @@ function weekStrip(){
   const chrome = armedLive.length
     ? `<div class="cal-chrome"><span class="desk">ON WPM LIVE</span>${armedLive.map(e=>`<span class="cal-pill live-path">${esc(e.name)}</span>`).join('')}</div>`
     : '';
-  return `${chrome}<div class="panel"><div class="kicker">GPA calendar</div>${soon.map(calEventRow).join('')}<a class="chip" href="/calendar">Full calendar</a><a class="chip" href="/rankings">Table</a><a class="chip" href="/history">Archive</a></div>`;
+  return `${chrome}<div class="panel"><div class="kicker">Coming up</div>${soon.map(calEventRow).join('')}<a class="chip" href="/calendar">Full calendar</a><a class="chip" href="/rankings">Table</a><a class="chip" href="/history">Archive</a></div>`;
 }
 function esc(s){
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
@@ -1409,6 +1412,15 @@ function readerStatusLine(e){
   if(!e.drawUrl && /draw/i.test(blob) && /not published|unpublished|no official/i.test(blob)) return "Draw not published yet";
   return "Results will appear when available";
 }
+function tourMark(e){
+  if(!e) return "";
+  if(e.tour==="mlp-asia") return "MLP Asia";
+  if(e.tour==="app-asia") return "APP Asia";
+  if(e.tour==="ppa") return "PPA";
+  if(e.tour==="app") return "APP";
+  if(e.tour==="ppa-eu") return "PPA Europe";
+  return e.host||e.tour||"";
+}
 function calEventRow(e){
   const start=(e.start||e.tournament_date||'').toString().slice(0,10);
   const end=(e.end||e.end_date||start).toString().slice(0,10);
@@ -1429,7 +1441,7 @@ function calEventRow(e){
       <span class="cal-meta">${official}</span>
       ${draw}
     </div>
-    <em>${esc(e.host||e.tour||'')}</em>
+    <em>${esc(tourMark(e))}</em>
     <a class="chip cal-add" href="/calendar?add=${encodeURIComponent(id)}">Add</a>
   </div>`;
 }
@@ -2518,8 +2530,8 @@ function viewCalendar(){
 
   return `<div class="hero">
     <div class="desk">DESK CALENDAR</div>
-    <h2>GPA SLATE</h2>
-    <p>FotMob-style upcoming events from GPA. Mark <b>on WPM LIVE</b> only when intake passes. No score path → results-only or scores delayed — never invent lines.</p>
+    <h2>TOUR SLATE</h2>
+    <p>Upcoming APP, PPA, GPA and MLP Asia. MLP Asia is not APP. Mark <b>on WPM LIVE</b> only when intake passes. No score path → results-only or scores delayed — never invent lines.</p>
   </div>
   <div class="wrap">
     ${form}
@@ -2589,7 +2601,10 @@ function viewRankings(){
       <em>${value}</em>
     </a>`;
   }).join("");
-  const calEv = ((state.calendar||{}).events||[]).filter(e=>e.upcoming!==false).slice(0,8);
+  const calAll = ((state.calendar||{}).events||[]).filter(e=>e.upcoming!==false);
+  const calEv = calAll.slice(0,8);
+  const mlpEv = calAll.find(e => e.tour==="mlp-asia" || /\bMLP\b/.test((e.name||"")+" "+(e.host||"")));
+  if (mlpEv && !calEv.some(e => e.id && e.id===mlpEv.id)) calEv.push(mlpEv);
   const events = (calEv.length ? calEv : (data.events||[]).slice(0,8).map(e=>({
     name:e.name, start:(e.tournament_date||"").slice(0,10), venue:e.location||e.venue||"", tier:e.tier||"", host:e.host||"", status:"results-only"
   }))).map(calEventRow).join("");
@@ -2605,7 +2620,7 @@ function viewRankings(){
       <p class="games" style="margin-top:10px">${note}</p>
       ${list || "<p class='empty'>Board empty for this cut.</p>"}
     </div>
-    <div class="panel"><div class="kicker">GPA calendar</div>${events||"<p class='empty'>No events.</p>"}<a class="chip" href="/calendar">Open calendar / add-event</a></div>
+    <div class="panel"><div class="kicker">Coming up</div>${events||"<p class='empty'>No events.</p>"}<a class="chip" href="/calendar">Open calendar / add-event</a></div>
   </div>`;
 }
 function viewShop(){

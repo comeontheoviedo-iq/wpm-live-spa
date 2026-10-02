@@ -10,10 +10,10 @@ Every weekday (desk TZ `Europe/London`), produce a short **radar brief**: what�
 
 | Source | Probe | How radar uses it | Typical lead |
 |--------|-------|-------------------|--------------|
-| **GPA calendar** | Supabase `tournaments` (same as `/api/rankings` events) | Horizon −2…+14 days. APP rows → live candidates; other hosts → `results_only` until intake | Days–weeks |
+| **GPA calendar** | Supabase `tournaments` (same as `/api/rankings` events) | Horizon −2…+28 days. APP rows → live candidates; Louisville 18454 is known but not the live pin; other hosts → `results_only` until intake | Days–weeks |
 | **PPA ticker** | `ppatour.com/api/ticker/` + `scores/?event=` wired UUID | Title must align with wired `EVENT` in `ppa.mts`; mismatch = P0 cut | Week-of |
 | **APP / Den Live** | `denlive.pickleballden.com` `tournament-info` + `tournament-brackets` for known ids; GPA APP names without Den id = blocked | Id discovery is still manual (Den picker / tour week) | Week-of |
-| **APP Asia / SportsSync** | `sportssync.asia/organizers/1645900` plus `GET /tournament/api/{id}/scores` | Chongqing has no id. KL **89** and Penang **222** are dry-run only. New `/tournament/{id}` is P1 — confirm the name before arming. Results only, never LIVE | Days |
+| **APP Asia / SportsSync** | `sportssync.asia/organizers/1645900` plus sitemap titles | Chongqing has no id (2026-10-02). KL **89** and Penang **222** are dry-run only. **390** / **391** are unresolved Taipei / Bangkok links, not Chongqing. New `/tournament/{id}` is P1 — confirm the name before arming. Results only, never LIVE | Days |
 | **Sporttora WC** | Prod `/api/worldcup` | On board while feed returns matches (LIVE/NEXT/FT) | Event window |
 
 Optional later: MLP, PPA Asia, club opens — **results_only** until intake passes.
@@ -27,7 +27,12 @@ Optional later: MLP, PPA Asia, club opens — **results_only** until intake pass
 | **TPB Gijón 2026** | 18–20 Sep · Europe/Madrid | scores delayed / results_only | Official page for Den/Tournated; draw PDF is the only published groups |
 | **PPA P250 Barcelona Open** | 23–27 Sep · Europe/Madrid | **ended** · UUID `1655a7c9-904a-44c9-aa29-b279fca900e8` unparked · 0 scores | Do **not** cut `ppa.mts` EVENT here. Live board is Rate Las Vegas Open |
 | **PPA Rate Las Vegas Open** | from 28 Sep · America/Los_Angeles | **on board** · UUID `86926aef-0566-4fbb-87cf-a48068a9f1c6` | Ticker title must stay Rate Las Vegas. Not April `92d37566-…` |
-| **APP Asia Chongqing Open** | 2–6 Oct · Asia/Shanghai | **unarmed** · results-only · SportsSync id **not listed** | Organizer [1645900](https://www.sportssync.asia/organizers/1645900). KL 89 and Penang 222 are not this event. See [`sportssync-asia.md`](./sportssync-asia.md) |
+| **APP Asia Chongqing Open** | 2–6 Oct · Asia/Shanghai | **unarmed** · results-only · no Den id · no SportsSync id | Hunt 2026-10-02. Organizer [1645900](https://www.sportssync.asia/organizers/1645900) still KL 89 / Penang 222. See [`sportssync-asia.md`](./sportssync-asia.md) |
+| **PPA Veolia Chicago Cup** | 5–11 Oct · America/Chicago | **results-only** · UUID `203e1164-b4f9-47e9-bacf-ff81f8748025` | Do not cut `/api/ppa`. Live board stays Rate Las Vegas |
+| **PPA Virginia Beach Open** | 12–18 Oct · America/New_York | **results-only** · UUID `429c7980-e1b9-4800-805f-dfb160781cd9` | Do not cut `/api/ppa` |
+| **Humana APP Louisville Open** | 15–18 Oct · America/New_York | **results-only** · Den **18454** known | Do not cut `/api/app` off Columbus **18448** until this window and Den is RUNNING |
+| **APP Asia Bangkok Open** | 2–7 Nov · Asia/Bangkok | **results-only** · SportsSync 391 does not resolve | Official page dates. GPA had 26 Oct. Not Chongqing. Not MLP |
+| **MLP Asia 2026** | 13 Nov–12 Dec · Asia/Tokyo opener | **results-only** · tour `mlp-asia` | Not APP. Pool nights then playoffs 11–12 Dec |
 
 See [`slate-europe.md`](./slate-europe.md). Seeded in `netlify/functions/slate-events.mjs`.
 
@@ -59,7 +64,9 @@ Desk tick boxes before shipping a tour chip:
    - Live PPA is **Rate Las Vegas Open** `86926aef-0566-4fbb-87cf-a48068a9f1c6` (Darling Tennis Center, `America/Los_Angeles`). Not April `92d37566-…`.
    - Barcelona `1655a7c9-…` ended 27 Sep 2026 with no scores. Unparked. Do **not** cut EVENT there.
    - Live APP is **Columbus Open** Den `18448` (Pickle & Chill, `America/New_York`, `/api/app`). Overland `18453` ended — disarmed, not onLive.
-   - **Chongqing** (APP Asia) has **no Den id** and **no SportsSync id**. Watch organizer `1645900`. KL 89 and Penang 222 are not Chongqing. `/api/sportssync` is results-only. Do not fake LIVE. See `docs/sportssync-asia.md`.
+   - **Chongqing** (APP Asia) has **no Den id** and **no SportsSync id** after the 2026-10-02 hunt. Watch organizer `1645900`. KL 89 and Penang 222 are not Chongqing. 390 and 391 are not Chongqing. `/api/sportssync` is results-only. Do not fake LIVE. See `docs/sportssync-asia.md`.
+   - **Louisville** Den **18454** is known for 15–18 Oct. Do not cut `/api/app` off Columbus **18448**.
+   - **Chicago** `203e1164-…` and **Virginia Beach** `429c7980-…` are upcoming PPA. Do not cut `/api/ppa`.
    - New APP on GPA without Den id → find `tournamentId` on Den Live → fill intake → ship `/api/app` id. Do not invent one.
 4. **P1** (`missing`, or a new SportsSync id on organizer 1645900): connector/feed down, or a new `/tournament/{id}` to name-check. Do not invent lines and do not assume the new id is Chongqing.
 5. Quiet **results_only**: Gijón (scores delayed + draw PDF), Barcelona ended (no scores, do not cut), Chongqing until a real SportsSync id, MLP Asia label guard. Watch; do not invent LIVE.

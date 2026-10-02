@@ -18,7 +18,7 @@ import {
 } from "../netlify/functions/finished-archive.mjs";
 import { APP_LIVE, PPA_LIVE } from "../netlify/functions/slate-events.mjs";
 
-const js = fs.readFileSync("js/wpm-20261002b.js", "utf8");
+const js = fs.readFileSync("js/wpm-20261002c.js", "utf8");
 const start = js.indexOf("const TOUR_IDS");
 const end = js.indexOf("function migrateFollows");
 const context = {};
@@ -38,6 +38,10 @@ for (const fn of [normalizeFollowKey, context.normalizeFollowKey]) {
   assert.equal(fn("slate:tpb-gijon-2026"), "tour:tpb");
   assert.equal(fn("APP Dillons Overland Park Open"), "tour:app");
   assert.equal(fn("PPA Veolia Arizona Open"), "tour:ppa");
+  assert.equal(fn("APP Arizona Open"), "tour:app");
+  assert.equal(fn("APP Asia Chongqing Open"), "tour:app-asia");
+  assert.equal(fn("APP India Open"), "tour:app-asia");
+  assert.equal(fn("MLP Asia 2026"), "tour:mlp-asia");
   assert.equal(fn("ev:foo:nope"), "");
 }
 

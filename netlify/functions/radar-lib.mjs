@@ -12,13 +12,20 @@ import {
   PARKED_PPA,
   GIJON,
   MLP_ASIA_NOTE,
+  ARIZONA_APP,
+  LOUISVILLE,
+  PPA_CHICAGO,
+  PPA_VIRGINIA_BEACH,
+  coverageSeedFor,
   isAppAsiaName,
+  matchesSlateName,
   ppaTickerTitleAligned,
   staticWatchEvents,
 } from "./slate-events.mjs";
 import {
   APP_ASIA_ORGANIZER_URL,
   CHONGQING_DESK_NOTE,
+  SPORTSSYNC_UNRESOLVED,
   extractSportsSyncTournamentIds,
   summarizeOrganizerListing,
 } from "./sportssync-map.mjs";
@@ -61,7 +68,8 @@ export const WIRED = {
 /** Wired live id first. Overland 18453 stays known so radar can see it; it is ended, not live. */
 export const KNOWN_APP_DEN_IDS = [APP_LIVE.eventId, ENDED_APP.overland.denTournamentId, "18442", "18454"];
 
-const HORIZON_DAYS = 14;
+/** Through late October from a 2 Oct desk day: Louisville and the GPA Bangkok row. Later stops stay on static watches. */
+export const HORIZON_DAYS = 28;
 const LOOKBACK_DAYS = 2;
 
 function ymd(d) {
@@ -115,12 +123,14 @@ async function probeGpa(today) {
   }
   const events = [];
   for (const row of r.body) {
-    const start = row.tournament_date || "";
-    const end = row.end_date || start;
-    if (!start || end < from || start > to) continue;
+    const gpaStart = row.tournament_date || "";
+    const gpaEnd = row.end_date || gpaStart;
+    if (!gpaStart || gpaEnd < from || gpaStart > to) continue;
     const host = String(row.host || "");
     const name = row.name || "";
-    const venue = row.venue || row.location || "";
+    let start = gpaStart;
+    let end = gpaEnd;
+    let venue = row.venue || row.location || "";
     const isApp = host.toUpperCase() === "APP" || /\bAPP\b/i.test(name);
     const isWiredApp = isApp && /columbus open/i.test(name) && !isAppAsiaName(name);
     const isEndedOverland = isApp && /overland park/i.test(name);
@@ -128,7 +138,7 @@ async function probeGpa(today) {
 
     if (isApp) {
       const scoreOk = isWiredApp;
-      const tz = isWiredApp ? WIRED.app.tz : isEndedOverland ? ENDED_APP.overland.timezone : "";
+      let tz = isWiredApp ? WIRED.app.tz : isEndedOverland ? ENDED_APP.overland.timezone : "";
       const inn = intake({ name, venue, tz, scoreOk });
       let board = "blocked_by_intake";
       let note =
@@ -152,14 +162,37 @@ async function probeGpa(today) {
           WIRED.app.eventId +
           ".";
       } else if (appAsia) {
-        // Chongqing and the rest of APP Asia: no Den id, no SportsSync id yet. Never fake LIVE.
+        // APP Asia stays results-only until a verified id exists. Never fake LIVE.
+        const seed = coverageSeedFor(name);
         board = "results_only";
         inn.scorePath = false;
-        inn.timezone = false;
+        inn.timezone = Boolean(seed && seed.timezone);
         inn.status = "fail";
-        note = /chongqing/i.test(name)
-          ? CHONGQING_DESK_NOTE
-          : "APP Asia Tour (not MLP Asia). No Den id. SportsSync /api/sportssync is results-only once a real tournamentId is listed. Do not fake LIVE.";
+        note = seed?.note || CHONGQING_DESK_NOTE;
+        if (seed?.dateAuthority === "official" && seed.start && seed.end) {
+          start = seed.start;
+          end = seed.end;
+        }
+        if (seed?.timezone) tz = seed.timezone;
+        if (seed?.venue && (!venue || /^usa$/i.test(venue))) venue = seed.venue;
+      } else if (/louisville/i.test(name)) {
+        board = "results_only";
+        denId = LOUISVILLE.denTournamentId;
+        scorePath = null;
+        tz = LOUISVILLE.timezone;
+        if (!venue || /^usa$/i.test(venue)) venue = LOUISVILLE.venue;
+        inn.scorePath = false;
+        inn.timezone = true;
+        inn.status = "fail";
+        note = LOUISVILLE.note;
+      } else if (/arizona open/i.test(name)) {
+        board = "results_only";
+        tz = ARIZONA_APP.timezone;
+        if (!venue || /^usa$/i.test(venue)) venue = ARIZONA_APP.venue;
+        inn.scorePath = false;
+        inn.timezone = true;
+        inn.status = "fail";
+        note = ARIZONA_APP.note;
       }
       events.push({
         tour: appAsia ? "app-asia" : "app",
@@ -167,6 +200,7 @@ async function probeGpa(today) {
         start,
         end,
         venue,
+        tz,
         host,
         tier: row.tier || "",
         source: "gpa-tournaments",
@@ -436,9 +470,12 @@ async function probeSportsSyncOrganizer() {
       "Open the card and confirm the name is APP Asia Chongqing Open before arming /api/sportssync. " +
       "Do not assume. Do not mark LIVE. KL 89 and Penang 222 are not Chongqing.";
   } else {
+    const unresolved = SPORTSSYNC_UNRESOLVED.map((t) => `${t.id} ${t.name}`).join("; ");
     note =
       `Organizer 1645900 lists ${listing.found.join(", ") || "no tournaments"}. ` +
-      "Chongqing SportsSync id is not listed. /api/sportssync stays unarmed. Results-only. Do not fake LIVE.";
+      "Chongqing SportsSync id is not listed. Sitemap titles through id 471 (2026-10-02) have no Chongqing. " +
+      `Unresolved APP links (not Chongqing, not armed): ${unresolved}. ` +
+      "/api/sportssync stays unarmed. Results-only. Do not fake LIVE.";
   }
   return {
     ok: page.ok,
@@ -478,6 +515,34 @@ async function probeSportsSyncOrganizer() {
   };
 }
 
+/** Upcoming PPA UUIDs. Scheduled scores do not move /api/ppa off Rate Las Vegas. */
+async function probeUpcomingPpa() {
+  const seeds = [PPA_CHICAGO, PPA_VIRGINIA_BEACH];
+  const out = [];
+  for (const seed of seeds) {
+    const scores = await fetchJson(`https://www.ppatour.com/api/scores/?event=${seed.ppaEventId}`);
+    const matches = Array.isArray(scores.body?.matches) ? scores.body.matches : [];
+    const liveish = matches.filter((m) =>
+      /live|in_progress|inprogress|playing|running|started/i.test(String(m.status || ""))
+    );
+    const probe = scores.ok
+      ? `${matches.length} score rows`
+      : scores.error || `HTTP ${scores.status}`;
+    out.push({
+      ppaEventId: seed.ppaEventId,
+      scoreMatches: matches.length,
+      scoresOk: scores.ok,
+      note:
+        seed.note +
+        ` Score probe: ${probe}.` +
+        (liveish.length
+          ? ` ${liveish.length} live-looking row(s) — still not the wired board.`
+          : " Not wired. Not LIVE."),
+    });
+  }
+  return out;
+}
+
 /**
  * @param { now?: Date, prodBase?: string } [opts]
  */
@@ -486,13 +551,14 @@ export async function buildRadarReport(opts = {}) {
   const today = ymd(now);
   const prodBase = opts.prodBase || "https://live.worldpickleballmagazine.com";
 
-  const [gpa, ppa, app, wc, gijon, sportssync] = await Promise.all([
+  const [gpa, ppa, app, wc, gijon, sportssync, upcomingPpa] = await Promise.all([
     probeGpa(today),
     probePpa(),
     probeAppDen(),
     probeWorldCup(prodBase),
     probeGijon(),
     probeSportsSyncOrganizer(),
+    probeUpcomingPpa(),
   ]);
   const barcelona = await probeEndedBarcelona(ppa.tickerTitle);
 
@@ -505,11 +571,27 @@ export async function buildRadarReport(opts = {}) {
   if (sportssync.event) events.push(sportssync.event);
   for (const w of staticWatchEvents()) {
     if (w.tour === "tpb" || w.tour === "ppa-eu") continue;
-    events.push(w);
+    if (events.some((e) => matchesSlateName(e.name, w.name))) continue;
+    const probed = (upcomingPpa || []).find((p) => p.ppaEventId && p.ppaEventId === w.ppaEventId);
+    if (probed) {
+      events.push({
+        ...w,
+        scoreMatches: probed.scoreMatches,
+        scoresOk: probed.scoresOk,
+        note: probed.note,
+        board: "results_only",
+        scorePath: null,
+        onLive: false,
+      });
+    } else {
+      events.push(w);
+    }
   }
 
   for (const e of gpa.events || []) {
     if (e.tour === "app" && (e.denId === WIRED.app.eventId || /columbus open/i.test(e.name))) continue;
+    // Slate seed already carries the desk row (Den id, official dates, MLP ≠ APP).
+    if (events.some((have) => matchesSlateName(have.name, e.name))) continue;
     events.push(e);
   }
 
@@ -572,8 +654,10 @@ export async function buildRadarReport(opts = {}) {
         "Do not wire the April Las Vegas UUID 92d37566-…",
         "Watch Gijón for Den/Tournated — until then scores delayed + draw PDF only",
         "Live APP is Columbus Open Den 18448 (Pickle & Chill, America/New_York, /api/app). Overland 18453 ended — disarmed, not onLive.",
-        "Chongqing has no Den id and no SportsSync id. Watch https://www.sportssync.asia/organizers/1645900 — as of 2026-09-30 only KL 89 and Penang 222. Do not invent Chongqing's id. Do not fake LIVE.",
+        "Chongqing has no Den id and no SportsSync id (hunt 2026-10-02: organizer 1645900 still 89/222; sitemap titles 91–471 have no Chongqing; 390/391 are unresolved Taipei/Bangkok links). Do not invent an id. Do not fake LIVE.",
         "When a Chongqing SportsSync id is real, arm connector type sportssync on /calendar. /api/sportssync stays results-only (FT). LIVE is unsafe until a scores row proves an in-progress status.",
+        "Louisville Den 18454 is known for 15–18 Oct. Do not cut /api/app off Columbus 18448 until that window and Den is RUNNING.",
+        "Upcoming PPA (Chicago 203e1164, Virginia Beach 429c7980) stay results-only. Do not cut /api/ppa off Rate Las Vegas.",
         "If new APP on GPA → find Den tournamentId → intake checklist → ship /api/app id",
         "MLP Asia ≠ APP Asia Tour — never merge those chips",
         "Never invent scores; shop stays closed; do not regress APP/Web Push",
