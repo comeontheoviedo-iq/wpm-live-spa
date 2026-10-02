@@ -94,8 +94,8 @@ if ("Notification" in window && Notification.permission === "granted") {
   setTimeout(() => { syncPushSubscription(); }, 2500);
 }
 
-const SAFE_SW = "/sw.js?v=20261002c";
-const SAFE_SW_MARK = "20261002c";
+const SAFE_SW = "/sw.js?v=20261002d";
+const SAFE_SW_MARK = "20261002d";
 const GIJON_DRAW_URL = "https://toppickleballtour.com/wp-content/uploads/2026/09/TOP-PICKLEBALL-TOUR-GIJON-GRUPOS.pdf";
 /** Application-server VAPID public key (safe to embed). Private stays in Netlify env. */
 const VAPID_PUBLIC_KEY = "BEuWn2rcxKeLXPFa3KJzys7rLOtFX8GUZ9ckfFhsqEVO0Y2PE3WfnOivmFJV3EUVCf1c1g31qSiVoNDbcJQO8GQ";
@@ -1661,18 +1661,42 @@ function viewMatch(id){
   </div>`;
 }
 
+function resultShape(m){
+  if (!m) return "";
+  const sides = [normName(m.a), normName(m.b)].filter(Boolean).sort().join("|");
+  return [m.tour || "", String(m.date || ""), sides, normName(m.comp || ""), normName(m.round || "")].join("~");
+}
 function personMatchPool(){
-  const extra = [];
-  const seen = new Set((state.matches || []).map(m => m && m.id).filter(Boolean));
+  const out = [];
+  const seen = new Set();
+  const shapes = new Map();
+  function push(m){
+    if (!m) return;
+    const id = m.id ? String(m.id) : "";
+    const shape = resultShape(m);
+    if (id && seen.has(id)) return;
+    if (shape && shapes.has(shape)) {
+      const idx = shapes.get(shape);
+      const prev = out[idx];
+      if (prev && prev.status !== "FT" && m.status === "FT") {
+        if (id) seen.add(id);
+        out[idx] = m;
+      }
+      return;
+    }
+    if (id) seen.add(id);
+    if (shape) shapes.set(shape, out.length);
+    out.push(m);
+  }
+  (state.matches || []).forEach(push);
   Object.keys(state.archiveCache || {}).forEach(id => {
     const rows = (state.archiveCache[id] && state.archiveCache[id].matches) || [];
     rows.forEach(m => {
-      if (!m || m.status !== "FT" || seen.has(m.id)) return;
-      seen.add(m.id);
-      extra.push(m);
+      if (!m || m.status !== "FT") return;
+      push(m);
     });
   });
-  return (state.matches || []).concat(extra);
+  return out;
 }
 function matchesForPerson(kind, id, rec){
   const followKey = rec.followKey || id;
@@ -1687,7 +1711,8 @@ function matchesForPerson(kind, id, rec){
       if ((followKey === "USA" || id === "USA") && (/united states|^usa$/i.test(a) || /united states|^usa$/i.test(b))) return true;
       return false;
     }
-    const parts = [m.a, m.b, m.games, m.note, ...(tags), ...((m.lines||[]).flatMap(l => [l.disc, l.winner, l.a, l.b]))];
+    if (splitSides(m.a).concat(splitSides(m.b)).some(p => sidePartIsPerson(p, rec))) return true;
+    const parts = [m.a, m.b, m.roster, m.games, m.note, ...(tags), ...((m.lines||[]).flatMap(l => [l.disc, l.winner, l.a, l.b]))];
     return parts.some(p => {
       const s = String(p||"");
       if (!s) return false;
@@ -1737,9 +1762,20 @@ function personInitials(name){
   if (t.length === 1) return t[0].slice(0, 2).toUpperCase();
   return (t[0][0] + t[t.length - 1][0]).toUpperCase();
 }
-function personOnSide(side, rec){
+function sidePartIsPerson(part, rec){
   const name = (rec && rec.name) || "";
-  return splitSides(side).some(p => personInText(name, p) || rankingNameMatches(name, p) || normName(p) === normName(name));
+  const follow = (rec && rec.followKey) || "";
+  if (!part || !name) return false;
+  if (personInText(name, part) || rankingNameMatches(name, part) || normName(part) === normName(name)) return true;
+  const tokens = nameTokens(part);
+  const pt = nameTokens(name);
+  // Doubles cards print last names only ("Waters / Parenteau"). Token equality, not a substring.
+  if (tokens.length === 1 && pt.length && tokens[0] === pt[pt.length - 1]) return true;
+  if (follow && tokens.length === 1 && tokens[0] === normName(follow)) return true;
+  return false;
+}
+function personOnSide(side, rec){
+  return splitSides(side).some(p => sidePartIsPerson(p, rec));
 }
 function wprSnapshot(rec){
   const card = (rec.rankings || []).find(c => c.source === "WPR");
@@ -1840,18 +1876,46 @@ function waveRecentPanel(rec){
   </div>`;
 }
 
+function personRoundLabel(m){
+  const round = String((m && m.round) || "").trim();
+  if (round) return round;
+  const parts = String((m && m.div) || "").split(" · ").map(s => s.trim()).filter(Boolean);
+  return parts.length > 1 ? parts.slice(1).join(" · ") : "";
+}
+function profileScore(m, rec){
+  const st = effectiveStatus(m);
+  const raw = String((m && m.score) || "").trim();
+  if (st === "LIVE" && /^0\s*[-–]\s*0$/.test(raw)) {
+    const numeric = (m.lines || []).some(l => /\d/.test(String(l && l.score || "")));
+    if (!numeric) return "";
+  }
+  const g = raw.match(/^(\d+)\s*([-–])\s*(\d+)$/);
+  if (g && rec) {
+    const onA = personOnSide(m.a, rec);
+    const onB = personOnSide(m.b, rec);
+    if (onB && !onA) return g[3] + g[2] + g[1];
+    if (onA && !onB) return g[1] + g[2] + g[3];
+  }
+  if (!raw) return st === "NEXT" ? "vs" : "";
+  return raw;
+}
 function personResultRow(m, rec){
   const st = effectiveStatus(m);
+  const outcome = st === "FT" ? personOutcome(m, rec) : "";
   const onA = personOnSide(m.a, rec);
   const onB = personOnSide(m.b, rec);
   const opp = onA && !onB ? sideLinks(m.b) : onB && !onA ? sideLinks(m.a) : `${sideLinks(m.a)} <span class="games">vs</span> ${sideLinks(m.b)}`;
-  const when = m.date && m.date !== boardToday() ? dateChip(m.date) : "";
-  const meta = [m.comp, String(m.div||"").split(" · ")[0], when].filter(Boolean).map(s => esc(s)).join(" · ");
+  const when = m.date ? dateChip(m.date) : "";
+  const divName = String(m.div || "").split(" · ")[0].trim();
+  const round = personRoundLabel(m);
+  const meta = [m.comp, divName && divName !== round ? divName : "", round, when].filter(Boolean).map(s => esc(s)).join(" · ");
   const wall = (m.tour === "app" || m.tour === "ppa" || m.tour === "wc") ? ` · <a href="${drawHrefForMatch(m)}">Draw</a>` : "";
-  const score = m.score ? esc(m.score) : (st === "NEXT" ? "vs" : "");
-  const label = st === "LIVE" ? "LIVE" : st === "FT" ? "FT" : "NEXT";
+  const score = esc(profileScore(m, rec));
+  const chip = (outcome === "W" || outcome === "L")
+    ? `<a class="statuscol wl ${outcome === "W" ? "w" : "l"}" href="/match/${esc(m.id)}">${outcome}</a>`
+    : `<a class="statuscol st ${st}" href="/match/${esc(m.id)}">${st==="LIVE"?"<span class='dot'></span>":""}${st === "LIVE" ? "LIVE" : st === "FT" ? "FT" : "NEXT"}</a>`;
   return `<div class="result-row">
-    <a class="statuscol st ${st}" href="/match/${esc(m.id)}">${st==="LIVE"?"<span class='dot'></span>":""}${label}</a>
+    ${chip}
     <div>
       <div class="opp">${onA !== onB ? "vs " : ""}${opp}</div>
       <span class="meta">${meta}${wall}</span>
@@ -1871,34 +1935,65 @@ function personOutcome(m, rec){
   if (!Number.isFinite(mine) || !Number.isFinite(opp) || mine === opp) return "";
   return mine > opp ? "W" : "L";
 }
-function personFormHtml(list, rec){
-  const sorted = (list || []).filter(m => effectiveStatus(m) === "FT").slice().sort((a,b) => String(b.date||"").localeCompare(String(a.date||"")));
+function byRecent(a, b){
+  const d = String(b.date || "").localeCompare(String(a.date || ""));
+  if (d) return d;
+  return (parseUtc(b.start)?.getTime() || 0) - (parseUtc(a.start)?.getTime() || 0);
+}
+function personFormMarks(list, rec){
+  const sorted = (list || []).filter(m => effectiveStatus(m) === "FT").slice().sort(byRecent);
   const marks = [];
+  const tours = [];
+  const events = [];
   sorted.forEach(m => {
     if (marks.length >= 8) return;
     const o = personOutcome(m, rec);
-    if (o) marks.push(o);
+    if (!o) return;
+    marks.push(o);
+    const tour = m.tour || "";
+    if (tour && tours.indexOf(tour) < 0) tours.push(tour);
+    const ev = m.comp || "";
+    if (ev && events.indexOf(ev) < 0) events.push(ev);
   });
+  const wins = marks.filter(x => x === "W").length;
+  return { marks, string: marks.join(""), wins, losses: marks.length - wins, tours, events };
+}
+function personFormHtml(list, rec){
+  const summary = personFormMarks(list, rec);
+  const marks = summary.marks;
   if (!marks.length) return "";
-  return `<div class="panel" style="margin-top:18px"><div class="kicker">Form</div><div class="form-pips">${marks.map(x => `<b class="${x==="W"?"w":"l"}">${x}</b>`).join("")}</div><p class="games">Last finished matches with a recorded score.</p></div>`;
+  const tourLabel = summary.tours.map(t => TOUR_LABELS[t] || t).join(" · ");
+  const finished = (list || []).filter(m => effectiveStatus(m) === "FT");
+  let allW = 0, allL = 0;
+  finished.forEach(m => {
+    const o = personOutcome(m, rec);
+    if (o === "W") allW++;
+    else if (o === "L") allL++;
+  });
+  const wider = (allW + allL) > marks.length
+    ? `<p class="games">${allW}–${allL} from finished matches on this profile.</p>`
+    : "";
+  return `<div class="panel form-panel" style="margin-top:18px"><div class="kicker">Form</div><div class="form-head"><b class="form-string">${esc(summary.string)}</b><span class="form-record">${summary.wins}–${summary.losses}</span></div><div class="form-pips">${marks.map(x => `<b class="${x==="W"?"w":"l"}">${x}</b>`).join("")}</div><p class="games">Last ${marks.length} with a recorded winner${tourLabel ? " · " + esc(tourLabel) : ""} · most recent first.</p>${wider}</div>`;
 }
 function personMatchList(list, rec){
-  if (!list.length) {
-    return `<div class="panel" style="margin-top:18px"><div class="kicker">Recent results</div><p class="empty">No matches on the board or archive yet.</p></div>`;
-  }
-  const todayStr = boardToday();
-  const rank = { LIVE:0, NEXT:1, FT:2 };
-  const today = list.filter(m => m.date === todayStr).sort((a,b) => {
+  const rank = { LIVE:0, NEXT:1 };
+  const open = (list || []).filter(m => effectiveStatus(m) !== "FT").sort((a,b) => {
     const d = (rank[effectiveStatus(a)] ?? 3) - (rank[effectiveStatus(b)] ?? 3);
     if (d) return d;
     return (parseUtc(a.start)?.getTime()||0) - (parseUtc(b.start)?.getTime()||0);
-  });
-  const earlier = list.filter(m => m.date !== todayStr).sort((a,b) => String(b.date||"").localeCompare(String(a.date||"")) || ((parseUtc(b.start)?.getTime()||0) - (parseUtc(a.start)?.getTime()||0)));
-  const rows = today.concat(earlier).slice(0, 16);
-  return `<div class="panel" style="margin-top:18px"><div class="kicker">Recent results</div>${rows.map(m => personResultRow(m, rec)).join("")}</div>`;
+  }).slice(0, 8);
+  const finished = (list || []).filter(m => effectiveStatus(m) === "FT").slice().sort(byRecent);
+  const openHtml = open.length ? `<div class="panel" style="margin-top:18px"><div class="kicker">This week</div>${open.map(m => personResultRow(m, rec)).join("")}</div>` : "";
+  const moreKey = "player-ft:" + ((rec && (rec.followKey || rec.name)) || "player");
+  const shown = state.more[moreKey] ? finished : finished.slice(0, 30);
+  const body = finished.length
+    ? shown.map(m => personResultRow(m, rec)).join("") + slateMoreButton(moreKey, finished.length, state.more[moreKey] ? 30 : shown.length, "results")
+    : `<p class="empty">No finished matches yet.</p>`;
+  return openHtml + `<div class="panel" style="margin-top:18px"><div class="kicker">Recent results</div>${body}</div>`;
 }
 function viewPerson(kind, id){
   id = decodeURIComponent(id||"");
+  pullProfileArchives();
   const rec = lookupPerson(kind, id);
   if (!rec) return `<div class="wrap"><p class="empty">Not found.</p></div>`;
   const followKey = rec.followKey || id;
@@ -2968,8 +3063,10 @@ function openArchive(id){
 function pullArchive(id){
   if (!id) return Promise.resolve();
   const cur = state.archiveCache[id];
-  if (cur && (cur.loading || Array.isArray(cur.matches) || cur.unavailable)) return Promise.resolve();
-  state.archiveCache[id] = { loading: true };
+  const meta = archiveMeta(id);
+  const stalePartial = !!(cur && cur.finished === false && meta && archiveReady(meta) && !cur.loading);
+  if (!stalePartial && cur && (cur.loading || Array.isArray(cur.matches) || cur.unavailable)) return Promise.resolve();
+  state.archiveCache[id] = Object.assign({}, cur || {}, { loading: true });
   return fetch("/api/archive?id="+encodeURIComponent(id), {cache:"no-store"}).then(res => res.json()).then(data => {
     state.archiveCache[id] = data && typeof data === "object" ? data : { unavailable: true, matches: [] };
     render();
@@ -2977,6 +3074,16 @@ function pullArchive(id){
     state.archiveCache[id] = { unavailable: true, matches: [], reader: "Results will appear when available" };
     render();
   });
+}
+function pullFinishedArchives(){
+  const ids = archiveEntries().filter(e => e && !e.current).map(e => e.id);
+  if (!ids.length) ["overland", "arizona"].forEach(id => { if (ids.indexOf(id) < 0) ids.push(id); });
+  return Promise.all(ids.map(pullArchive));
+}
+function pullProfileArchives(){
+  const ids = archiveEntries().map(e => e.id);
+  ["overland", "arizona", "columbus", "las-vegas"].forEach(id => { if (ids.indexOf(id) < 0) ids.push(id); });
+  return Promise.all(ids.map(pullArchive));
 }
 async function pullArchiveIndex(){
   try {
@@ -3103,10 +3210,11 @@ async function pullMagazine(page){
 window.addEventListener("popstate", render);
 window.addEventListener("load", async () => {
   await pull();
-  pullArchiveIndex().then(() => Promise.all([pullArchive("overland"), pullArchive("arizona")])).then(() => {
-    if (path()==="/" || path().startsWith("/player/") || path().startsWith("/match/")) render();
+  const onProfile = path().startsWith("/player/") || path().startsWith("/team/");
+  pullArchiveIndex().then(() => onProfile ? pullProfileArchives() : pullFinishedArchives()).then(() => {
+    if (path()==="/" || path().startsWith("/player/") || path().startsWith("/team/") || path().startsWith("/match/")) render();
   });
-  pullHistory().then(()=>{ if(path()==="/history") render(); });
+  pullHistory().then(()=>{ if(path()==="/history" || path().startsWith("/player/") || path().startsWith("/team/")) render(); });
   pullRankings().then(() => { if (path()==="/rankings" || path().startsWith("/player/") || path()==="/") render(); });
   pullCalendar().then(() => { if (path()==="/calendar" || path()==="/" || path()==="/rankings") render(); });
   pullMagazine(1).then(() => { if (path()==="/magazine") render(); });

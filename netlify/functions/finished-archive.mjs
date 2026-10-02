@@ -124,6 +124,19 @@ export function pinEnded(end, today) {
   return !!(e && t && t > e);
 }
 
+/**
+ * A past catalog event is finished. A live pin stays unfinished until its week
+ * is actually over — profiles can still read FT rows before that.
+ * PPA uses the feed (every row final, latest day before today) or the pin end.
+ * APP uses the pin end only. Never treat a partial week as finished.
+ */
+export function eventIsFinished(ev, rows, today) {
+  if (!ev) return false;
+  if (!ev.current) return true;
+  if (ev.tour === "ppa") return weekIsFinished(rows, today) || pinEnded(ev.end, today);
+  return pinEnded(ev.end, today);
+}
+
 export function selectProBrackets(brackets) {
   const wanted = new Set(PRO_DRAW_NAMES);
   return (brackets || []).filter((b) => wanted.has(String(b && b.bracketName || "").trim()));
@@ -319,9 +332,6 @@ export function mapPpaArchiveMatch(m, ev) {
 
 async function loadAppFinished(ev) {
   const today = ymdToday(ev.tz);
-  if (ev.current && !pinEnded(ev.end, today)) {
-    return { ...pack(ev), finished: false, matches: [], reader: "" };
-  }
   const brRes = await fetchJson(`${DEN}/api/tournament-brackets?tournamentId=${encodeURIComponent(ev.denTournamentId)}`);
   const brackets = selectProBrackets(brRes?.brackets?.content || []);
   const settled = await Promise.all(
@@ -336,19 +346,17 @@ async function loadAppFinished(ev) {
   const matches = settled
     .flatMap(({ bracket, matches: rows }) => rows.map((m) => mapAppArchiveMatch(m, bracket, ev)).filter(Boolean))
     .filter((m) => m.status === "FT");
-  return { ...pack(ev), finished: true, matches };
+  // Current pins stay unfinished until the pin date passes. FT rows are still real.
+  return { ...pack(ev), finished: eventIsFinished(ev, matches, today), matches };
 }
 
 async function loadPpaFinished(ev) {
   const today = ymdToday(ev.tz);
   const scores = await fetchJson("https://www.ppatour.com/api/scores/?event=" + encodeURIComponent(ev.ppaEventId));
   const raw = Array.isArray(scores?.matches) ? scores.matches : [];
-  const finished = ev.current ? weekIsFinished(raw, today) || pinEnded(ev.end, today) : true;
-  if (ev.current && !finished) {
-    return { ...pack(ev), finished: false, matches: [], reader: "" };
-  }
   const matches = raw.map((m) => mapPpaArchiveMatch(m, ev)).filter(Boolean);
-  return { ...pack(ev), finished: true, matches };
+  // weekIsFinished must see scheduled rows too. Mapped matches are finals only.
+  return { ...pack(ev), finished: eventIsFinished(ev, raw, today), matches };
 }
 
 function pack(ev) {

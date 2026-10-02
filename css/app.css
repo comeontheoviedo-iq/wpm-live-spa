@@ -300,3 +300,9 @@ nav.tabbar a.on{color:var(--gold)}
 .form-pips b{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;font-family:Syne,sans-serif;font-size:14px}
 .form-pips b.w{background:#efe6c4;color:var(--navy)}
 .form-pips b.l{background:#f3efe6;color:var(--mute)}
+.form-head{display:flex;align-items:baseline;gap:14px;margin-top:4px}
+.form-string{font-family:Syne,sans-serif;font-size:22px;letter-spacing:.14em;color:var(--navy)}
+.form-record{font-family:Syne,sans-serif;font-size:22px;letter-spacing:-.03em;color:var(--navy)}
+.result-row .wl{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;font-family:Syne,sans-serif;font-weight:800;text-decoration:none}
+.result-row .wl.w{background:#efe6c4;color:var(--navy)}
+.result-row .wl.l{background:#f3efe6;color:var(--mute)}
