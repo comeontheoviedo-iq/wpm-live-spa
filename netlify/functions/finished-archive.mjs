@@ -12,7 +12,11 @@ import { APP_LIVE, ENDED_APP, PPA_LIVE } from "./slate-events.mjs";
 const DEN = "https://denlive.pickleballden.com";
 const UA = { "User-Agent": "WPM-LIVE/1.0", Accept: "application/json" };
 
-/** Open pro draws only. Backdraw and amateur brackets stay off this archive. */
+/**
+ * Open pro draws only. Backdraw and amateur brackets stay off this archive.
+ * Den sometimes omits the apostrophe ("Womens Pro Singles" at Detroit 18442).
+ * selectProBrackets folds that; it does not widen to AARP or backdraw.
+ */
 export const PRO_DRAW_NAMES = [
   "Men's Pro Singles",
   "Women's Pro Singles",
@@ -22,8 +26,89 @@ export const PRO_DRAW_NAMES = [
 ];
 
 const ARIZONA_ID = "62c01642-1bb2-4f9a-9998-599f8fdefe5c";
+const CARY_ID = "b177c3be-53a6-4df8-b1cb-94cb5b0f97d1";
+const SEATTLE_ID = "24c9d0bb-4906-45b9-830e-c5b09bf04521";
+const ATLANTA_ID = "cd808ec7-e9a9-4647-b226-173889c0145e";
+const GRAND_RAPIDS_ID = "d31aaa25-050c-4b4b-8537-0c69b7ea674a";
 
+/**
+ * Finished weeks with a verified score source, oldest first.
+ * Charlotte Challenger (2006a790-…) still had scheduled rows on 2026-10-02, so it stays off.
+ * Columbus 18448 and Las Vegas 86926aef stay on CURRENT_PINS.
+ */
 export const FINISHED_EVENTS = [
+  {
+    id: "chicago",
+    tour: "app",
+    label: "Chicago",
+    name: "APP Vlasic Classic Chicago Benefiting Shriners Children's",
+    venue: "Danny Cunniff Park, Highland Park, IL",
+    tz: "America/Chicago",
+    start: "2026-08-05",
+    end: "2026-08-09",
+    denTournamentId: "18313",
+    current: false,
+  },
+  {
+    id: "seattle",
+    tour: "ppa",
+    label: "Seattle",
+    name: "Seattle PPA Challenger",
+    venue: "Sideout Tsunami Pickleball Center, Seattle, WA",
+    tz: "America/Los_Angeles",
+    start: "2026-08-14",
+    end: "2026-08-16",
+    ppaEventId: SEATTLE_ID,
+    current: false,
+  },
+  {
+    id: "detroit",
+    tour: "app",
+    label: "Detroit",
+    name: "APP Detroit Open",
+    venue: "Suburban Collection Showplace, Novi, MI",
+    tz: "America/Detroit",
+    start: "2026-08-19",
+    end: "2026-08-23",
+    denTournamentId: "18442",
+    current: false,
+  },
+  {
+    id: "atlanta",
+    tour: "ppa",
+    label: "Atlanta",
+    name: "Atlanta PPA Challenger",
+    venue: "Let's Go Pickleball & Padel, Atlanta, GA",
+    tz: "America/New_York",
+    start: "2026-08-28",
+    end: "2026-08-30",
+    ppaEventId: ATLANTA_ID,
+    current: false,
+  },
+  {
+    id: "cary",
+    tour: "ppa",
+    label: "Cary",
+    name: "Veolia Pickleball National Championships",
+    venue: "Cary Tennis Park, Cary, NC",
+    tz: "America/New_York",
+    start: "2026-08-31",
+    end: "2026-09-06",
+    ppaEventId: CARY_ID,
+    current: false,
+  },
+  {
+    id: "arizona",
+    tour: "ppa",
+    label: "Arizona",
+    name: "PPA Veolia Arizona Open",
+    venue: "Mesa, AZ",
+    tz: "America/Phoenix",
+    start: "2026-09-14",
+    end: "2026-09-21",
+    ppaEventId: ARIZONA_ID,
+    current: false,
+  },
   {
     id: "overland",
     tour: "app",
@@ -37,15 +122,15 @@ export const FINISHED_EVENTS = [
     current: false,
   },
   {
-    id: "arizona",
+    id: "grand-rapids",
     tour: "ppa",
-    label: "Arizona",
-    name: "PPA Veolia Arizona Open",
-    venue: "Mesa, AZ",
-    tz: "America/Phoenix",
-    start: "2026-09-14",
-    end: "2026-09-21",
-    ppaEventId: ARIZONA_ID,
+    label: "Grand Rapids",
+    name: "Grand Rapids PPA Challenger",
+    venue: "Grand Rapids Racquet & Fitness, Rockford, MI",
+    tz: "America/Detroit",
+    start: "2026-09-18",
+    end: "2026-09-20",
+    ppaEventId: GRAND_RAPIDS_ID,
     current: false,
   },
 ];
@@ -137,9 +222,18 @@ export function eventIsFinished(ev, rows, today) {
   return pinEnded(ev.end, today);
 }
 
+function canonProDraw(name) {
+  return String(name || "")
+    .replace(/[\u2018\u2019']/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+const OPEN_PRO_DRAWS = new Set(PRO_DRAW_NAMES.map(canonProDraw));
+
 export function selectProBrackets(brackets) {
-  const wanted = new Set(PRO_DRAW_NAMES);
-  return (brackets || []).filter((b) => wanted.has(String(b && b.bracketName || "").trim()));
+  return (brackets || []).filter((b) => OPEN_PRO_DRAWS.has(canonProDraw(b && b.bracketName)));
 }
 
 function ymdToday(tz) {

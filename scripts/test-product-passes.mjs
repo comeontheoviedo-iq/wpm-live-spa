@@ -53,20 +53,44 @@ assert.equal(looksLikeStoredEvent("Ben Johns"), false);
 
 const overland = FINISHED_EVENTS.find((e) => e.id === "overland");
 const arizona = FINISHED_EVENTS.find((e) => e.id === "arizona");
+const chicago = FINISHED_EVENTS.find((e) => e.id === "chicago");
+const detroit = FINISHED_EVENTS.find((e) => e.id === "detroit");
+const seattle = FINISHED_EVENTS.find((e) => e.id === "seattle");
+const atlanta = FINISHED_EVENTS.find((e) => e.id === "atlanta");
+const cary = FINISHED_EVENTS.find((e) => e.id === "cary");
+const grandRapids = FINISHED_EVENTS.find((e) => e.id === "grand-rapids");
 assert.equal(overland.denTournamentId, "18453");
 assert.equal(arizona.ppaEventId, "62c01642-1bb2-4f9a-9998-599f8fdefe5c");
+assert.equal(chicago.denTournamentId, "18313");
+assert.equal(chicago.tour, "app");
+assert.equal(chicago.current, false);
+assert.equal(detroit.denTournamentId, "18442");
+assert.equal(detroit.current, false);
+assert.equal(seattle.ppaEventId, "24c9d0bb-4906-45b9-830e-c5b09bf04521");
+assert.equal(atlanta.ppaEventId, "cd808ec7-e9a9-4647-b226-173889c0145e");
+assert.equal(cary.ppaEventId, "b177c3be-53a6-4df8-b1cb-94cb5b0f97d1");
+assert.equal(cary.name, "Veolia Pickleball National Championships");
+assert.equal(grandRapids.ppaEventId, "d31aaa25-050c-4b4b-8537-0c69b7ea674a");
+assert.equal(FINISHED_EVENTS.some((e) => e.denTournamentId === "18448"), false);
+assert.equal(FINISHED_EVENTS.some((e) => String(e.ppaEventId || "").startsWith("86926aef")), false);
+assert.equal(FINISHED_EVENTS.some((e) => String(e.ppaEventId || "").startsWith("2006a790")), false);
 assert.equal(APP_LIVE.eventId, "18448");
 assert.equal(PPA_LIVE.eventId, "86926aef-0566-4fbb-87cf-a48068a9f1c6");
 assert.equal(CURRENT_PINS.find((e) => e.id === "columbus").denTournamentId, "18448");
 assert.equal(CURRENT_PINS.find((e) => e.id === "las-vegas").ppaEventId, PPA_LIVE.eventId);
+assert.equal(CURRENT_PINS.find((e) => e.id === "columbus").current, true);
+assert.equal(CURRENT_PINS.find((e) => e.id === "las-vegas").current, true);
 
 const kept = selectProBrackets([
   { bracketName: "Men's Pro Singles" },
   { bracketName: "Men's Pro Singles - Backdraw" },
   { bracketName: "Mixed Amateur Doubles" },
   { bracketName: "Women's Pro Doubles" },
+  { bracketName: "Womens Pro Singles" },
+  { bracketName: "Women's Pro Singles - Backdraw" },
+  { bracketName: "AARP Champions (50+) Men's Pro Singles" },
 ]);
-assert.deepEqual(kept.map((b) => b.bracketName), ["Men's Pro Singles", "Women's Pro Doubles"]);
+assert.deepEqual(kept.map((b) => b.bracketName), ["Men's Pro Singles", "Women's Pro Doubles", "Womens Pro Singles"]);
 
 const fu = mapAppArchiveMatch(
   {
@@ -137,6 +161,10 @@ assert.equal(eventIsFinished(columbusPin, [], "2026-10-05"), true);
 assert.equal(eventIsFinished(vegasPin, [{ status: "final", dateKey: "2026-10-02" }, { status: "scheduled", dateKey: "2026-10-03" }], "2026-10-02"), false);
 assert.equal(eventIsFinished(overland, [], "2026-10-02"), true);
 assert.equal(eventIsFinished(arizona, [], "2026-10-02"), true);
+assert.equal(eventIsFinished(chicago, [], "2026-10-02"), true);
+assert.equal(eventIsFinished(detroit, [], "2026-10-02"), true);
+assert.equal(eventIsFinished(cary, [], "2026-10-02"), true);
+assert.equal(eventIsFinished(grandRapids, [{ status: "final", dateKey: "2026-09-20" }], "2026-10-02"), true);
 
 const archiveSrc = fs.readFileSync("netlify/functions/finished-archive.mjs", "utf8");
 const appLoad = archiveSrc.slice(archiveSrc.indexOf("async function loadAppFinished"), archiveSrc.indexOf("async function loadPpaFinished"));
