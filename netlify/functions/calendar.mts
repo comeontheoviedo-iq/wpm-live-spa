@@ -15,6 +15,8 @@ import {
   isParkedPpaEventId,
   isAppAsiaName,
   matchesSlateName,
+  coverageSeedFor,
+  LOUISVILLE,
   readerStatusLine,
   toReaderEvent,
 } from "./slate-events.mjs";
@@ -101,8 +103,9 @@ const KNOWN = {
     resultsOnly: true,
     organizerId: "1645900",
     organizerUrl: "https://www.sportssync.asia/organizers/1645900",
-    listedAsOf: "2026-09-30",
+    listedAsOf: "2026-10-02",
     listedTournamentIds: ["89", "222"],
+    unresolvedTournamentIds: ["390", "391"],
     chongqingSportsSyncId: null,
     timezone: "Asia/Shanghai",
     name: "APP Asia Chongqing Open",
@@ -260,12 +263,12 @@ function mergeCalendar(gpaRows: any[], armed: ArmedEvent[]) {
 
   const today = new Date().toISOString().slice(0, 10);
   const events = (gpaRows || []).map((e: any) => {
-    const start = String(e.tournament_date || "").slice(0, 10);
-    const end = String(e.end_date || start).slice(0, 10);
+    let start = String(e.tournament_date || "").slice(0, 10);
+    let end = String(e.end_date || start).slice(0, 10);
     const name = e.name || "";
     const id = eventId(name, start);
     const armedRow = byId[id];
-    const venue = e.venue || e.location || "";
+    let venue = e.venue || e.location || "";
     const host = e.host || "";
     const tour = guessTour(host, name);
     let status: "live-path" | "delayed" | "results-only" | "ended" = "results-only";
@@ -292,7 +295,12 @@ function mergeCalendar(gpaRows: any[], armed: ArmedEvent[]) {
         connector = null;
         timezone = timezone || ENDED_APP.overland.timezone;
       } else if (/Louisville/i.test(name) && tour === "app") {
-        note = "Known Den id 18454 — arm when week-of (tz America/New_York)";
+        note = LOUISVILLE.note;
+        timezone = timezone || LOUISVILLE.timezone;
+        if (!venue || /^usa$/i.test(venue)) venue = LOUISVILLE.venue;
+        status = "results-only";
+        onLive = false;
+        connector = null;
       } else if (/Detroit/i.test(name) && tour === "app") {
         note = "Known Den id 18442 (past) — Den Live brackets verified";
       } else if (/Sendai/i.test(name)) {
@@ -301,6 +309,7 @@ function mergeCalendar(gpaRows: any[], armed: ArmedEvent[]) {
         status = "results-only";
       } else if (/Chongqing/i.test(name)) {
         note = CHONGQING_DESK_NOTE;
+        timezone = timezone || "Asia/Shanghai";
         status = "results-only";
         onLive = false;
         connector = null;
@@ -313,12 +322,20 @@ function mergeCalendar(gpaRows: any[], armed: ArmedEvent[]) {
       }
     }
 
-    const seedHit = SLATE.find((s) => matchesSlateName(name, s.name));
+    const seedHit = coverageSeedFor(name);
     if (seedHit && !armedRow) {
       timezone = timezone || seedHit.timezone;
-      note = note || seedHit.note;
+      if (!venue || /^usa$/i.test(venue)) venue = seedHit.venue || venue;
+      if (seedHit.dateAuthority === "official" && seedHit.start && seedHit.end) {
+        start = seedHit.start;
+        end = seedHit.end;
+        note = seedHit.note;
+      } else {
+        note = note || seedHit.note;
+      }
       if (seedHit.status === "delayed") status = "delayed";
       else if (status !== "live-path") status = seedHit.status;
+      if (seedHit.onLive === false) onLive = false;
     }
     return {
       id,

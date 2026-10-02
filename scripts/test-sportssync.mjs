@@ -18,6 +18,7 @@ import {
   mapScheduleHtml,
   mapScoresPayload,
   mapSportsSyncStatus,
+  isChongqingBlockedSportsSyncId,
   summarizeOrganizerListing,
 } from "../netlify/functions/sportssync-map.mjs";
 
@@ -158,6 +159,19 @@ const cqPenang = applySportsSyncArm({
 });
 assert.equal(cqPenang.connector.type, "none");
 assert.equal(cqPenang.onLive, false);
+
+for (const blocked of ["390", "391"]) {
+  assert.equal(isChongqingBlockedSportsSyncId(blocked), true);
+  const armed = applySportsSyncArm({
+    name: "APP Asia Chongqing Open",
+    onLive: true,
+    status: "live-path",
+    connector: { type: "sportssync", sportsSyncTournamentId: blocked },
+  });
+  assert.equal(armed.connector.type, "none", blocked);
+  assert.equal(armed.onLive, false);
+}
+assert.equal(isChongqingBlockedSportsSyncId("3001"), false);
 
 const cqReal = applySportsSyncArm({
   name: "APP Asia Chongqing Open",

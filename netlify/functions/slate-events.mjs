@@ -3,6 +3,7 @@
  * Shared by calendar.mts + radar-lib.mjs + ppa.mts.
  * Never onLive for slate seeds. Never point /api/ppa at an ended or rejected UUID.
  */
+import { CHONGQING, CHONGQING_DESK_NOTE } from "./sportssync-map.mjs";
 
 /** Live /api/ppa EVENT — Rate Las Vegas Open (Darling Tennis Center). */
 export const PPA_LIVE_EVENT_ID = "86926aef-0566-4fbb-87cf-a48068a9f1c6";
@@ -198,11 +199,221 @@ export const BARCELONA = {
   connector: { type: "none", ppaEventId: ENDED_PPA.barcelona.ppaEventId },
 };
 
-export const SLATE = [GIJON, BARCELONA];
-
 /** MLP Asia is the PPA/MLP franchise. APP Asia Tour is APP. Never merge the chips. */
 export const MLP_ASIA_NOTE =
   "MLP Asia \u2260 APP. MLP Asia is the PPA/MLP franchise. APP Asia Tour (Chongqing / Taipei / Bangkok / HCMC / India) stays on the APP Asia chip \u2014 never chip MLP Asia as APP.";
+
+/** Mid-Oct APP Pro. Den 18454 is known. Columbus 18448 stays the live /api/app pin. */
+export const LOUISVILLE = {
+  id: "slate:app-louisville-2026",
+  name: "Humana APP Louisville Open",
+  venue: "Kentucky International Convention Center, Louisville, KY",
+  timezone: "America/New_York",
+  tour: "app",
+  host: "APP",
+  tier: "",
+  start: "2026-10-15",
+  end: "2026-10-18",
+  status: "results-only",
+  onLive: false,
+  denTournamentId: "18454",
+  officialUrl: "https://theapp.global/tour-schedule/2026-app-louisville",
+  note:
+    "Known Den id 18454. Registration external-tournament/3523724 is not the scoring id. Not the live board — Columbus Den 18448 stays /api/app. Do not mark LIVE until Den status is RUNNING in this window.",
+  connector: { type: "none" },
+};
+
+/** Next APP Pro after Louisville. No published Den scoring id. */
+export const ARIZONA_APP = {
+  id: "slate:app-arizona-2026",
+  name: "APP Arizona Open",
+  venue: "Arizona Athletic Grounds, Mesa, AZ",
+  timezone: "America/Phoenix",
+  tour: "app",
+  host: "APP",
+  tier: "",
+  start: "2026-11-12",
+  end: "2026-11-15",
+  status: "results-only",
+  onLive: false,
+  denTournamentId: null,
+  officialUrl: "https://theapp.global/tour-schedule/2026-app-arizona",
+  note:
+    "APP Arizona Open at Arizona Athletic Grounds, Mesa (official page 12–15 Nov 2026). No Den Live tournamentId published. Results-only. Do not invent a Den id. Do not mark LIVE. Not the PPA Arizona event.",
+  connector: { type: "none" },
+};
+
+/** APP Asia. No Den id and no SportsSync id after the 2026-10-02 hunt. */
+export const CHONGQING_SLATE = {
+  id: "slate:app-asia-chongqing-2026",
+  name: CHONGQING.name,
+  venue: CHONGQING.venue,
+  timezone: CHONGQING.tz,
+  tour: "app-asia",
+  host: "APP",
+  tier: "",
+  start: CHONGQING.start,
+  end: CHONGQING.end,
+  status: "results-only",
+  onLive: false,
+  denTournamentId: null,
+  sportsSyncTournamentId: null,
+  note: CHONGQING_DESK_NOTE,
+  connector: { type: "none" },
+};
+
+/** Official APP page window. GPA still says 2026-10-26 — do not treat that as the event dates. */
+export const BANGKOK = {
+  id: "slate:app-asia-bangkok-2026",
+  name: "APP Asia Bangkok Open",
+  venue: "Bangkok, Thailand",
+  timezone: "Asia/Bangkok",
+  tour: "app-asia",
+  host: "APP",
+  tier: "",
+  start: "2026-11-02",
+  end: "2026-11-07",
+  status: "results-only",
+  onLive: false,
+  dateAuthority: "official",
+  sportsSyncTournamentId: null,
+  officialUrl: "https://theapp.global/tour-schedule/2026-app-bangkok-open",
+  note:
+    "Official APP page data-event-start 2026-11-02 through 2026-11-07. GPA listed 2026-10-26. SportsSync register link 391 redirects to /tournament/index (2026-10-02) and is not armed. Not Chongqing. Not MLP. Results-only. Do not fake LIVE.",
+  connector: { type: "none" },
+};
+
+export const TAIPEI = {
+  id: "slate:app-asia-taipei-2026",
+  name: "TCI APP Asia Taipei City Open",
+  venue: "Taipei City, Taiwan",
+  timezone: "Asia/Taipei",
+  tour: "app-asia",
+  host: "APP",
+  tier: "",
+  start: "2026-11-12",
+  end: "2026-11-15",
+  status: "results-only",
+  onLive: false,
+  sportsSyncTournamentId: null,
+  note:
+    "GPA window 2026-11-12–2026-11-15. SportsSync 390 is a label on theapp.asia and /tournament/390 does not resolve (2026-10-02). Not Chongqing. Not MLP. Results-only. Do not fake LIVE.",
+  connector: { type: "none" },
+};
+
+export const INDIA_APP = {
+  id: "slate:app-asia-india-2026",
+  name: "APP India Open",
+  venue: "India",
+  timezone: "Asia/Kolkata",
+  tour: "app-asia",
+  host: "APP",
+  tier: "",
+  start: "2026-11-27",
+  end: "2026-11-27",
+  status: "results-only",
+  onLive: false,
+  officialUrl: "https://theapp.global/tour-schedule/2026-app-india-open",
+  note:
+    "APP India Open dated 2026-11-27 on the official APP page and GPA. No Den id and no SportsSync id. APP Asia, not MLP. Results-only. Do not fake LIVE.",
+  connector: { type: "none" },
+};
+
+export const HCMC = {
+  id: "slate:app-asia-hcmc-2026",
+  name: "APP Ho Chi Minh City Open",
+  venue: "Ho Chi Minh City, Vietnam",
+  timezone: "Asia/Ho_Chi_Minh",
+  tour: "app-asia",
+  host: "APP",
+  tier: "",
+  start: "2026-12-02",
+  end: "2026-12-02",
+  status: "results-only",
+  onLive: false,
+  officialUrl: "https://theapp.global/tour-schedule/2026-app-ho-chi-minh-city-open",
+  note:
+    "APP Ho Chi Minh City Open dated 2026-12-02 on the official APP page and GPA. No Den id and no SportsSync id. APP Asia, not MLP. Results-only. Do not fake LIVE.",
+  connector: { type: "none" },
+};
+
+/** Next PPA after Las Vegas. UUID is the brackets link, not the wired /api/ppa EVENT. */
+export const PPA_CHICAGO = {
+  id: "slate:ppa-chicago-2026",
+  name: "Veolia Chicago Cup",
+  venue: "Life Time North Shore Sport & Racquetball, Northbrook, IL",
+  timezone: "America/Chicago",
+  tour: "ppa",
+  host: "PPA",
+  tier: "",
+  start: "2026-10-05",
+  end: "2026-10-11",
+  status: "results-only",
+  onLive: false,
+  ppaEventId: "203e1164-b4f9-47e9-bacf-ff81f8748025",
+  officialUrl: "https://www.ppatour.com/events/2026/veolia-chicago-cup/",
+  note:
+    "Upcoming PPA. Brackets UUID 203e1164-b4f9-47e9-bacf-ff81f8748025 had scheduled scores on 2026-10-02. Not the live board — do not cut /api/ppa off Rate Las Vegas Open (86926aef-0566-4fbb-87cf-a48068a9f1c6). Not LIVE until the ticker title matches.",
+  connector: { type: "none" },
+};
+
+export const PPA_VIRGINIA_BEACH = {
+  id: "slate:ppa-virginia-beach-2026",
+  name: "Mojo Energy Pouches Virginia Beach Open",
+  venue: "Pickleball Virginia Beach, Virginia Beach, VA",
+  timezone: "America/New_York",
+  tour: "ppa",
+  host: "PPA",
+  tier: "",
+  start: "2026-10-12",
+  end: "2026-10-18",
+  status: "results-only",
+  onLive: false,
+  ppaEventId: "429c7980-e1b9-4800-805f-dfb160781cd9",
+  officialUrl: "https://www.ppatour.com/events/2026/virginia-beach-open/",
+  note:
+    "Upcoming PPA. Brackets UUID 429c7980-e1b9-4800-805f-dfb160781cd9 had scheduled scores on 2026-10-02. Not the live board — do not cut /api/ppa off Rate Las Vegas Open (86926aef-0566-4fbb-87cf-a48068a9f1c6). Not LIVE until the ticker title matches.",
+  connector: { type: "none" },
+};
+
+/** MLP Asia franchise season. Not APP Asia. */
+export const MLP_ASIA_SEASON = {
+  id: "slate:mlp-asia-2026",
+  name: "MLP Asia 2026",
+  venue: "Home nights — Tokyo opener",
+  timezone: "Asia/Tokyo",
+  tour: "mlp-asia",
+  host: "MLP Asia",
+  tier: "",
+  start: "2026-11-13",
+  end: "2026-12-12",
+  status: "results-only",
+  onLive: false,
+  officialUrl: "https://mlp-asia.com/meet-the-six-teams-draft-sign-up-and-showdown-schedule-revealed/",
+  note:
+    MLP_ASIA_NOTE +
+    " Pool nights 13–28 Nov 2026 (Tokyo 13 Nov, Hong Kong 14 Nov, Manila 20 Nov, Vietnam 21 Nov, 27–28 Nov) and playoffs 11–12 Dec. Results-only. No live path.",
+  connector: { type: "none" },
+};
+
+export const SLATE = [
+  GIJON,
+  BARCELONA,
+  CHONGQING_SLATE,
+  PPA_CHICAGO,
+  PPA_VIRGINIA_BEACH,
+  LOUISVILLE,
+  BANGKOK,
+  ARIZONA_APP,
+  TAIPEI,
+  MLP_ASIA_SEASON,
+  INDIA_APP,
+  HCMC,
+];
+
+export function coverageSeedFor(name) {
+  return SLATE.find((s) => matchesSlateName(name, s.name)) || null;
+}
 
 /** Desk / radar copy. Never send these strings on the public board. */
 export const FILTER_COPY = {
@@ -430,7 +641,45 @@ export function matchesSlateName(rowName, seedName) {
   if (a === b) return true;
   if (/gij[oó]n/i.test(a) && /gij[oó]n/i.test(b)) return true;
   if (/barcelona/i.test(a) && /barcelona/i.test(b)) return true;
+  if (/chongqing/i.test(a) && /chongqing/i.test(b)) return true;
+  if (/louisville/i.test(a) && /louisville/i.test(b)) return true;
+  if (/bangkok/i.test(a) && /bangkok/i.test(b)) return true;
+  if (/taipei/i.test(a) && /taipei/i.test(b)) return true;
+  if (/virginia beach/i.test(a) && /virginia beach/i.test(b)) return true;
+  if (/veolia chicago|chicago cup/i.test(a) && /veolia chicago|chicago cup/i.test(b)) return true;
+  if (/\bmlp\b/i.test(a) && /\bmlp\b/i.test(b)) return true;
+  if (/india open/i.test(a) && /india open/i.test(b)) return true;
+  if (/ho chi minh/i.test(a) && /ho chi minh/i.test(b)) return true;
+  if (/\bapp\b/i.test(a) && /\bapp\b/i.test(b) && /arizona/i.test(a) && /arizona/i.test(b)) return true;
   return false;
+}
+
+function watchFromSeed(seed, extra = {}) {
+  return {
+    tour: seed.tour,
+    name: seed.name,
+    start: seed.start,
+    end: seed.end,
+    venue: seed.venue,
+    tz: seed.timezone,
+    source: "slate-seed",
+    denId: seed.denTournamentId || null,
+    ppaEventId: seed.ppaEventId || null,
+    sportsSyncTournamentId: seed.sportsSyncTournamentId || null,
+    officialUrl: seed.officialUrl || "",
+    scorePath: null,
+    onLive: false,
+    intake: {
+      name: true,
+      venue: Boolean(seed.venue),
+      timezone: Boolean(seed.timezone),
+      scorePath: false,
+      status: "fail",
+    },
+    board: "results_only",
+    note: seed.note,
+    ...extra,
+  };
 }
 
 export function asCalendarRow(seed, today) {
@@ -511,24 +760,15 @@ export function staticWatchEvents() {
       board: "results_only",
       note: BARCELONA.note,
     },
-    {
-      tour: "mlp-asia",
-      name: "MLP Asia",
-      start: null,
-      end: null,
-      venue: "",
-      tz: "",
-      source: "label-guard",
-      scorePath: null,
-      intake: {
-        name: true,
-        venue: false,
-        timezone: false,
-        scorePath: false,
-        status: "fail",
-      },
-      board: "results_only",
-      note: MLP_ASIA_NOTE,
-    },
+    watchFromSeed(CHONGQING_SLATE),
+    watchFromSeed(PPA_CHICAGO),
+    watchFromSeed(PPA_VIRGINIA_BEACH),
+    watchFromSeed(LOUISVILLE),
+    watchFromSeed(BANGKOK),
+    watchFromSeed(ARIZONA_APP),
+    watchFromSeed(TAIPEI),
+    watchFromSeed(MLP_ASIA_SEASON),
+    watchFromSeed(INDIA_APP),
+    watchFromSeed(HCMC),
   ];
 }

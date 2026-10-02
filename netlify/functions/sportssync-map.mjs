@@ -55,8 +55,26 @@ export const CHONGQING = {
   status: "results-only",
 };
 
+/**
+ * Claimed on APP pages, not on organizer 1645900, not in the sitemap.
+ * /tournament/{id} redirects to /tournament/index (checked 2026-10-02).
+ * Not Chongqing. Not a score path.
+ */
+export const SPORTSSYNC_UNRESOLVED = [
+  {
+    id: "390",
+    name: "2026 TCI APP Asia Taipei Open",
+    asOf: "2026-10-02",
+  },
+  {
+    id: "391",
+    name: "2026 APP Asia Bangkok Open",
+    asOf: "2026-10-02",
+  },
+];
+
 export const CHONGQING_DESK_NOTE =
-  "APP Asia Tour (not MLP Asia). No Den Live id. SportsSync organizer 1645900 lists KL 89 and Penang 222 only (2026-09-30) — Chongqing is not listed. Calendar/results-only only. Do not invent a SportsSync id. Do not fake LIVE.";
+  "APP Asia Tour (not MLP Asia). No Den Live id. SportsSync organizer 1645900 still lists KL 89 and Penang 222 only. Sitemap tournament titles (ids 91–471, scanned 2026-10-02) do not include Chongqing. Links 390 (Taipei) and 391 (Bangkok) do not resolve and are not Chongqing. Calendar/results-only only. Do not invent a SportsSync id. Do not fake LIVE.";
 
 const FT_TOKENS = new Set([
   "COMPLETED",
@@ -107,6 +125,16 @@ export function normalizeSportsSyncId(raw) {
 export function isDryRunSportsSyncId(raw) {
   const id = normalizeSportsSyncId(raw);
   return SPORTSSYNC_LISTED.tournaments.some((t) => t.id === id);
+}
+
+export function isUnresolvedSportsSyncId(raw) {
+  const id = normalizeSportsSyncId(raw);
+  return SPORTSSYNC_UNRESOLVED.some((t) => t.id === id);
+}
+
+/** KL/Penang dry-runs, plus Taipei 390 / Bangkok 391 links that do not resolve. */
+export function isChongqingBlockedSportsSyncId(raw) {
+  return isDryRunSportsSyncId(raw) || isUnresolvedSportsSyncId(raw);
 }
 
 export function isChongqingName(name) {
@@ -205,7 +233,7 @@ export function applySportsSyncArm(row) {
   const chongqing = isChongqingName(next.name);
 
   if (c.type === "sportssync" || id) {
-    if (!id || (chongqing && isDryRunSportsSyncId(id))) {
+    if (!id || (chongqing && isChongqingBlockedSportsSyncId(id))) {
       next.connector = { type: "none" };
       next.onLive = false;
       if (chongqing || next.status === "live-path" || !next.status) next.status = "results-only";

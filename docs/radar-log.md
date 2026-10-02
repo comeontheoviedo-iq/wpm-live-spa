@@ -64,6 +64,15 @@
 - **APP Asia Chongqing Open** — Den id still **not found**. Calendar/results-only only. No fake LIVE.
 - Client `wpm-20260930a.js` · SW `wpm-static-20260930a`. Shop stays Coming soon.
 
+## 2026-10-02 — Chongqing hunt expanded; next-week radar
+
+- **Chongqing: no id.** Den brackets from 18671 until HTTP 429 at 18713 (named hits were Shootout, Lien Doan Chi Lang, Pioneer Picklefest — not Chongqing). Prior cluster ~18455–18670 still empty. SportsSync organizer 1645900 still only KL 89 and Penang 222. Sitemap tournament titles (246 ids, 91–471) have no Chongqing. APP schedule HTML has no Chongqing card; `theapp.global/tour-schedule/2026-app-asia-chongqing-open` 404s. Stays results-only, `onLive` false. Do not fake LIVE.
+- SportsSync **390** (Taipei label) and **391** (Bangkok label) redirect to `/tournament/index`. Not armed. Not Chongqing. Arming either onto Chongqing is stripped.
+- Radar horizon **28** days. Louisville Den **18454** is on the slate as results-only (not `/api/app`). Columbus **18448** stays the live APP pin. PPA Chicago `203e1164-…` and Virginia Beach `429c7980-…` are results-only. Do not cut Rate Las Vegas `86926aef-…`.
+- MLP Asia 2026 (pool 13–28 Nov, playoffs 11–12 Dec) is tour `mlp-asia`, not APP.
+- APP Asia Bangkok uses the official window 2–7 Nov (GPA had 26 Oct). Taipei, India, HCMC, APP Arizona are results-only with no invented ids.
+- Client `wpm-20261002c.js` · SW `wpm-static-20261002c`. Shop stays Coming soon.
+
 ## 2026-09-30 — SportsSync results scaffold (Chongqing still unarmed)
 
 - APP Asia scoring site is SportsSync. Organizer `1645900` lists **KL 89** and **Penang 222** only. Chongqing is not on that page. No id invented.

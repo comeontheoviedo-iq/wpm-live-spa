@@ -94,7 +94,7 @@ export function looksLikeStoredEvent(raw) {
   if (s.startsWith("slate:") || s.startsWith("ev:") || s.startsWith("gpa:")) return true;
   if (/^(overland|arizona|gij[oó]n|gijon|columbus|las vegas|barcelona|mesa)$/i.test(s)) return true;
   if (/\b(overland park|gij[oó]n|arizona open|las vegas open|columbus open|barcelona open)\b/i.test(s)) return true;
-  if (/^(APP|PPA|TPB|GPA|MLP)\b/.test(s) && /\b(open|tour)\b/i.test(s)) return true;
+  if (/^(APP|PPA|TPB|GPA|MLP)\b/.test(s) && /\b(open|tour|asia)\b/i.test(s)) return true;
   return false;
 }
 
@@ -105,11 +105,12 @@ export function tourFromEventBlob(raw) {
     decoded = decodeURIComponent(decoded);
   } catch (_) {}
   const blob = decoded.toLowerCase();
-  if (/app-asia|chongqing|taipei|bangkok|ho chi minh/.test(blob)) return "tour:app-asia";
+  if (/app-asia|chongqing|taipei|bangkok|ho chi minh|india open/.test(blob)) return "tour:app-asia";
   if (/\bmlp\b|mlp-asia/.test(blob)) return "tour:mlp-asia";
   if (/gij|tpb|top pickleball/.test(blob)) return "tour:tpb";
   if (/barcelona|ppa-eu|ppa europe/.test(blob)) return "tour:ppa-eu";
   if (/ppa asia|ppa-asia/.test(blob)) return "tour:asia";
+  if (/\bapp\b/.test(blob) && /arizona/.test(blob) && !/\bppa\b/.test(blob)) return "tour:app";
   if (/arizona|mesa|62c01642|las vegas|86926aef|^ev:ppa\b|\bppa\b/.test(blob)) return "tour:ppa";
   if (/^ev:wc\b|world cup/.test(blob)) return "tour:wc";
   if (/overland|columbus|18448|18453|^ev:app\b|\bapp\b/.test(blob)) return "tour:app";

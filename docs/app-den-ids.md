@@ -1,6 +1,6 @@
 # APP · Den Live tournamentId discovery
 
-**Last hunt:** 2026-09-30 · Den Live `tournament-brackets` for **18448** (event radar)  
+**Last hunt:** 2026-10-02 · Den Live `tournament-brackets` widened past 18670 until HTTP 429; SportsSync sitemap titles 91–471  
 **Rule:** never invent scores; intake needs name + venue + timezone + working Den `tournamentId`. LIVE only when Den matches are RUNNING. No phantom 0–0. Shop stays Coming soon.
 
 ## Blocked APP events (radar / GPA)
@@ -10,7 +10,7 @@
 | APP Columbus Open presented by The James | Oct 1–4, 2026 | **18448** | Pickle & Chill, Columbus, OH · `America/New_York` | **Live on `/api/app`.** GPA short name “APP Columbus Open”. Den brackets exist (Pending at cut; 0 matches). Registration external id `8057937` is **not** the scoring id. |
 | APP Dillons Overland Park Open | Sep 17–20, 2026 | **18453** | AdventHealth Sports Park at Bluhawk · `America/Chicago` | **Ended.** Disarmed / not `onLive`. Was the September live path. |
 | APP Japan – Sendai (Xebio / Asia Qualifier) | Sep 19–20, 2026 (JST site: Sep 18–20) | **not found** | Motoyama Seisakujo Aoba Arena, Sendai · `Asia/Tokyo` | **Not on Pickleball Den.** Registration / draws: Tournated `games.japanpickleball.org/tournament/11359`. No denlive link. |
-| APP Asia Chongqing Open | Oct 2–6, 2026 | **not found** | Chongqing, China · `Asia/Shanghai` (guess) | APP Asia Tour (**not MLP Asia**). **No Den id. No SportsSync id** — organizer [1645900](https://www.sportssync.asia/organizers/1645900) lists KL 89 and Penang 222 only (2026-09-30). Calendar/results-only. Do not invent either id. Do not fake LIVE. See [`sportssync-asia.md`](./sportssync-asia.md). |
+| APP Asia Chongqing Open | Oct 2–6, 2026 | **not found** | Chongqing, China · `Asia/Shanghai` | APP Asia Tour (**not MLP Asia**). **No Den id. No SportsSync id** after the 2026-10-02 hunt (organizer 1645900 still KL 89 / Penang 222; sitemap titles have no Chongqing; 390/391 unresolved). Calendar/results-only. Do not invent either id. Do not fake LIVE. See [`sportssync-asia.md`](./sportssync-asia.md). |
 | TPB Gijón 2026 | Sep 18–20, 2026 | **not found** | Puerto Deportivo de Gijón · `Europe/Madrid` | TOP Pickleball Tour powered by APP — **not Den Live**. Draw PDF only. See `docs/slate-europe.md`. |
 
 ## Other Den Live APP ids verified (brackets name)
@@ -63,7 +63,7 @@ Arming Chongqing (or Sendai) on `/calendar` as **live-path** stays blocked — n
 
 - Columbus Den Live **info** payload was still `null` at cut (venue/tz from the profile, name from `tournament-brackets`). Brackets were Pending with 0 matches — board stays empty until real rows exist.  
 - Sendai needs a **non-Den** connector if WPM wants live boards (Tournated / local feed) — out of scope for `/api/app`.  
-- Chongqing: **still no Den id, and no SportsSync id.** Calendar/results-only only. Do not invent a Den id, a SportsSync id, or a LIVE chip. APP Asia Tour, not MLP Asia. When a real SportsSync id is on the organizer page, arm `/api/sportssync` as results-only — see [`sportssync-asia.md`](./sportssync-asia.md).  
+- Chongqing: **still no Den id, and no SportsSync id** (2026-10-02). Calendar/results-only only. Do not invent a Den id, a SportsSync id, or a LIVE chip. APP Asia Tour, not MLP Asia. Louisville **18454** is the next known APP Den id and is not the live pin while Columbus **18448** is on. When a real SportsSync id is on the organizer page, arm `/api/sportssync` as results-only — see [`sportssync-asia.md`](./sportssync-asia.md).  
 - Gijón is TOP Pickleball, not Den — do not hunt a Den id as if it were APP Columbus. See `docs/slate-europe.md`.  
 - `DESK_KEY` was not present in Netlify env at the September hunt — calendar POST arming needs that secret (or direct Blobs write). The Columbus arm for this cut is in code (`applyAppCalendarCut`), not a desk POST.
 
