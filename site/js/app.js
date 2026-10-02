@@ -71,7 +71,10 @@ const state = {
   appBracketIndex: [],
   ppaEvent: null,
   appBoard: null,
-  ppaBoard: null
+  ppaBoard: null,
+  archiveId: "",
+  archiveCache: {},
+  archiveCatalog: []
 };
 try { state.selected = JSON.parse(localStorage.getItem("wpm-follows") || "{}"); } catch(e) { state.selected = {}; }
 try { state.notified = JSON.parse(sessionStorage.getItem("wpm-notified-live") || "{}"); } catch(e) { state.notified = {}; }
@@ -91,8 +94,8 @@ if ("Notification" in window && Notification.permission === "granted") {
   setTimeout(() => { syncPushSubscription(); }, 2500);
 }
 
-const SAFE_SW = "/sw.js?v=20261002a";
-const SAFE_SW_MARK = "20261002a";
+const SAFE_SW = "/sw.js?v=20261002b";
+const SAFE_SW_MARK = "20261002b";
 const GIJON_DRAW_URL = "https://toppickleballtour.com/wp-content/uploads/2026/09/TOP-PICKLEBALL-TOUR-GIJON-GRUPOS.pdf";
 /** Application-server VAPID public key (safe to embed). Private stays in Netlify env. */
 const VAPID_PUBLIC_KEY = "BEuWn2rcxKeLXPFa3KJzys7rLOtFX8GUZ9ckfFhsqEVO0Y2PE3WfnOivmFJV3EUVCf1c1g31qSiVoNDbcJQO8GQ";
@@ -115,26 +118,39 @@ function isLegacyEventFollowKey(k){
   const s = String(k || "");
   return s.indexOf("ev:") === 0 || s.indexOf("gpa:") === 0;
 }
-/** Player keys pass through. ev:app:18448 upgrades to tour:app. Unknown event keys drop. Mirrors follow-tags.mjs. */
+/** Finished event names are not players. Mirrors follow-tags.mjs looksLikeStoredEvent. */
+function looksLikeStoredEvent(raw){
+  const s = String(raw || "").trim();
+  if (!s || s.indexOf("tour:") === 0) return false;
+  if (s.indexOf("slate:") === 0 || s.indexOf("ev:") === 0 || s.indexOf("gpa:") === 0) return true;
+  if (/^(overland|arizona|gij[oó]n|gijon|columbus|las vegas|barcelona|mesa)$/i.test(s)) return true;
+  if (/\b(overland park|gij[oó]n|arizona open|las vegas open|columbus open|barcelona open)\b/i.test(s)) return true;
+  if (/^(APP|PPA|TPB|GPA|MLP)\b/.test(s) && /\b(open|tour)\b/i.test(s)) return true;
+  return false;
+}
+function tourFromEventBlob(raw){
+  let decoded = String(raw || "");
+  try { decoded = decodeURIComponent(decoded); } catch(e) {}
+  const blob = decoded.toLowerCase();
+  if (/app-asia|chongqing|taipei|bangkok|ho chi minh/.test(blob)) return "tour:app-asia";
+  if (/\bmlp\b|mlp-asia/.test(blob)) return "tour:mlp-asia";
+  if (/gij|tpb|top pickleball/.test(blob)) return "tour:tpb";
+  if (/barcelona|ppa-eu|ppa europe/.test(blob)) return "tour:ppa-eu";
+  if (/ppa asia|ppa-asia/.test(blob)) return "tour:asia";
+  if (/arizona|mesa|62c01642|las vegas|86926aef|^ev:ppa\b|\bppa\b/.test(blob)) return "tour:ppa";
+  if (/^ev:wc\b|world cup/.test(blob)) return "tour:wc";
+  if (/overland|columbus|18448|18453|^ev:app\b|\bapp\b/.test(blob)) return "tour:app";
+  if (/\bnpl\b/.test(blob)) return "tour:npl";
+  if (/\bgpa\b|d-joy|djoy/.test(blob)) return "tour:gpa";
+  return "";
+}
+/** Player keys pass through. Event keys (ev:app:18448, Overland, Arizona, Gijón) upgrade to a tour or drop. Mirrors follow-tags.mjs. */
 function normalizeFollowKey(raw){
   const k = String(raw || "").trim();
   if (!k) return "";
   if (k.indexOf("tour:") === 0) return isTourFollowKey(k) ? k : "";
-  if (!isLegacyEventFollowKey(k)) return k;
-  let decoded = k;
-  try { decoded = decodeURIComponent(k); } catch(e) {}
-  const blob = decoded.toLowerCase();
-  if (/app-asia|chongqing|taipei|bangkok|ho chi minh/.test(blob)) return "tour:app-asia";
-  if (/\bmlp\b/.test(blob)) return "tour:mlp-asia";
-  if (/gij|tpb|top pickleball/.test(blob)) return "tour:tpb";
-  if (/barcelona|ppa-eu|ppa europe/.test(blob)) return "tour:ppa-eu";
-  if (/ppa asia|ppa-asia/.test(blob)) return "tour:asia";
-  if (/^ev:ppa\b|86926aef|las vegas|\bppa\b/.test(blob)) return "tour:ppa";
-  if (/^ev:wc\b|world cup/.test(blob)) return "tour:wc";
-  if (/^ev:app\b|\bapp\b|columbus|18448|overland|18453/.test(blob)) return "tour:app";
-  if (/\bnpl\b/.test(blob)) return "tour:npl";
-  if (/\bgpa\b|d-joy|djoy/.test(blob)) return "tour:gpa";
-  return "";
+  if (isLegacyEventFollowKey(k) || k.indexOf("slate:") === 0 || looksLikeStoredEvent(k)) return tourFromEventBlob(k);
+  return k;
 }
 function migrateFollows(){
   const prev = state.selected || {};
@@ -153,7 +169,12 @@ function migrateFollows(){
 }
 migrateFollows();
 function followTagsList(){
-  return Object.keys(state.selected || {}).filter(k => state.selected[k] && !isTourFollowKey(k) && !isLegacyEventFollowKey(k));
+  return Object.keys(state.selected || {}).filter(k => {
+    if (!state.selected[k]) return false;
+    const n = normalizeFollowKey(k);
+    if (!n || isTourFollowKey(n) || isLegacyEventFollowKey(n) || looksLikeStoredEvent(n)) return false;
+    return true;
+  });
 }
 function followedTourKeys(){
   return Object.keys(state.selected || {}).filter(k => state.selected[k] && isTourFollowKey(k));
@@ -463,7 +484,17 @@ function cleanLines(m){
   });
 }
 
-function byId(id){ return state.matches.find(m => m.id === id); }
+function archiveMatchById(id){
+  const caches = state.archiveCache || {};
+  const keys = Object.keys(caches);
+  for (let i = 0; i < keys.length; i++) {
+    const rows = (caches[keys[i]] && caches[keys[i]].matches) || [];
+    const hit = rows.find(m => m && m.id === id);
+    if (hit) return hit;
+  }
+  return null;
+}
+function byId(id){ return state.matches.find(m => m.id === id) || archiveMatchById(id); }
 
 function qs(k){ try { return new URLSearchParams(location.search).get(k)||""; } catch(e){ return ""; } }
 function path(){
@@ -507,6 +538,10 @@ function datesAvailable(){
   const ev = state.appEvent || {};
   if (ev.endDate) set[ev.endDate]=1;
   if (ev.startDate) set[ev.startDate]=1;
+  if (state.archiveId) {
+    const pack = state.archiveCache[state.archiveId];
+    ((pack && pack.matches) || []).forEach(m => { if (m && m.date) set[m.date]=1; });
+  }
   return Object.keys(set).filter(Boolean).sort();
 }
 
@@ -652,14 +687,15 @@ function followingBox(extraClass){
     return `<a class="follow-item" href="${href}">${esc(followPersonLabel(k))}</a>`;
   }).join("");
   const empty = !tours.length && !people.length
-    ? `<p class="empty rail-empty">Tours and players you follow show here.</p>`
+    ? `<p class="empty rail-empty">None.</p>`
     : "";
+  const open = (tours.length || people.length) ? `<a class="follow-open" href="/following">Open</a>` : "";
   return `<div class="panel rail-card follow-box ${extraClass||""}">
     <div class="kicker">Following</div>
     ${toursHtml?`<div class="follow-tours">${toursHtml}</div>`:""}
     ${peopleHtml?`<div class="follow-people">${peopleHtml}</div>`:""}
     ${empty}
-    <a class="chip" href="/following">Open following</a>
+    ${open}
   </div>`;
 }
 function followingRail(){
@@ -1053,7 +1089,171 @@ function amateurPoolNote(list){
   if (!hidden) return "";
   return `<p class="slate-sub">Pro is on this board. ${hidden} amateur ${hidden===1?"match is":"matches are"} on the APP chip.</p>`;
 }
+const ARCHIVE_FALLBACK = [
+  {id:"overland", tour:"app", label:"Overland", name:"APP Dillons Overland Park Open", venue:"AdventHealth Sports Park at Bluhawk, Overland Park, KS", tz:"America/Chicago", start:"2026-09-17", end:"2026-09-20", current:false},
+  {id:"arizona", tour:"ppa", label:"Arizona", name:"PPA Veolia Arizona Open", venue:"Mesa, AZ", tz:"America/Phoenix", start:"2026-09-14", end:"2026-09-21", current:false},
+  {id:"columbus", tour:"app", label:"Columbus", name:"APP Columbus Open presented by The James", venue:"Pickle & Chill, Columbus, OH", tz:"America/New_York", start:"2026-10-01", end:"2026-10-04", current:true},
+  {id:"las-vegas", tour:"ppa", label:"Las Vegas", name:"PPA Rate Las Vegas Open", venue:"Darling Tennis Center, Las Vegas", tz:"America/Los_Angeles", start:"2026-09-28", end:"2026-10-06", current:true}
+];
+const DISC_LABEL = {MS:"Men's singles", WS:"Women's singles", XD:"Mixed doubles", MD:"Men's doubles", WD:"Women's doubles"};
+function weekIsFinished(matches, today){
+  const rows = matches || [];
+  const day = String(today || "").slice(0, 10);
+  if (!rows.length || !/^\d{4}-\d{2}-\d{2}$/.test(day)) return false;
+  let latest = "";
+  for (let i = 0; i < rows.length; i++) {
+    const st = String(rows[i] && rows[i].status || "").toLowerCase();
+    if (st !== "ft" && st !== "final") return false;
+    const d = String((rows[i] && (rows[i].date || rows[i].dateKey)) || "").slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d) && d > latest) latest = d;
+  }
+  return !!(latest && latest < day);
+}
+function pinEnded(end, today){
+  const e = String(end || "").slice(0, 10);
+  const t = String(today || "").slice(0, 10);
+  return !!(e && t && t > e);
+}
+function appPinFinished(){
+  const ev = state.appEvent || {};
+  const id = String(ev.id || ev.eventKey || "");
+  const today = ymdInTz(new Date(), ev.tz || "America/New_York");
+  if (id && id.indexOf("18448") === -1) return !!(ev.endDate && today > ev.endDate);
+  return today > (ev.endDate || "2026-10-04");
+}
+function ppaFeedFinished(){
+  const rows = (state.matches || []).filter(m => {
+    if (!m || m.tour !== "ppa") return false;
+    const blob = `${m.eventKey || ""} ${m.comp || ""} ${m.venue || ""}`;
+    return /86926aef|las vegas/i.test(blob);
+  });
+  const today = ymdInTz(new Date(), (state.ppaEvent && state.ppaEvent.tz) || "America/Los_Angeles");
+  return weekIsFinished(rows, today);
+}
+function vegasInPast(){
+  if (ppaFeedFinished()) return true;
+  const pin = ARCHIVE_FALLBACK.find(e => e.id === "las-vegas");
+  const today = ymdInTz(new Date(), "America/Los_Angeles");
+  return !!(pin && pinEnded(pin.end, today));
+}
+function archiveEntries(){
+  return (state.archiveCatalog && state.archiveCatalog.length) ? state.archiveCatalog : ARCHIVE_FALLBACK;
+}
+function archiveMeta(id){
+  return archiveEntries().find(e => e.id === id) || null;
+}
+function archiveReady(e){
+  if (!e) return false;
+  if (!e.current) return true;
+  if (e.id === "las-vegas") return vegasInPast();
+  if (e.id === "columbus" || e.tour === "app") return appPinFinished();
+  return false;
+}
+function boardWantsPast(filter){
+  return filter === "ppa" || filter === "app-pro" || filter === "all";
+}
+function visiblePast(filter){
+  return archiveEntries().filter(e => {
+    if (!archiveReady(e)) return false;
+    if (filter === "ppa") return e.tour === "ppa";
+    if (filter === "app-pro") return e.tour === "app";
+    return true;
+  });
+}
+function livePinLabel(filter){
+  if (filter === "app-pro" && !appPinFinished()) return "Columbus";
+  if (filter === "ppa" && !ppaFeedFinished()) {
+    const ev = state.ppaEvent || {};
+    return shortEventLabel(ev.name || "Las Vegas", ev.eventKey || "ev:ppa") || "Las Vegas";
+  }
+  if (filter === "all" && (!appPinFinished() || !ppaFeedFinished())) return "This week";
+  return "";
+}
+function ensureFinishedBoard(){
+  if (state.boardMode === "draw") return;
+  if (state.archiveId) return;
+  if (state.filter === "app-pro" && appPinFinished()) {
+    state.archiveId = "columbus";
+    if (state.boardMode === "live" || state.boardMode === "matches") state.boardMode = "results";
+  } else if (state.filter === "ppa" && ppaFeedFinished()) {
+    state.archiveId = "las-vegas";
+    if (state.boardMode === "live" || state.boardMode === "matches") state.boardMode = "results";
+  }
+}
+function pastNavHtml(){
+  if (!boardWantsPast(state.filter)) return "";
+  const past = visiblePast(state.filter);
+  const live = livePinLabel(state.filter);
+  if (!past.length && !live) return "";
+  const liveBtn = live ? `<button type="button" data-archive="live" class="${state.archiveId?"":"on"}">${esc(live)}</button>` : "";
+  const buttons = past.map(e => `<button type="button" data-archive="${esc(e.id)}" class="${state.archiveId===e.id?"on":""}">${esc(e.label)}</button>`).join("");
+  return `<nav class="past-nav" aria-label="Past events">${liveBtn}${buttons?`<span>Past</span>${buttons}`:""}</nav>`;
+}
+function archiveRoundRank(m){
+  const r = String((m && (m.round || m.div)) || "");
+  if (/semi/i.test(r)) return 1;
+  if (/quarter/i.test(r)) return 2;
+  if (/\bfinal/i.test(r)) return 0;
+  return 9;
+}
+function archiveRowsFor(id){
+  const pack = state.archiveCache[id];
+  if (!pack || !Array.isArray(pack.matches)) return [];
+  let rows = pack.matches.filter(m => m && m.status === "FT" && effectiveStatus(m) === "FT");
+  if (state.boardMode === "results" && state.resultCat && state.resultCat !== "all") {
+    rows = rows.filter(m => matchDisc(m) === state.resultCat);
+  }
+  const day = state.date;
+  const days = {};
+  rows.forEach(m => { if (m.date) days[m.date] = 1; });
+  if (day && days[day]) rows = rows.filter(m => m.date === day);
+  return rows;
+}
+function archiveBoardHtml(){
+  const id = state.archiveId;
+  const meta = archiveMeta(id) || {label:id, name:id, venue:"", start:"", end:""};
+  const pack = state.archiveCache[id];
+  const name = (pack && pack.event && pack.event.name) || meta.name || meta.label || "Results";
+  const venue = (pack && pack.event && pack.event.venue) || meta.venue || "";
+  const when = [meta.start, meta.end && meta.end !== meta.start ? meta.end : ""].filter(Boolean).join(" → ");
+  const head = `<div class="comp-head"><div><h3>${esc(name)}</h3><span>${esc([venue, when, "Finished"].filter(Boolean).join(" · "))}</span></div></div>`;
+  if (!pack || pack.loading || !Array.isArray(pack.matches)) {
+    return `<section class="comp-card">${head}<p class="games">Loading results…</p></section>`;
+  }
+  if (pack.unavailable || pack.finished === false) {
+    return `<section class="comp-card">${head}<p class="games">${esc(pack.reader || "Results will appear when available")}</p></section>`;
+  }
+  const rows = archiveRowsFor(id);
+  if (!rows.length) {
+    return `<section class="comp-card">${head}<p class="games">No finished results in this cut.</p></section>`;
+  }
+  const order = ["MS","WS","XD","MD","WD",""];
+  const groups = {};
+  rows.forEach(m => {
+    const d = matchDisc(m) || "";
+    (groups[d] = groups[d] || []).push(m);
+  });
+  const keys = Object.keys(groups).sort((a,b) => {
+    const ia = order.indexOf(a), ib = order.indexOf(b);
+    return (ia < 0 ? 9 : ia) - (ib < 0 ? 9 : ib);
+  });
+  const body = keys.map(d => {
+    const items = groups[d].slice().sort((a,b) => {
+      const ra = archiveRoundRank(a), rb = archiveRoundRank(b);
+      if (ra !== rb) return ra - rb;
+      return String(b.date||"").localeCompare(String(a.date||""));
+    });
+    const moreKey = "arch:"+id+":"+(d || "other");
+    const visible = state.more[moreKey] ? items : items.slice(0, 8);
+    const label = DISC_LABEL[d] || "Results";
+    return `<div class="slate-kicker">${esc(label)} <span>${items.length}</span></div>${visible.map(m => matchRow(m)).join("")}${slateMoreButton(moreKey, items.length, visible.length, "results")}`;
+  }).join("");
+  const ended = state.boardMode === "live" ? `<p class="pre-serve-line">Event ended</p>` : "";
+  return `<section class="comp-card">${head}${ended}${body}</section>`;
+}
 function viewHome(){
+  ensureFinishedBoard();
+  if (state.archiveId && state.boardMode !== "draw") pullArchive(state.archiveId);
   if (!state.date) state.date = boardToday();
   const days = datesAvailable().map(dt => {
     const L = dayMeta(dt);
@@ -1129,7 +1329,7 @@ function viewHome(){
       ${state.boardMode==="results"?`<div class="chips cat-chips">${RESULT_CATS.map(([id,l])=>`<button class="chip ${state.resultCat===id?"on":""}" data-cat="${id}">${l}</button>`).join("")}</div>`:""}
       ${amateurPoolNote(list)}
     </div>
-    <div class="panel">${state.boardMode==="draw" ? drawBoard() : (blocks || preServeBoard(state.filter, state.boardMode) || slateEmpty(state.filter))}</div>
+    <div class="panel">${pastNavHtml()}${state.boardMode==="draw" ? drawBoard() : (state.archiveId ? archiveBoardHtml() : (blocks || preServeBoard(state.filter, state.boardMode) || slateEmpty(state.filter)))}</div>
     ${weekStrip()}
     </div>
     <aside class="rail-right">${tableRail()}</aside>
@@ -1217,7 +1417,6 @@ function calEventRow(e){
   const id=e.id||('gpa:'+encodeURIComponent(String(e.name||'').toLowerCase())+':'+start);
   const draw=officialDrawCta(e.drawUrl);
   const official=e.officialUrl?`<a class="chip" href="${esc(e.officialUrl)}" target="_blank" rel="noopener">Official</a>`:"";
-  const follow=tourFollowButton(e.tour || (e.connector && e.connector.type) || "");
   const line=readerStatusLine(e);
   const hint=line?`<span class="games">${esc(line)}</span>`:"";
   return `<div class="rank-row cal-row">
@@ -1227,7 +1426,7 @@ function calEventRow(e){
       <span>${dates} · ${esc(venue)} · ${esc(e.tier||'')}</span>
       <span class="cal-meta">${statusChip(e.status,e.onLive)}${e.armed?' <em class="cal-armed">armed</em>':''}${e.onLive?' <em class="cal-onlive">on WPM LIVE</em>':''}${e.seeded?' <em class="cal-armed">slate</em>':''}</span>
       ${hint}
-      <span class="cal-meta">${follow}${official}</span>
+      <span class="cal-meta">${official}</span>
       ${draw}
     </div>
     <em>${esc(e.host||e.tour||'')}</em>
@@ -1359,15 +1558,6 @@ function slateEmpty(filter){
     <a class="chip" href="/calendar">Calendar</a>
   </section>`;
 }
-function tourChoiceButtons(){
-  const base = ["tour:app","tour:ppa","tour:gpa","tour:wc"];
-  const extra = followedTourKeys().filter(k => base.indexOf(k) === -1);
-  return base.concat(extra).map(k => {
-    const on = !!state.selected[k];
-    return `<button class="chip ${on?"on":""}" data-follow="${esc(k)}">${on?"Following":"Follow"} ${esc(tourLabel(k))}</button>`;
-  }).join("");
-}
-
 function drawHref(tour, div, opts){
   opts = opts || {};
   const p = new URLSearchParams();
@@ -1459,10 +1649,23 @@ function viewMatch(id){
   </div>`;
 }
 
+function personMatchPool(){
+  const extra = [];
+  const seen = new Set((state.matches || []).map(m => m && m.id).filter(Boolean));
+  Object.keys(state.archiveCache || {}).forEach(id => {
+    const rows = (state.archiveCache[id] && state.archiveCache[id].matches) || [];
+    rows.forEach(m => {
+      if (!m || m.status !== "FT" || seen.has(m.id)) return;
+      seen.add(m.id);
+      extra.push(m);
+    });
+  });
+  return (state.matches || []).concat(extra);
+}
 function matchesForPerson(kind, id, rec){
   const followKey = rec.followKey || id;
   const fullName = rec.name || id;
-  return (state.matches||[]).filter(m => {
+  return personMatchPool().filter(m => {
     const tags = m.tags || [];
     if (tags.includes(followKey) || tags.includes(id)) return true;
     if (kind === "team") {
@@ -1644,9 +1847,32 @@ function personResultRow(m, rec){
     <a class="scorecol" href="/match/${esc(m.id)}">${score}</a>
   </div>`;
 }
+function personOutcome(m, rec){
+  if (!m || effectiveStatus(m) !== "FT" || !m.score) return "";
+  const onA = personOnSide(m.a, rec);
+  const onB = personOnSide(m.b, rec);
+  if (onA === onB) return "";
+  const g = String(m.score).match(/^(\d+)\s*[-–]\s*(\d+)$/);
+  if (!g) return "";
+  const mine = onA ? Number(g[1]) : Number(g[2]);
+  const opp = onA ? Number(g[2]) : Number(g[1]);
+  if (!Number.isFinite(mine) || !Number.isFinite(opp) || mine === opp) return "";
+  return mine > opp ? "W" : "L";
+}
+function personFormHtml(list, rec){
+  const sorted = (list || []).filter(m => effectiveStatus(m) === "FT").slice().sort((a,b) => String(b.date||"").localeCompare(String(a.date||"")));
+  const marks = [];
+  sorted.forEach(m => {
+    if (marks.length >= 8) return;
+    const o = personOutcome(m, rec);
+    if (o) marks.push(o);
+  });
+  if (!marks.length) return "";
+  return `<div class="panel" style="margin-top:18px"><div class="kicker">Form</div><div class="form-pips">${marks.map(x => `<b class="${x==="W"?"w":"l"}">${x}</b>`).join("")}</div><p class="games">Last finished matches with a recorded score.</p></div>`;
+}
 function personMatchList(list, rec){
   if (!list.length) {
-    return `<div class="panel" style="margin-top:18px"><div class="kicker">Matches</div><p class="empty">No matches on the live board yet.</p></div>`;
+    return `<div class="panel" style="margin-top:18px"><div class="kicker">Recent results</div><p class="empty">No matches on the board or archive yet.</p></div>`;
   }
   const todayStr = boardToday();
   const rank = { LIVE:0, NEXT:1, FT:2 };
@@ -1655,9 +1881,9 @@ function personMatchList(list, rec){
     if (d) return d;
     return (parseUtc(a.start)?.getTime()||0) - (parseUtc(b.start)?.getTime()||0);
   });
-  const earlier = list.filter(m => m.date !== todayStr).sort((a,b) => (parseUtc(b.start)?.getTime()||0) - (parseUtc(a.start)?.getTime()||0));
-  const rows = today.concat(earlier).slice(0, 12);
-  return `<div class="panel" style="margin-top:18px"><div class="kicker">Matches</div>${rows.map(m => personResultRow(m, rec)).join("")}</div>`;
+  const earlier = list.filter(m => m.date !== todayStr).sort((a,b) => String(b.date||"").localeCompare(String(a.date||"")) || ((parseUtc(b.start)?.getTime()||0) - (parseUtc(a.start)?.getTime()||0)));
+  const rows = today.concat(earlier).slice(0, 16);
+  return `<div class="panel" style="margin-top:18px"><div class="kicker">Recent results</div>${rows.map(m => personResultRow(m, rec)).join("")}</div>`;
 }
 function viewPerson(kind, id){
   id = decodeURIComponent(id||"");
@@ -1687,8 +1913,9 @@ function viewPerson(kind, id){
       <div class="kicker">Rankings</div>
       ${rankingCardsHtml(rec.rankings||[])}
     </div>`:""}
-    ${kind==="player"?waveRecentPanel(rec):""}
+    ${kind==="player"?personFormHtml(list, rec):""}
     ${personMatchList(list, rec)}
+    ${kind==="player"?waveRecentPanel(rec):""}
     ${stories.length?`<div class="panel"><div class="kicker">From the magazine</div>${stories.map(magTease).join("")}</div>`:""}
     ${playerMedals(rec.name)}
   </div>`;
@@ -1721,45 +1948,45 @@ function alertsCta(){
   return `<div class="panel"><p class="games">Get a ping when someone you follow walks on.</p><button class="btn gold" type="button" id="enableAlerts">Turn on live alerts</button></div>`;
 }
 
+function followedTourRows(){
+  const tours = followedTourKeys();
+  if (!tours.length) return `<p class="empty">None.</p>`;
+  return tours.map(k => `<div class="rank-row">
+    <b></b>
+    <div>
+      <strong>${esc(tourLabel(k))}</strong>
+      <span class="cal-meta"><button class="chip on" data-follow="${esc(k)}">Following</button></span>
+    </div>
+  </div>`).join("");
+}
 function viewFollowing(){
-  const list = state.matches.filter(followsBoardMatch).sort((a,b)=>{
+  const people = followTagsList();
+  const tours = followedTourKeys();
+  const quiet = !people.length && !tours.length;
+  const list = quiet ? [] : state.matches.filter(followsBoardMatch).sort((a,b)=>{
     const ra={LIVE:0,NEXT:1,FT:2}[effectiveStatus(a)];
     const rb={LIVE:0,NEXT:1,FT:2}[effectiveStatus(b)];
     if(ra!==rb) return ra-rb;
     return (parseUtc(a.start)?.getTime()||0)-(parseUtc(b.start)?.getTime()||0);
   });
-  const shop = PRODUCTS.filter(p => (p.tags||[]).some(t => state.selected[t]));
-  const people = followTagsList();
   const peopleHtml = people.length
     ? people.map(k => {
         const href = TEAMS[k] ? "/team/"+encodeURIComponent(k) : "/player/"+encodeURIComponent(k);
-        const on = !!state.selected[k];
         return `<div class="rank-row">
           <b></b>
           <div>
             <strong><a href="${href}">${esc(followPersonLabel(k))}</a></strong>
-            <span class="cal-meta"><button class="chip ${on?"on":""}" data-follow="${esc(k)}">${on?"Following":"Follow"}</button></span>
+            <span class="cal-meta"><button class="chip on" data-follow="${esc(k)}">Following</button></span>
           </div>
         </div>`;
       }).join("")
-    : `<p class="empty">No players followed yet.</p>`;
+    : `<p class="empty">None.</p>`;
   return `<div class="wrap">
     <h2 style="font-family:Syne,sans-serif;font-size:32px">Following</h2>
-    <p class="games">Tours and players you follow. A followed player or a match on a followed tour pings when it is actually LIVE — including with this tab closed.</p>
-    ${alertsCta()}
-    <div class="panel"><div class="kicker">Tours</div><div class="chips">${tourChoiceButtons()}</div></div>
+    ${quiet?"":alertsCta()}
+    <div class="panel"><div class="kicker">Tours</div>${followedTourRows()}</div>
     <div class="panel"><div class="kicker">Players</div>${peopleHtml}</div>
-    <div class="panel">${list.length?list.map(matchRow).join(""):"<p class='empty'>Follow a tour or a player. Their matches show here.</p>"}</div>
-    ${shop.length?`<div class="panel"><div class="kicker">On court with your follows</div>${shop.map(productCard).join("")}</div>`:""}
-    <div class="panel">
-      <div class="kicker">Watch</div>
-      <p class="games">Official courts only.</p>
-      <div class="watchbar" style="justify-content:flex-start">
-        <a class="btn" href="https://www.youtube.com/@PickleballWorldCup/streams">World Cup live board</a>
-        <a class="btn ghost" href="https://www.youtube.com/@ppastreamedcourts">PPA Streamed Courts</a>
-        <a class="btn ghost" href="https://www.ppatour.com/watch/">PBTV</a>
-      </div>
-    </div>
+    ${quiet?"":`<div class="panel">${list.length?list.map(matchRow).join(""):"<p class='empty'>None.</p>"}</div>`}
   </div>`;
 }
 
@@ -2522,13 +2749,19 @@ function bind(){
   }));
   document.querySelectorAll("[data-f]").forEach(b => b.addEventListener("click", () => {
     state.filter = b.getAttribute("data-f");
+    state.archiveId = "";
     if (state.filter === "wc") state.drawTour = "wc";
     if (state.filter === "ppa") state.drawTour = "ppa";
     if (state.filter === "app" || state.filter === "app-pro") state.drawTour = "app";
     render();
   }));
+  document.querySelectorAll("[data-archive]").forEach(b => b.addEventListener("click", ev => {
+    ev.preventDefault();
+    openArchive(b.getAttribute("data-archive"));
+  }));
   document.querySelectorAll("[data-mode]").forEach(b => b.addEventListener("click", () => {
     state.boardMode = b.getAttribute("data-mode");
+    if (state.boardMode === "draw") state.archiveId = "";
     if (state.boardMode === "draw" && state.filter === "wc") state.drawTour = "wc";
     if (state.boardMode === "draw" && state.filter === "ppa") state.drawTour = "ppa";
     if (state.boardMode === "draw" && (state.filter === "app" || state.filter === "app-pro")) state.drawTour = "app";
@@ -2703,6 +2936,41 @@ function bind(){
 }
 
 
+function openArchive(id){
+  if (!id || id === "live") {
+    state.archiveId = "";
+    render();
+    return;
+  }
+  const meta = archiveMeta(id);
+  state.archiveId = id;
+  state.boardMode = "results";
+  if (meta && meta.tour === "ppa") state.filter = "ppa";
+  if (meta && meta.tour === "app") state.filter = "app-pro";
+  pullArchive(id);
+  render();
+}
+function pullArchive(id){
+  if (!id) return Promise.resolve();
+  const cur = state.archiveCache[id];
+  if (cur && (cur.loading || Array.isArray(cur.matches) || cur.unavailable)) return Promise.resolve();
+  state.archiveCache[id] = { loading: true };
+  return fetch("/api/archive?id="+encodeURIComponent(id), {cache:"no-store"}).then(res => res.json()).then(data => {
+    state.archiveCache[id] = data && typeof data === "object" ? data : { unavailable: true, matches: [] };
+    render();
+  }).catch(() => {
+    state.archiveCache[id] = { unavailable: true, matches: [], reader: "Results will appear when available" };
+    render();
+  });
+}
+async function pullArchiveIndex(){
+  try {
+    const res = await fetch("/api/archive", {cache:"no-store"});
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data && Array.isArray(data.events) && data.events.length) state.archiveCatalog = data.events;
+  } catch(e) {}
+}
 async function pull(){
   let file = null;
   try {
@@ -2820,6 +3088,9 @@ async function pullMagazine(page){
 window.addEventListener("popstate", render);
 window.addEventListener("load", async () => {
   await pull();
+  pullArchiveIndex().then(() => Promise.all([pullArchive("overland"), pullArchive("arizona")])).then(() => {
+    if (path()==="/" || path().startsWith("/player/") || path().startsWith("/match/")) render();
+  });
   pullHistory().then(()=>{ if(path()==="/history") render(); });
   pullRankings().then(() => { if (path()==="/rankings" || path().startsWith("/player/") || path()==="/") render(); });
   pullCalendar().then(() => { if (path()==="/calendar" || path()==="/" || path()==="/rankings") render(); });
@@ -2837,7 +3108,7 @@ window.addEventListener("load", async () => {
 
 
 document.addEventListener("click", function wpmClick(ev){
-  const el = ev.target && ev.target.closest ? ev.target.closest("[data-draw], [data-drawphase], [data-drawpool], [data-drawtour], [data-mode], [data-f], [data-shop], [data-day], [data-more], [data-cat]") : null;
+  const el = ev.target && ev.target.closest ? ev.target.closest("[data-draw], [data-drawphase], [data-drawpool], [data-drawtour], [data-mode], [data-f], [data-archive], [data-shop], [data-day], [data-more], [data-cat]") : null;
   if (!el) return;
   if (el.hasAttribute("data-drawphase")) {
     ev.preventDefault();
@@ -2885,6 +3156,12 @@ document.addEventListener("click", function wpmClick(ev){
     if (state.drawTour === "app") state.filter = "app-pro";
     syncDrawUrl();
     render();
+    return;
+  }
+  if (el.hasAttribute("data-archive")) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    openArchive(el.getAttribute("data-archive"));
     return;
   }
   if (el.hasAttribute("data-cat")) {
