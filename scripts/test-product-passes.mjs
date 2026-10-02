@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Following cleanup, finished-event archive, player form.
+ * Following cleanup, finished-event archive, player form across tours.
  * Real scores only. LIVE stays a Den/ticker status — archive rows are FT.
  */
 import fs from "node:fs";
@@ -13,12 +13,13 @@ import {
   mapAppArchiveMatch,
   mapPpaArchiveMatch,
   pinEnded,
+  eventIsFinished,
   selectProBrackets,
   weekIsFinished,
 } from "../netlify/functions/finished-archive.mjs";
 import { APP_LIVE, PPA_LIVE } from "../netlify/functions/slate-events.mjs";
 
-const js = fs.readFileSync("js/wpm-20261002c.js", "utf8");
+const js = fs.readFileSync("js/wpm-20261002d.js", "utf8");
 const start = js.indexOf("const TOUR_IDS");
 const end = js.indexOf("function migrateFollows");
 const context = {};
@@ -129,8 +130,107 @@ assert.equal(weekIsFinished([{ status: "FT", date: "2026-10-04" }], "2026-10-04"
 assert.equal(pinEnded("2026-10-04", "2026-10-02"), false);
 assert.equal(pinEnded("2026-10-04", "2026-10-05"), true);
 
+const columbusPin = CURRENT_PINS.find((e) => e.id === "columbus");
+const vegasPin = CURRENT_PINS.find((e) => e.id === "las-vegas");
+assert.equal(eventIsFinished(columbusPin, [], "2026-10-02"), false);
+assert.equal(eventIsFinished(columbusPin, [], "2026-10-05"), true);
+assert.equal(eventIsFinished(vegasPin, [{ status: "final", dateKey: "2026-10-02" }, { status: "scheduled", dateKey: "2026-10-03" }], "2026-10-02"), false);
+assert.equal(eventIsFinished(overland, [], "2026-10-02"), true);
+assert.equal(eventIsFinished(arizona, [], "2026-10-02"), true);
+
+const archiveSrc = fs.readFileSync("netlify/functions/finished-archive.mjs", "utf8");
+const appLoad = archiveSrc.slice(archiveSrc.indexOf("async function loadAppFinished"), archiveSrc.indexOf("async function loadPpaFinished"));
+const ppaLoad = archiveSrc.slice(archiveSrc.indexOf("async function loadPpaFinished"), archiveSrc.indexOf("function pack"));
+assert.equal(appLoad.includes("matches: []"), false, "Columbus FT rows stay available before the pin ends");
+assert.equal(ppaLoad.includes("matches: []"), false, "Las Vegas final rows stay available before the week ends");
+assert.ok(appLoad.includes("eventIsFinished"));
+assert.ok(ppaLoad.includes("eventIsFinished"));
+assert.equal(appLoad.includes('"status":"LIVE"'), false);
+assert.equal(ppaLoad.includes("LIVE"), false);
+
+function extractFunction(src, name) {
+  const start = src.indexOf("function " + name + "(");
+  assert.ok(start > 0, "missing " + name);
+  let i = src.indexOf("{", start);
+  let depth = 0;
+  for (; i < src.length; i++) {
+    const c = src[i];
+    if (c === "{") depth++;
+    else if (c === "}") {
+      depth--;
+      if (depth === 0) return src.slice(start, i + 1);
+    }
+  }
+  throw new Error("unclosed " + name);
+}
+
+const formFns = [
+  "normName",
+  "nameTokens",
+  "rankingNameMatches",
+  "personInText",
+  "splitSides",
+  "denStatusToken",
+  "isDenLiveStatus",
+  "parseUtc",
+  "effectiveStatus",
+  "sidePartIsPerson",
+  "personOnSide",
+  "personOutcome",
+  "profileScore",
+  "byRecent",
+  "personFormMarks",
+].map((name) => extractFunction(js, name)).join("\n");
+const formCtx = {};
+vm.runInNewContext(formFns + "\nthis.personFormMarks = personFormMarks;\nthis.personOutcome = personOutcome;\nthis.personOnSide = personOnSide;\nthis.profileScore = profileScore;", formCtx);
+
+const watersRec = { name: "Anna Leigh Waters", followKey: "Waters" };
+const fuRec = { name: "Ryan Fu", followKey: "Fu" };
+const crossTour = [
+  { id: "az-f", status: "FT", tour: "ppa", date: "2026-09-21", start: "2026-09-21T18:00:00.000Z", comp: "PPA Veolia Arizona Open", round: "Finals", a: "Anna Leigh Waters", b: "Kate Fahey", score: "2-0" },
+  { id: "az-sf", status: "FT", tour: "ppa", date: "2026-09-20", start: "2026-09-20T18:00:00.000Z", comp: "PPA Veolia Arizona Open", round: "SF", a: "Waters / Parenteau", b: "Fahey / Bright", score: "2-1" },
+  { id: "ov-qf", status: "FT", tour: "app", date: "2026-09-18", start: "2026-09-18T16:00:00.000Z", comp: "APP Dillons Overland Park Open", round: "QF", a: "Ryan Fu", b: "Mike Svetlic", score: "2-0" },
+  { id: "col-qf", status: "FT", tour: "app", date: "2026-10-02", start: "2026-10-02T18:00:00.000Z", comp: "APP Columbus Open presented by The James", round: "QF", a: "Waters / Bright", b: "Johns / Patriquin", score: "2-1" },
+  { id: "lv-r16", status: "FT", tour: "ppa", date: "2026-10-01", start: "2026-10-01T20:00:00.000Z", comp: "PPA Rate Las Vegas Open", round: "R16", a: "Kate Fahey", b: "Anna Leigh Waters", score: "2-0" },
+  { id: "live", status: "LIVE", tour: "ppa", denStatus: "RUNNING", date: "2026-10-02", comp: "PPA Rate Las Vegas Open", a: "Anna Leigh Waters", b: "Kate Fahey", score: "0-0" },
+  { id: "blank", status: "FT", tour: "app", date: "2026-10-02", start: "2026-10-02T15:00:00.000Z", comp: "APP Columbus Open presented by The James", round: "R1", a: "Anna Leigh Waters", b: "Someone", score: "" },
+];
+const watersForm = formCtx.personFormMarks(crossTour, watersRec);
+assert.equal(watersForm.string, "WLWW");
+assert.equal(watersForm.wins, 3);
+assert.equal(watersForm.losses, 1);
+assert.equal(JSON.stringify(watersForm.tours.slice().sort()), JSON.stringify(["app", "ppa"]));
+assert.ok(watersForm.events.includes("APP Columbus Open presented by The James"));
+assert.ok(watersForm.events.includes("PPA Veolia Arizona Open"));
+assert.ok(watersForm.events.includes("PPA Rate Las Vegas Open"));
+assert.equal(formCtx.personOutcome(crossTour.find((m) => m.id === "live"), watersRec), "");
+assert.equal(formCtx.personOutcome(crossTour.find((m) => m.id === "blank"), watersRec), "");
+assert.equal(formCtx.personOnSide("Waters / Bright", watersRec), true);
+assert.equal(formCtx.personOnSide("Johns / Patriquin", watersRec), false);
+assert.equal(formCtx.personFormMarks(crossTour, fuRec).string, "W");
+assert.equal(formCtx.personFormMarks([], watersRec).string, "");
+
+const fuColumbus = { id: "col-fu", status: "FT", tour: "app", date: "2026-10-02", comp: "APP Columbus Open presented by The James", round: "R16", a: "Fu / Jardim", b: "Devilliers / Black", score: "2-1" };
+const fuOverland = { id: "ov-fu", status: "FT", tour: "app", date: "2026-09-18", comp: "APP Dillons Overland Park Open", round: "R32", a: "Mike Svetlic", b: "Ryan Fu", score: "2-0" };
+const fuForm = formCtx.personFormMarks([fuColumbus, fuOverland], fuRec);
+assert.equal(fuForm.string, "WL");
+assert.equal(formCtx.profileScore(fuOverland, fuRec), "0-2");
+assert.equal(formCtx.profileScore({ status: "LIVE", denStatus: "IN_PROGRESS", tour: "app", a: "Fu / Bui", b: "Matthews / Beasley", score: "0-0", lines: [{ score: "–", live: true }] }, fuRec), "");
+assert.equal(formCtx.profileScore({ status: "FT", tour: "app", a: "DuVally / Fu", b: "Palm / Camron", score: "1-2" }, fuRec), "1-2");
+assert.equal(JSON.stringify(fuForm.events), JSON.stringify(["APP Columbus Open presented by The James", "APP Dillons Overland Park Open"]));
+
 assert.ok(js.includes('class="past-nav"'));
 assert.ok(js.includes("function personFormHtml"));
+assert.ok(js.includes("function personFormMarks"));
+assert.ok(js.includes("function pullProfileArchives"));
+assert.ok(js.includes('class="form-string"'));
+assert.ok(js.includes("No finished matches yet"));
+assert.ok(js.includes('class="statuscol wl'));
+const viewPerson = js.slice(js.indexOf("function viewPerson"), js.indexOf("function playerMedals"));
+assert.ok(viewPerson.includes("pullProfileArchives()"));
+assert.ok(viewPerson.includes('data-follow="'));
+assert.equal(viewPerson.includes("Follow Overland"), false);
+assert.equal(viewPerson.includes("suggestion"), false);
 assert.ok(js.includes("function archiveBoardHtml"));
 assert.ok(js.includes("function pullArchive"));
 assert.equal(js.includes("function tourChoiceButtons"), false);
