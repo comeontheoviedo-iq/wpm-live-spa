@@ -291,3 +291,12 @@ nav.tabbar a.on{color:var(--gold)}
 .card-facts{font-weight:650;color:var(--ink)}
 .match.followed{background:#fbf8f1;box-shadow:inset 3px 0 0 #c4a35a}
 .follow-day{border-color:#e4d7b5}
+.follow-open{display:inline-block;margin-top:8px;font-size:12px;font-weight:700;color:var(--mute)}
+.past-nav{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin:0 0 12px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.past-nav span{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--mute)}
+.past-nav button{background:transparent;border:0;border-bottom:2px solid transparent;padding:4px 0;font:inherit;font-weight:750;color:var(--mute);cursor:pointer}
+.past-nav button.on{color:var(--navy);border-bottom-color:var(--gold)}
+.form-pips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.form-pips b{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;font-family:Syne,sans-serif;font-size:14px}
+.form-pips b.w{background:#efe6c4;color:var(--navy)}
+.form-pips b.l{background:#f3efe6;color:var(--mute)}

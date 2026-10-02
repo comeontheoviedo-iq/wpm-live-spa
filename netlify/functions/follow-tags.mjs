@@ -85,31 +85,52 @@ export function isLegacyEventFollowKey(k) {
 }
 
 /**
+ * Finished event names that used to be follow targets (Overland, Arizona, Gijón).
+ * Not a person. Kept in sync with the client looksLikeStoredEvent.
+ */
+export function looksLikeStoredEvent(raw) {
+  const s = String(raw || "").trim();
+  if (!s || s.startsWith("tour:")) return false;
+  if (s.startsWith("slate:") || s.startsWith("ev:") || s.startsWith("gpa:")) return true;
+  if (/^(overland|arizona|gij[oó]n|gijon|columbus|las vegas|barcelona|mesa)$/i.test(s)) return true;
+  if (/\b(overland park|gij[oó]n|arizona open|las vegas open|columbus open|barcelona open)\b/i.test(s)) return true;
+  if (/^(APP|PPA|TPB|GPA|MLP)\b/.test(s) && /\b(open|tour)\b/i.test(s)) return true;
+  return false;
+}
+
+/** Map an event-shaped key to a tour. Unknown event keys drop (empty string). */
+export function tourFromEventBlob(raw) {
+  let decoded = String(raw || "");
+  try {
+    decoded = decodeURIComponent(decoded);
+  } catch (_) {}
+  const blob = decoded.toLowerCase();
+  if (/app-asia|chongqing|taipei|bangkok|ho chi minh/.test(blob)) return "tour:app-asia";
+  if (/\bmlp\b|mlp-asia/.test(blob)) return "tour:mlp-asia";
+  if (/gij|tpb|top pickleball/.test(blob)) return "tour:tpb";
+  if (/barcelona|ppa-eu|ppa europe/.test(blob)) return "tour:ppa-eu";
+  if (/ppa asia|ppa-asia/.test(blob)) return "tour:asia";
+  if (/arizona|mesa|62c01642|las vegas|86926aef|^ev:ppa\b|\bppa\b/.test(blob)) return "tour:ppa";
+  if (/^ev:wc\b|world cup/.test(blob)) return "tour:wc";
+  if (/overland|columbus|18448|18453|^ev:app\b|\bapp\b/.test(blob)) return "tour:app";
+  if (/\bnpl\b/.test(blob)) return "tour:npl";
+  if (/\bgpa\b|d-joy|djoy/.test(blob)) return "tour:gpa";
+  return "";
+}
+
+/**
  * Player/team keys pass through. tour:app stays.
- * Legacy event keys upgrade to a tour (ev:app:18448 → tour:app) or drop.
+ * Legacy event keys and bare event names (Overland, Arizona, Gijón) upgrade to a tour or drop.
  * Kept in sync with the client normalizeFollowKey.
  */
 export function normalizeFollowKey(raw) {
   const k = String(raw || "").trim();
   if (!k) return "";
   if (k.startsWith("tour:")) return isTourFollowKey(k) ? k : "";
-  if (!isLegacyEventFollowKey(k)) return k;
-  let decoded = k;
-  try {
-    decoded = decodeURIComponent(k);
-  } catch (_) {}
-  const blob = decoded.toLowerCase();
-  if (/app-asia|chongqing|taipei|bangkok|ho chi minh/.test(blob)) return "tour:app-asia";
-  if (/\bmlp\b/.test(blob)) return "tour:mlp-asia";
-  if (/gij|tpb|top pickleball/.test(blob)) return "tour:tpb";
-  if (/barcelona|ppa-eu|ppa europe/.test(blob)) return "tour:ppa-eu";
-  if (/ppa asia|ppa-asia/.test(blob)) return "tour:asia";
-  if (/^ev:ppa\b|86926aef|las vegas|\bppa\b/.test(blob)) return "tour:ppa";
-  if (/^ev:wc\b|world cup/.test(blob)) return "tour:wc";
-  if (/^ev:app\b|\bapp\b|columbus|18448|overland|18453/.test(blob)) return "tour:app";
-  if (/\bnpl\b/.test(blob)) return "tour:npl";
-  if (/\bgpa\b|d-joy|djoy/.test(blob)) return "tour:gpa";
-  return "";
+  if (isLegacyEventFollowKey(k) || k.startsWith("slate:") || looksLikeStoredEvent(k)) {
+    return tourFromEventBlob(k);
+  }
+  return k;
 }
 
 /** A followed tour hits every match on that tour's board. Not one tournament id. */

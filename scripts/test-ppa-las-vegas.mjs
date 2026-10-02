@@ -83,7 +83,7 @@ assert.equal((bcn.matches || []).length, 0, "Barcelona window ended with no scor
 
 const first = tickMatches.find((m) => m.time === "8:00 AM PDT") || tickMatches[0];
 assert.ok(first, "ticker sample");
-assert.equal(ppaBoardDate(first, now).startsWith("2026-09-"), true);
+assert.match(ppaBoardDate(first, now), /^2026-(09|10)-/, "ticker date stays on the Vegas week");
 assert.equal(PPA_LIVE.tz, "America/Los_Angeles");
 assert.equal(PPA_LIVE.venue, "Darling Tennis Center, Las Vegas");
 

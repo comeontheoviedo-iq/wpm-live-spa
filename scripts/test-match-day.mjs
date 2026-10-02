@@ -14,8 +14,8 @@ import {
   MAX_PUSH_PER_SUB_PER_RUN,
 } from "../netlify/functions/push-lib.mjs";
 
-const js = fs.readFileSync("js/wpm-20261002a.js", "utf8");
-const siteJs = fs.readFileSync("site/js/wpm-20261002a.js", "utf8");
+const js = fs.readFileSync("js/wpm-20261002b.js", "utf8");
+const siteJs = fs.readFileSync("site/js/wpm-20261002b.js", "utf8");
 assert.equal(siteJs, js);
 
 const columbus = {
@@ -123,7 +123,10 @@ assert.ok(js.includes("function tourFollowHit"));
 assert.ok(js.includes("function migrateFollows"));
 assert.ok(js.includes("function tourFollowButton"));
 assert.ok(js.includes("tour:app"));
-assert.ok(js.includes("Tours and players you follow show here."));
+assert.ok(js.includes("None."));
+assert.equal(js.includes("function tourChoiceButtons"), false);
+assert.equal(js.includes("function followChips"), false);
+assert.equal(js.includes("function matchDayFollowStrip"), false);
 assert.equal(js.includes("function matchDayFollowStrip"), false);
 assert.equal(js.includes("function followChips"), false);
 assert.equal(js.includes("Follow Columbus"), false);

@@ -42,6 +42,9 @@
 [functions."push-live-check"]
   timeout = 26
 
+[functions.archive]
+  timeout = 26
+
 [[redirects]]
   from = "/api/worldcup"
   to = "/.netlify/functions/worldcup"
@@ -97,6 +100,11 @@
 [[redirects]]
   from = "/api/calendar"
   to = "/.netlify/functions/calendar"
+  status = 200
+
+[[redirects]]
+  from = "/api/archive"
+  to = "/.netlify/functions/archive"
   status = 200
 
 [[redirects]]
