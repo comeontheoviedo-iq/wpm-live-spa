@@ -1,5 +1,5 @@
 import type { Config, Context } from "@netlify/functions";
-import { tagsFor } from "./follow-tags.mjs";
+import { rosterText, tagsFor } from "./follow-tags.mjs";
 import { discFromAppBracket, isKnockoutBracket, polishAppRound } from "./app-rounds.mjs";
 import { addDays, keepAppMatch, matchBoardDate, matchHasClock, ymdInTz as ymdInTzShared } from "./app-dates.mjs";
 import {
@@ -429,6 +429,7 @@ function toMatch(m: any, bracket: any, ev: ActiveEvent) {
   const liveLine = lines.find((l) => l.live);
   const games = lines.map((l) => `${l.disc} ${l.score}${l.live ? " LIVE" : ""}`).join(" · ");
   const court = courtLabel(m);
+  const roster = rosterText([m.team1, m.team2]);
   const round = polishAppRound({
     round: m.round,
     roundDisplayName: m.roundDisplayName,
@@ -453,7 +454,8 @@ function toMatch(m: any, bracket: any, ev: ActiveEvent) {
     session: court ? court : "",
     a,
     b,
-    tags: tagsFor(a, b),
+    roster,
+    tags: tagsFor(`${a} ${b} ${roster}`),
     status: st,
     denStatus: statusToken(raw),
     start,

@@ -88,8 +88,8 @@ if ("Notification" in window && Notification.permission === "granted") {
   setTimeout(() => { syncPushSubscription(); }, 2500);
 }
 
-const SAFE_SW = "/sw.js?v=20261001a";
-const SAFE_SW_MARK = "20261001a";
+const SAFE_SW = "/sw.js?v=20260930c";
+const SAFE_SW_MARK = "20260930c";
 const GIJON_DRAW_URL = "https://toppickleballtour.com/wp-content/uploads/2026/09/TOP-PICKLEBALL-TOUR-GIJON-GRUPOS.pdf";
 /** Application-server VAPID public key (safe to embed). Private stays in Netlify env. */
 const VAPID_PUBLIC_KEY = "BEuWn2rcxKeLXPFa3KJzys7rLOtFX8GUZ9ckfFhsqEVO0Y2PE3WfnOivmFJV3EUVCf1c1g31qSiVoNDbcJQO8GQ";
@@ -102,77 +102,16 @@ function urlBase64ToUint8Array(base64String){
   for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
   return out;
 }
-const TOUR_IDS = ["app","ppa","wc","gpa","npl","asia","ppa-eu","app-asia","mlp-asia","tpb"];
-const TOUR_LABELS = {app:"APP", ppa:"PPA", wc:"World Cup", gpa:"GPA", npl:"NPL", asia:"PPA Asia", "ppa-eu":"PPA Europe", "app-asia":"APP Asia", "mlp-asia":"MLP Asia", tpb:"TOP Pickleball"};
-function isTourFollowKey(k){
-  const s = String(k || "");
-  return s.indexOf("tour:") === 0 && TOUR_IDS.indexOf(s.slice(5)) !== -1;
+function isEventFollowKey(k){
+  return String(k || "").indexOf("ev:") === 0;
 }
-function isLegacyEventFollowKey(k){
-  const s = String(k || "");
-  return s.indexOf("ev:") === 0 || s.indexOf("gpa:") === 0;
-}
-/** Player keys pass through. ev:app:18448 upgrades to tour:app. Unknown event keys drop. Mirrors follow-tags.mjs. */
-function normalizeFollowKey(raw){
-  const k = String(raw || "").trim();
-  if (!k) return "";
-  if (k.indexOf("tour:") === 0) return isTourFollowKey(k) ? k : "";
-  if (!isLegacyEventFollowKey(k)) return k;
-  let decoded = k;
-  try { decoded = decodeURIComponent(k); } catch(e) {}
-  const blob = decoded.toLowerCase();
-  if (/app-asia|chongqing|taipei|bangkok|ho chi minh/.test(blob)) return "tour:app-asia";
-  if (/\bmlp\b/.test(blob)) return "tour:mlp-asia";
-  if (/gij|tpb|top pickleball/.test(blob)) return "tour:tpb";
-  if (/barcelona|ppa-eu|ppa europe/.test(blob)) return "tour:ppa-eu";
-  if (/ppa asia|ppa-asia/.test(blob)) return "tour:asia";
-  if (/^ev:ppa\b|86926aef|las vegas|\bppa\b/.test(blob)) return "tour:ppa";
-  if (/^ev:wc\b|world cup/.test(blob)) return "tour:wc";
-  if (/^ev:app\b|\bapp\b|columbus|18448|overland|18453/.test(blob)) return "tour:app";
-  if (/\bnpl\b/.test(blob)) return "tour:npl";
-  if (/\bgpa\b|d-joy|djoy/.test(blob)) return "tour:gpa";
-  return "";
-}
-function migrateFollows(){
-  const prev = state.selected || {};
-  const next = {};
-  let changed = false;
-  Object.keys(prev).forEach(k => {
-    if (!prev[k]) { changed = true; return; }
-    const nk = normalizeFollowKey(k);
-    if (!nk) { changed = true; return; }
-    if (nk !== k) changed = true;
-    next[nk] = true;
-  });
-  if (!changed && Object.keys(prev).length === Object.keys(next).length) return;
-  state.selected = next;
-  try { localStorage.setItem("wpm-follows", JSON.stringify(state.selected)); } catch(e) {}
-}
-migrateFollows();
 function followTagsList(){
-  return Object.keys(state.selected || {}).filter(k => state.selected[k] && !isTourFollowKey(k) && !isLegacyEventFollowKey(k));
+  // People in the Following rail. Event keys are listed separately.
+  return Object.keys(state.selected || {}).filter(k => state.selected[k] && !isEventFollowKey(k));
 }
-function followedTourKeys(){
-  return Object.keys(state.selected || {}).filter(k => state.selected[k] && isTourFollowKey(k));
-}
-/** Player, team, and tour keys synced to Web Push. */
+/** Player, team, and event keys synced to Web Push. Empty list deletes the subscription. */
 function followPushList(){
   return Object.keys(state.selected || {}).filter(k => state.selected[k]);
-}
-function tourLabel(key){
-  const id = String(key || "").replace(/^tour:/, "");
-  return TOUR_LABELS[id] || id;
-}
-function tourFollowKey(tour){
-  const id = String(tour || "");
-  return TOUR_IDS.indexOf(id) === -1 ? "" : "tour:" + id;
-}
-function tourFollowButton(tour){
-  const key = tourFollowKey(tour);
-  if (!key) return "";
-  const on = !!state.selected[key];
-  const label = on ? "Following" : "Follow " + tourLabel(key);
-  return `<button class="chip ${on?"on":""}" data-follow="${esc(key)}">${label}</button>`;
 }
 async function fetchPushPublicKey(){
   try {
@@ -233,13 +172,36 @@ function pruneNotified(){
 function followNameTokens(s){
   return String(s || "").split(/[^A-Za-z0-9']+/).filter(t => t.length > 0);
 }
-/** Followed tour → every match on that tour. Mirrors follow-tags.mjs tourFollowMatches. */
-function tourFollowHit(m, key){
-  const nk = normalizeFollowKey(key);
-  if (!isTourFollowKey(nk) || !m) return false;
-  return String(m.tour || "") === nk.slice(5);
+/**
+ * Event follow → this match. Mirrors follow-tags.mjs eventFollowMatches.
+ * ev:app:18448, a calendar key that names Columbus, or the same Den id.
+ * Years in a date (2026) are not tournament ids.
+ */
+function eventFollowHit(m, key){
+  const k = String(key || "");
+  if (!isEventFollowKey(k) || !m) return false;
+  const ek = String((m && m.eventKey) || "");
+  if (ek && ek === k) return true;
+  let decoded = k;
+  try { decoded = decodeURIComponent(k); } catch(e) {}
+  const kl = decoded.toLowerCase();
+  const hay = `${m.comp || ""} ${m.venue || ""} ${ek}`.toLowerCase();
+  const ids = (kl.match(/\d{4,6}/g) || []).filter(id => {
+    const n = Number(id);
+    return !(n >= 2020 && n <= 2035);
+  });
+  const ekIds = ek.match(/\d{4,6}/g) || [];
+  if (ids.some(id => ekIds.indexOf(id) !== -1)) return true;
+  if (kl.indexOf("columbus") !== -1 && hay.indexOf("columbus") !== -1) return true;
+  if (kl.indexOf("overland") !== -1 && hay.indexOf("overland") !== -1) return true;
+  if ((kl.indexOf("las vegas") !== -1 || kl.indexOf("86926aef") !== -1) && (hay.indexOf("las vegas") !== -1 || hay.indexOf("86926aef") !== -1 || ek === "ev:ppa" || ek.indexOf("ev:ppa:") === 0)) return true;
+  if (kl.indexOf("gij") !== -1 && hay.indexOf("gij") !== -1) return true;
+  if (k === "ev:wc" && m.tour === "wc") return true;
+  if (k === "ev:ppa" && m.tour === "ppa") return true;
+  if (k === "ev:app" && m.tour === "app") return true;
+  return false;
 }
-/** Follow keys that hit this match: player tags/names, or a followed tour. */
+/** Follow keys that hit this match: player tags/names, or a followed event. */
 function matchedFollowsFor(m){
   const keys = Object.keys(state.selected || {}).filter(k => state.selected[k]);
   if (!keys.length || !m) return [];
@@ -248,13 +210,9 @@ function matchedFollowsFor(m){
   const hayTokens = new Set(followNameTokens(hay).map(t => t.toLowerCase()));
   const hayLower = hay.toLowerCase();
   const hit = [];
-  const seen = new Set();
-  for (const raw of keys) {
-    const k = normalizeFollowKey(raw);
-    if (!k || seen.has(k)) continue;
-    seen.add(k);
-    if (isTourFollowKey(k)) {
-      if (tourFollowHit(m, k)) hit.push(k);
+  for (const k of keys) {
+    if (isEventFollowKey(k)) {
+      if (eventFollowHit(m, k)) hit.push(k);
       continue;
     }
     if (tagSet.has(k)) { hit.push(k); continue; }
@@ -266,15 +224,14 @@ function matchedFollowsFor(m){
   return hit;
 }
 function playerFollowsMatch(m){
-  return matchedFollowsFor(m).some(k => !isTourFollowKey(k));
+  return matchedFollowsFor(m).some(k => !isEventFollowKey(k));
 }
 function followedTagsFor(m){
   return matchedFollowsFor(m);
 }
 function followKeyLabel(k){
-  const n = normalizeFollowKey(k);
-  if (isTourFollowKey(n)) return tourLabel(n);
-  return followPersonLabel(n);
+  if (isEventFollowKey(k)) return shortEventLabel("", k);
+  return followPersonLabel(k);
 }
 function notifyBody(m){
   const who = followedTagsFor(m).map(followKeyLabel).join(", ") || "follow";
@@ -405,8 +362,12 @@ function effectiveStatus(m){
 function followsMatch(m){
   return matchedFollowsFor(m).length > 0;
 }
+function followsEventMatch(m){
+  const k = eventFollowKey(m);
+  return !!(k && state.selected && state.selected[k]);
+}
 function followsBoardMatch(m){
-  return followsMatch(m);
+  return followsMatch(m) || followsEventMatch(m);
 }
 function anyFollows(){
   return Object.values(state.selected).some(Boolean);
@@ -528,12 +489,12 @@ function competition(m){
       : {id:"app", tour:"app", title:"APP · "+shortEventLabel(name, eventFollowKey(m)), place, rank:2, eventKey: eventFollowKey(m)};
   }
   const d = ((m.div||"")+" "+(m.cat||"")).toLowerCase();
-  if (d.includes("open")) return {id:"wc-open", tour:"wc", title:"World Cup · Open", place:"Da Nang", rank:2};
-  if (d.includes("junior")) return {id:"wc-jr", tour:"wc", title:"World Cup · Juniors", place:"Da Nang", rank:3};
-  if (d.includes("kid")) return {id:"wc-kids", tour:"wc", title:"World Cup · Kids", place:"Da Nang", rank:4};
-  if (d.includes("senior") || d.includes("master")) return {id:"wc-sr", tour:"wc", title:"World Cup · Age groups", place:"Da Nang", rank:5};
-  if (m.tour === "wc") return {id:"wc-other", tour:"wc", title:"World Cup", place:"Da Nang", rank:6};
-  return {id:"other", tour:m.tour||"", title:m.comp||"Other", place:"", rank:9};
+  if (d.includes("open")) return {id:"wc-open", title:"World Cup · Open", place:"Da Nang", rank:2};
+  if (d.includes("junior")) return {id:"wc-jr", title:"World Cup · Juniors", place:"Da Nang", rank:3};
+  if (d.includes("kid")) return {id:"wc-kids", title:"World Cup · Kids", place:"Da Nang", rank:4};
+  if (d.includes("senior") || d.includes("master")) return {id:"wc-sr", title:"World Cup · Age groups", place:"Da Nang", rank:5};
+  if (m.tour === "wc") return {id:"wc-other", title:"World Cup", place:"Da Nang", rank:6};
+  return {id:"other", title:m.comp||"Other", place:"", rank:9};
 }
 
 function appTier(m){
@@ -580,6 +541,11 @@ function persistResultCat(){
   const next = location.pathname + location.search + hash;
   if ((location.pathname + location.search + location.hash) !== next) history.replaceState({}, "", next);
 }
+function calendarFollowKey(id){
+  const s = String(id || "").trim();
+  if (!s) return "";
+  return s.indexOf("ev:") === 0 ? s : "ev:" + s;
+}
 function eventFollowKey(m){
   if (m && m.eventKey) return m.eventKey;
   if (!m || !m.tour) return "";
@@ -616,41 +582,48 @@ function followPersonLabel(k){
   if (TEAMS[k]) return TEAMS[k].name;
   return k;
 }
-function tourFilterForKey(k){
-  const id = String(k || "").replace(/^tour:/, "");
-  if (id === "app") return "app-pro";
-  if (id === "ppa") return "ppa";
-  if (id === "wc") return "wc";
-  if (id === "npl") return "npl";
-  if (id === "asia") return "asia";
-  return id || "all";
-}
-function followingBox(extraClass){
-  const people = followTagsList();
-  const tours = followedTourKeys();
-  const toursHtml = tours.map(k => `<button class="league ${state.filter===tourFilterForKey(k)?"on":""}" data-f="${tourFilterForKey(k)}">${esc(tourLabel(k))}</button>`).join("");
-  const peopleHtml = people.map(k => {
-    const href = TEAMS[k] ? "/team/"+encodeURIComponent(k) : "/player/"+encodeURIComponent(k);
-    return `<a class="follow-item" href="${href}">${esc(followPersonLabel(k))}</a>`;
-  }).join("");
-  const empty = !tours.length && !people.length
-    ? `<p class="empty rail-empty">Tours and players you follow show here.</p>`
-    : "";
-  return `<div class="panel rail-card follow-box ${extraClass||""}">
-    <div class="kicker">Following</div>
-    ${toursHtml?`<div class="follow-tours">${toursHtml}</div>`:""}
-    ${peopleHtml?`<div class="follow-people">${peopleHtml}</div>`:""}
-    ${empty}
-    <a class="chip" href="/following">Open following</a>
-  </div>`;
+function followingEvents(){
+  const out = [];
+  const seen = new Set();
+  const calEvents = (state.calendar && state.calendar.events) || [];
+  Object.keys(state.selected || {}).filter(k => state.selected[k] && isEventFollowKey(k)).forEach(k => {
+    if (seen.has(k)) return;
+    seen.add(k);
+    const sample = (state.matches||[]).find(m => eventFollowKey(m)===k);
+    const cal = calEvents.find(e => calendarFollowKey(e.id)===k);
+    const name = (sample && sample.comp)
+      || (cal && cal.name)
+      || (state.appEvent && state.appEvent.eventKey===k && state.appEvent.name)
+      || (state.ppaEvent && state.ppaEvent.eventKey===k && state.ppaEvent.name)
+      || "";
+    out.push({
+      key: k,
+      label: shortEventLabel(name, k),
+      full: name || shortEventLabel(name, k),
+      filter: eventFilterForKey(k, cal),
+      drawUrl: (cal && cal.drawUrl) || (/gij/i.test(k+name) ? GIJON_DRAW_URL : "")
+    });
+  });
+  return out;
 }
 function followingRail(){
-  return followingBox("");
-}
-/** Phone list of tours and players already followed. Hidden when empty — not a suggestion bar. */
-function followingMobile(){
-  if (!followTagsList().length && !followedTourKeys().length) return "";
-  return followingBox("follow-inline");
+  const people = followTagsList();
+  const events = followingEvents();
+  const peopleHtml = people.length
+    ? people.map(k => {
+        const href = TEAMS[k] ? "/team/"+encodeURIComponent(k) : "/player/"+encodeURIComponent(k);
+        return `<a class="follow-item" href="${href}">${esc(followPersonLabel(k))}</a>`;
+      }).join("")
+    : (events.length ? "" : `<p class="empty rail-empty">Follow a player or an event — they land here.</p>`);
+  const eventsHtml = events.length
+    ? events.map(e => `<button class="league ${state.filter===e.filter?"on":""}" data-f="${e.filter}">${esc(e.label)}</button>`).join("")
+    : (people.length ? `<p class="empty rail-empty">Follow Columbus, Las Vegas or a slate event from its card.</p>` : "");
+  return `<div class="panel rail-card follow-box">
+    <div class="kicker">Following</div>
+    <div class="follow-people">${peopleHtml}</div>
+    ${eventsHtml?`<div class="kicker" style="margin-top:10px">Events</div><div class="follow-events">${eventsHtml}</div>`:""}
+    <a class="chip" href="/following">Open following</a>
+  </div>`;
 }
 
 function passesBoardFilter(m){
@@ -1006,6 +979,36 @@ function chrome(inner, title){
   </nav>`;
 }
 
+function matchDayFollowStrip(){
+  if (!anyFollows()) return "";
+  const day = state.date || boardToday();
+  const mine = (state.matches || []).filter(m => {
+    if (!followsBoardMatch(m)) return false;
+    const st = effectiveStatus(m);
+    if (st === "FT") return false;
+    if (!passesBoardFilter(m) && !(state.filter === "all" && playerFollowsMatch(m))) return false;
+    return st === "LIVE" || !m.date || m.date >= day;
+  }).sort(sortMatchDay);
+  const events = followingEvents();
+  const shown = [];
+  const seen = new Set();
+  mine.forEach(m => {
+    if (shown.length >= 4) return;
+    if (seen.has(m.id)) return;
+    if (!playerFollowsMatch(m) && shown.filter(x => !playerFollowsMatch(x)).length >= 3 && mine.some(playerFollowsMatch)) return;
+    seen.add(m.id);
+    shown.push(m);
+  });
+  if (!shown.length && !events.length) return "";
+  const chips = events.map(e => `<button class="chip ${state.filter===e.filter?"on":""}" data-f="${esc(e.filter)}">${esc(e.label)}</button>`).join("");
+  const rows = shown.map(m => matchRow(m)).join("");
+  return `<div class="panel follow-day">
+    <div class="kicker">Following</div>
+    ${chips?`<div class="chips">${chips}</div>`:""}
+    ${rows || `<p class="games">Followed players and events land here when they are on the slate.</p>`}
+    <a class="chip" href="/following">Open following</a>
+  </div>`;
+}
 function amateurPoolNote(list){
   if (state.filter !== "all" || state.boardMode === "live" || state.boardMode === "draw") return "";
   const dates = new Set((list || []).map(m => m.date).filter(Boolean));
@@ -1051,7 +1054,9 @@ function viewHome(){
   const blocks = ordered.map(c => {
     const liveN = c.items.filter(x => effectiveStatus(x)==="LIVE").length;
     const nextN = c.items.filter(x => effectiveStatus(x)==="NEXT").length;
-    const followBtn = tourFollowButton(c.meta.tour);
+    const ek = c.meta.eventKey || eventFollowKey(c.items[0]);
+    const followingEv = ek && state.selected[ek];
+    const followBtn = ek ? `<button class="chip ${followingEv?"on":""}" data-follow="${esc(ek)}">${followingEv?"Following":"Follow"}</button>` : "";
     const countBits = [liveN?liveN+" live":"", nextN?nextN+" upcoming":""].filter(Boolean).join(" · ");
     return `<section class="comp-card">
       <div class="comp-head">
@@ -1072,11 +1077,13 @@ function viewHome(){
   <div class="wrap fot">
     <aside class="rail-left">${leagueRail()}</aside>
     <div class="rail-main">
-        ${followingMobile()}
+        ${matchDayFollowStrip()}
         ${live.length?`<div class="panel"><div class="kicker"><span class="dot"></span> Live now</div>
       <div class="strip">${live.map(m=>`<a class="live-card" href="/match/${m.id}"><span class="st LIVE"><span class="dot"></span>LIVE</span><strong>${centerScore(m)}</strong>${m.a} vs ${m.b}<div class="games">${[m.div, courtOnCard(m), scheduledLocalLabel(m)].filter(Boolean).join(" · ")}</div></a>`).join("")}</div></div>`:""}
     <div class="panel">
-      <div class="toolbar">
+      <div class="kicker">Follow</div>
+      <div class="chips">${followChips()}</div>
+      <div class="toolbar" style="margin-top:12px">
         <div class="seg">
           <button data-mode="live" class="${state.boardMode==="live"?"on":""}">Live</button>
           <button data-mode="matches" class="${state.boardMode==="matches"?"on":""}">Matches</button>
@@ -1182,9 +1189,11 @@ function calEventRow(e){
   const dates=end&&end!==start?`${start} → ${end}`:start;
   const venue=e.venue||e.location||'';
   const id=e.id||('gpa:'+encodeURIComponent(String(e.name||'').toLowerCase())+':'+start);
+  const fk=calendarFollowKey(id);
+  const following=!!state.selected[fk];
   const draw=officialDrawCta(e.drawUrl);
   const official=e.officialUrl?`<a class="chip" href="${esc(e.officialUrl)}" target="_blank" rel="noopener">Official</a>`:"";
-  const follow=tourFollowButton(e.tour || (e.connector && e.connector.type) || "");
+  const follow=`<button class="chip ${following?"on":""}" data-follow="${esc(fk)}">${following?"Following":"Follow"}</button>`;
   const line=readerStatusLine(e);
   const hint=line?`<span class="games">${esc(line)}</span>`:"";
   return `<div class="rank-row cal-row">
@@ -1274,7 +1283,12 @@ function filterWantsPreServe(filter, tour){
   if (filter === "ppa") return tour === "ppa";
   if (filter === "wc" || filter === "npl") return false;
   if (slateFilterMeta(filter)) return false;
-  if (filter === "following") return !!(state.selected && state.selected[tourFollowKey(tour)]);
+  if (filter === "following") {
+    const model = preServeModel(tour);
+    const armed = armedRowForTour(tour);
+    const keys = [model.eventKey, armed && calendarFollowKey(armed.id)].filter(Boolean);
+    return keys.some(k => state.selected && state.selected[k]);
+  }
   return tour === "app" || tour === "ppa";
 }
 function emptyBoardLine(tour, mode){
@@ -1288,7 +1302,9 @@ function emptyBoardLine(tour, mode){
 function preServeCard(model, line){
   const when = model.start ? dateChip(model.start) : "";
   const place = [model.venue, when].filter(Boolean).join(" · ");
-  const followBtn = tourFollowButton(model.tour);
+  const ek = model.eventKey || "";
+  const followingEv = ek && state.selected[ek];
+  const followBtn = ek ? `<button class="chip ${followingEv?"on":""}" data-follow="${esc(ek)}">${followingEv?"Following":"Follow"}</button>` : "";
   return `<section class="comp-card pre-serve">
     <div class="comp-head"><div><h3>${esc(model.name)}</h3><span>${esc(place)}</span></div><div class="comp-actions">${followBtn}</div></div>
     <p class="games">${line}</p>
@@ -1318,20 +1334,18 @@ function slateEmpty(filter){
   const drawUrl = (rows.find(e => e.drawUrl)||{}).drawUrl || (filter==="tpb" ? GIJON_DRAW_URL : "");
   const draw = officialDrawCta(drawUrl, filter==="tpb" ? "Official draw" : "Draw PDF");
   const body = rows.length ? rows.map(calEventRow).join("") : `<p class="games">${esc(meta.copy)}</p>`;
-  const tourBtn = tourFollowButton(filter);
   return `<section class="comp-card">
-    <div class="comp-head"><div><h3>${meta.title}</h3><span>${meta.kicker || "results-only"}</span></div><div class="comp-actions">${tourBtn}</div></div>
+    <div class="comp-head"><div><h3>${meta.title}</h3><span>${meta.kicker || "results-only"}</span></div></div>
     ${body}
     ${draw}
     <a class="chip" href="/calendar">Calendar</a>
   </section>`;
 }
-function tourChoiceButtons(){
-  const base = ["tour:app","tour:ppa","tour:gpa","tour:wc"];
-  const extra = followedTourKeys().filter(k => base.indexOf(k) === -1);
-  return base.concat(extra).map(k => {
-    const on = !!state.selected[k];
-    return `<button class="chip ${on?"on":""}" data-follow="${esc(k)}">${on?"Following":"Follow"} ${esc(tourLabel(k))}</button>`;
+function followChips(){
+  return ["Vietnam","USA","India","Waters","Johns","Bright"].map(k => {
+    const label = PLAYERS[k]?.name.split(" ").slice(-1)[0] === k ? PLAYERS[k].name.replace("Anna Leigh ","A. ").replace("Anna ","A. ").replace("Ben ","B. ") : k;
+    const short = {Waters:"A. Waters",Johns:"B. Johns",Bright:"A. Bright"}[k] || k;
+    return `<button class="chip ${state.selected[k]?"on":""}" data-follow="${k}">${short}</button>`;
   }).join("");
 }
 
@@ -1615,7 +1629,7 @@ function alertsCta(){
   }
   const p = Notification.permission;
   if (p === "granted") {
-    return `<div class="panel"><p class="games">Live alerts on. Web Push fires when a followed player or a followed tour match goes LIVE, even with this tab closed. One ping per match until it leaves LIVE.</p></div>`;
+    return `<div class="panel"><p class="games">Live alerts on. Web Push fires when a followed player or a followed event match goes LIVE, even with this tab closed. One ping per match until it leaves LIVE.</p></div>`;
   }
   if (p === "denied") {
     return `<div class="panel"><p class="games">Live alerts blocked. Allow notifications for this site in browser settings, then reload.</p></div>`;
@@ -1630,28 +1644,32 @@ function viewFollowing(){
     if(ra!==rb) return ra-rb;
     return (parseUtc(a.start)?.getTime()||0)-(parseUtc(b.start)?.getTime()||0);
   });
+  const events = followingEvents();
   const shop = PRODUCTS.filter(p => (p.tags||[]).some(t => state.selected[t]));
-  const people = followTagsList();
-  const peopleHtml = people.length
-    ? people.map(k => {
-        const href = TEAMS[k] ? "/team/"+encodeURIComponent(k) : "/player/"+encodeURIComponent(k);
-        const on = !!state.selected[k];
+  const eventCards = events.length
+    ? `<div class="panel"><div class="kicker">Events</div>${events.map(e => {
+        const following = !!state.selected[e.key];
         return `<div class="rank-row">
           <b></b>
           <div>
-            <strong><a href="${href}">${esc(followPersonLabel(k))}</a></strong>
-            <span class="cal-meta"><button class="chip ${on?"on":""}" data-follow="${esc(k)}">${on?"Following":"Follow"}</button></span>
+            <strong>${esc(e.full || e.label)}</strong>
+            <span>${esc(e.label)}</span>
+            <span class="cal-meta">
+              <button class="chip ${following?"on":""}" data-follow="${esc(e.key)}">${following?"Following":"Follow"}</button>
+              <a class="chip" href="/" data-f="${esc(e.filter)}">Open board</a>
+              ${e.drawUrl?officialDrawCta(e.drawUrl):""}
+            </span>
           </div>
         </div>`;
-      }).join("")
-    : `<p class="empty">No players followed yet.</p>`;
+      }).join("")}</div>`
+    : "";
   return `<div class="wrap">
     <h2 style="font-family:Syne,sans-serif;font-size:32px">Following</h2>
-    <p class="games">Tours and players you follow. A followed player or a match on a followed tour pings when it is actually LIVE — including with this tab closed.</p>
+    <p class="games">Players, countries and events you follow. A followed player or a followed event match pings when Den marks it LIVE — including with this tab closed.</p>
     ${alertsCta()}
-    <div class="panel"><div class="kicker">Tours</div><div class="chips">${tourChoiceButtons()}</div></div>
-    <div class="panel"><div class="kicker">Players</div>${peopleHtml}</div>
-    <div class="panel">${list.length?list.map(matchRow).join(""):"<p class='empty'>Follow a tour or a player. Their matches show here.</p>"}</div>
+    ${eventCards}
+    <div class="chips" style="margin:14px 0">${followChips()}</div>
+    <div class="panel">${list.length?list.map(matchRow).join(""):"<p class='empty'>Follow a player or tap Follow on Columbus / Las Vegas / Gijón. This tab then becomes your board.</p>"}</div>
     ${shop.length?`<div class="panel"><div class="kicker">On court with your follows</div>${shop.map(productCard).join("")}</div>`:""}
     <div class="panel">
       <div class="kicker">Watch</div>
@@ -2152,11 +2170,9 @@ function viewDesk(){
 }
 
 function toggleFollow(k){
-  const key = normalizeFollowKey(k);
-  if (!key) return;
-  state.selected[key] = !state.selected[key];
+  state.selected[k] = !state.selected[k];
   localStorage.setItem("wpm-follows", JSON.stringify(state.selected));
-  if (state.selected[key]) {
+  if (state.selected[k]) {
     ensureSafeSW();
     if ("Notification" in window && Notification.permission === "default") {
       Notification.requestPermission().then((p) => {

@@ -142,8 +142,8 @@ assert.equal(chongqing.note, "Results will appear when available");
 assert.equal(chongqing.onLive, false);
 assert.equal(JSON.stringify(chongqing).includes("18448"), false);
 
-const js = fs.readFileSync("js/wpm-20260930b.js", "utf8");
-const siteJs = fs.readFileSync("site/js/wpm-20260930b.js", "utf8");
+const js = fs.readFileSync("js/wpm-20261001a.js", "utf8");
+const siteJs = fs.readFileSync("site/js/wpm-20261001a.js", "utf8");
 assert.equal(siteJs, js);
 assert.equal(js.includes("Barcelona window ended"), false);
 assert.equal(js.includes("Rate Las Vegas Open is /api/ppa"), false);
@@ -157,9 +157,10 @@ assert.ok(js.includes("Draw not published yet"));
 assert.ok(js.includes("function readerStatusLine"));
 assert.ok(js.includes("Official draw"));
 assert.ok(js.includes('href="/calendar">Calendar</a>'));
-assert.ok(js.includes('data-follow="${esc(fk)}"'));
+assert.ok(js.includes("function tourFollowButton"));
+assert.equal(js.includes('data-follow="${esc(fk)}"'), false);
 assert.ok(js.includes("Coming soon"));
-const emptyFn = js.slice(js.indexOf("function slateEmpty"), js.indexOf("function followChips"));
+const emptyFn = js.slice(js.indexOf("function slateEmpty"), js.indexOf("function tourChoiceButtons"));
 assert.equal(emptyFn.split("meta.copy").length - 1, 1, "status sentence is printed once");
 assert.equal(emptyFn.includes("<p class=\"empty\">${meta.copy}"), false);
 

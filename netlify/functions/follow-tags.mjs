@@ -71,20 +71,89 @@ export function tagsFor(a, b) {
   return tags;
 }
 
+/** Tour-level follows. Not a single tournament (no ev:app:18448). */
+export const TOUR_IDS = ["app", "ppa", "wc", "gpa", "npl", "asia", "ppa-eu", "app-asia", "mlp-asia", "tpb"];
+
+export function isTourFollowKey(k) {
+  const s = String(k || "");
+  return s.startsWith("tour:") && TOUR_IDS.includes(s.slice(5));
+}
+
+export function isLegacyEventFollowKey(k) {
+  const s = String(k || "");
+  return s.startsWith("ev:") || s.startsWith("gpa:");
+}
+
 /**
- * Which follow keys match a match: tags hit OR follow key appears as a name token
- * in a/b/games (multi-word keys: substring on the haystack).
- * Shared by push-live-check and kept in sync with client followsMatch.
+ * Player/team keys pass through. tour:app stays.
+ * Legacy event keys upgrade to a tour (ev:app:18448 → tour:app) or drop.
+ * Kept in sync with the client normalizeFollowKey.
+ */
+export function normalizeFollowKey(raw) {
+  const k = String(raw || "").trim();
+  if (!k) return "";
+  if (k.startsWith("tour:")) return isTourFollowKey(k) ? k : "";
+  if (!isLegacyEventFollowKey(k)) return k;
+  let decoded = k;
+  try {
+    decoded = decodeURIComponent(k);
+  } catch (_) {}
+  const blob = decoded.toLowerCase();
+  if (/app-asia|chongqing|taipei|bangkok|ho chi minh/.test(blob)) return "tour:app-asia";
+  if (/\bmlp\b/.test(blob)) return "tour:mlp-asia";
+  if (/gij|tpb|top pickleball/.test(blob)) return "tour:tpb";
+  if (/barcelona|ppa-eu|ppa europe/.test(blob)) return "tour:ppa-eu";
+  if (/ppa asia|ppa-asia/.test(blob)) return "tour:asia";
+  if (/^ev:ppa\b|86926aef|las vegas|\bppa\b/.test(blob)) return "tour:ppa";
+  if (/^ev:wc\b|world cup/.test(blob)) return "tour:wc";
+  if (/^ev:app\b|\bapp\b|columbus|18448|overland|18453/.test(blob)) return "tour:app";
+  if (/\bnpl\b/.test(blob)) return "tour:npl";
+  if (/\bgpa\b|d-joy|djoy/.test(blob)) return "tour:gpa";
+  return "";
+}
+
+/** A followed tour hits every match on that tour's board. Not one tournament id. */
+export function tourFollowMatches(m, key) {
+  const nk = normalizeFollowKey(key);
+  if (!isTourFollowKey(nk) || !m) return false;
+  return String(m.tour || "") === nk.slice(5);
+}
+
+/** Full player names for tag/push matching when the card shows last names only. */
+export function rosterText(teams) {
+  const parts = [];
+  for (const team of teams || []) {
+    const ps = (team && team.players) || [];
+    const names = ps
+      .map((p) => (typeof p === "string" ? p : p?.name || p?.playerName || p?.displayName || ""))
+      .filter(Boolean);
+    if (names.length) parts.push(names.join(" / "));
+  }
+  return parts.join(" vs ");
+}
+
+/**
+ * Which follow keys match a match: player tags / name tokens, or a followed tour.
+ * Legacy ev:app:18448 upgrades to tour:app before the check.
+ * Shared by push-live-check and kept in sync with client matchedFollowsFor.
  */
 export function matchFollowKeys(m, follows) {
   const keys = (follows || []).map(String).filter(Boolean);
   if (!keys.length || !m) return [];
   const tagSet = new Set((m.tags || []).map(String));
-  const hay = `${m.a || ""} ${m.b || ""} ${m.games || ""}`;
+  const hay = `${m.a || ""} ${m.b || ""} ${m.games || ""} ${m.roster || ""}`;
   const hayTokens = new Set(nameTokens(hay).map((t) => t.toLowerCase()));
   const hayLower = hay.toLowerCase();
   const hit = [];
-  for (const k of keys) {
+  const seen = new Set();
+  for (const raw of keys) {
+    const k = normalizeFollowKey(raw);
+    if (!k || seen.has(k)) continue;
+    seen.add(k);
+    if (isTourFollowKey(k)) {
+      if (tourFollowMatches(m, k)) hit.push(k);
+      continue;
+    }
     if (tagSet.has(k)) {
       hit.push(k);
       continue;
