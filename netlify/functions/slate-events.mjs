@@ -396,7 +396,31 @@ export const MLP_ASIA_SEASON = {
   connector: { type: "none" },
 };
 
+/**
+ * RTA2000 Farnham. Tournated 8510. Own tour — not an APP or PPA chip.
+ * Columbus 18448 and Rate Las Vegas stay the other live pins.
+ */
+export const FARNHAM = {
+  id: "slate:rta-farnham-2026",
+  name: "RTA2000 Farnham",
+  venue: "Hurlands Pickleball + Padel Club, Farnham, England",
+  timezone: "Europe/London",
+  tour: "rta",
+  host: "RTA",
+  tier: "RTA2000",
+  start: "2026-10-02",
+  end: "2026-10-04",
+  status: "live-path",
+  onLive: true,
+  officialUrl:
+    "https://play.rtapickleballtour.com/tournament/8510/draws?category=34477&segment=MD",
+  note:
+    "Tournated tournament 8510 at Hurlands. /api/rta reads drawsDetail. Not APP and not PPA. Do not cut Columbus Den 18448 or Rate Las Vegas 86926aef-0566-4fbb-87cf-a48068a9f1c6.",
+  connector: { type: "url", scoreUrl: "/api/rta" },
+};
+
 export const SLATE = [
+  FARNHAM,
   GIJON,
   BARCELONA,
   CHONGQING_SLATE,
@@ -697,7 +721,7 @@ export function asCalendarRow(seed, today) {
     prize_pool: null,
     registration_url: seed.officialUrl || "",
     armed: false,
-    onLive: false,
+    onLive: seed.onLive === true && seed.status === "live-path",
     status: seed.status,
     timezone: seed.timezone,
     connector: seed.connector || { type: "none" },

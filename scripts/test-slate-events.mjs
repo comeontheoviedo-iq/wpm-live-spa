@@ -12,6 +12,7 @@ import {
   ENDED_APP,
   ENDED_PPA,
   PARKED_PPA,
+  FARNHAM,
   GIJON,
   BARCELONA,
   SLATE,
@@ -83,8 +84,14 @@ assert.equal(SLATE.some((s) => s.id === GIJON.id), true);
 assert.equal(SLATE.some((s) => s.id === BARCELONA.id), true);
 assert.ok(SLATE.length > 2);
 const during = SLATE.map((s) => asCalendarRow(s, "2026-09-18"));
-assert.ok(during.every((r) => r.onLive === false));
-assert.ok(during.every((r) => r.status !== "live-path"));
+const quiet = during.filter((r) => r.id !== FARNHAM.id);
+assert.ok(quiet.every((r) => r.onLive === false));
+assert.ok(quiet.every((r) => r.status !== "live-path"));
+const farnhamRow = during.find((r) => r.id === FARNHAM.id);
+assert.equal(farnhamRow.tour, "rta");
+assert.equal(farnhamRow.onLive, true);
+assert.equal(farnhamRow.status, "live-path");
+assert.equal(farnhamRow.timezone, "Europe/London");
 assert.ok(during.find((r) => r.drawUrl.includes("GIJON")));
 const after = asCalendarRow(BARCELONA, "2026-09-28");
 assert.equal(after.status, "ended");

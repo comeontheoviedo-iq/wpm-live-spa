@@ -72,7 +72,7 @@ export function tagsFor(a, b) {
 }
 
 /** Tour-level follows. Not a single tournament (no ev:app:18448). */
-export const TOUR_IDS = ["app", "ppa", "wc", "gpa", "npl", "asia", "ppa-eu", "app-asia", "mlp-asia", "tpb"];
+export const TOUR_IDS = ["app", "ppa", "wc", "gpa", "npl", "asia", "ppa-eu", "app-asia", "mlp-asia", "tpb", "rta"];
 
 export function isTourFollowKey(k) {
   const s = String(k || "");
@@ -95,6 +95,8 @@ export function looksLikeStoredEvent(raw) {
   if (/^(overland|arizona|gij[oó]n|gijon|columbus|las vegas|barcelona|mesa)$/i.test(s)) return true;
   if (/\b(overland park|gij[oó]n|arizona open|las vegas open|columbus open|barcelona open)\b/i.test(s)) return true;
   if (/^(APP|PPA|TPB|GPA|MLP)\b/.test(s) && /\b(open|tour|asia)\b/i.test(s)) return true;
+  if (/\brta2000\b/i.test(s)) return true;
+  if (/\brta\b/i.test(s) && /farnham/i.test(s)) return true;
   return false;
 }
 
@@ -105,6 +107,7 @@ export function tourFromEventBlob(raw) {
     decoded = decodeURIComponent(decoded);
   } catch (_) {}
   const blob = decoded.toLowerCase();
+  if (/rta2000|farnham|^ev:rta\b|slate:rta/.test(blob)) return "tour:rta";
   if (/app-asia|chongqing|taipei|bangkok|ho chi minh|india open/.test(blob)) return "tour:app-asia";
   if (/\bmlp\b|mlp-asia/.test(blob)) return "tour:mlp-asia";
   if (/gij|tpb|top pickleball/.test(blob)) return "tour:tpb";

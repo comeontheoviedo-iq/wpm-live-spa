@@ -150,6 +150,7 @@ const TOUR_LABELS = {
   "app-asia": "APP Asia",
   "mlp-asia": "MLP Asia",
   tpb: "TOP Pickleball",
+  rta: "RTA2000",
 };
 
 export function followLabel(k) {

@@ -246,6 +246,7 @@ function guessTour(host: string, name: string): string {
   const h = String(host || "").toUpperCase();
   const n = String(name || "");
   if (h === "MLP" || /\bMLP\b/i.test(n)) return "mlp-asia"; // never APP
+  if (/RTA2000|\bRTA\b|Farnham/i.test(n + " " + h)) return "rta";
   if (/Gij[oó]n/i.test(n) || /TOP Pickleball|\bTPB\b/i.test(n)) return "tpb";
   if (/Barcelona/i.test(n) && /PPA/i.test(n + h)) return "ppa-eu";
   if (isAppAsiaName(n) || (h === "APP" && /Asia/i.test(n))) return "app-asia";

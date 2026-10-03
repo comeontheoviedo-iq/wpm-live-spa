@@ -23,7 +23,8 @@
     "netlify/functions/radar-lib.mjs",
     "netlify/functions/slate-events.mjs",
     "netlify/functions/ppa-keep.mjs",
-    "netlify/functions/sportssync-map.mjs"
+    "netlify/functions/sportssync-map.mjs",
+    "netlify/functions/rta-map.mjs"
   ]
 
 [functions.rankings]
@@ -36,6 +37,9 @@
   timeout = 26
 
 [functions.sportssync]
+  timeout = 26
+
+[functions.rta]
   timeout = 26
 
 
@@ -63,6 +67,11 @@
 [[redirects]]
   from = "/api/sportssync"
   to = "/.netlify/functions/sportssync"
+  status = 200
+
+[[redirects]]
+  from = "/api/rta"
+  to = "/.netlify/functions/rta"
   status = 200
 
 [[redirects]]
