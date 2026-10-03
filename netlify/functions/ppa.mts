@@ -2,7 +2,7 @@ import type { Config } from "@netlify/functions";
 import { rosterText, tagsFor } from "./follow-tags.mjs";
 import { discFromDivName } from "./app-rounds.mjs";
 import { PPA_LIVE } from "./slate-events.mjs";
-import { keepPpaMatch, mergePpaDateKey, ppaBoardDate } from "./ppa-keep.mjs";
+import { keepPpaMatch, mergePpaDateKey, ppaBoardDate, ppaGameLineScore, ppaListedScore, ppaResultNote, ppaStatus } from "./ppa-keep.mjs";
 
 const EVENT = PPA_LIVE.eventId; // Rate Las Vegas Open 2026-09-28 · Darling Tennis Center
 const PPA_TZ = PPA_LIVE.tz; // America/Los_Angeles — ticker clock is the "8:00 AM PDT" string
@@ -26,9 +26,7 @@ function gamesWon(g: any[]) {
 }
 
 function mapStatus(s: string) {
-  if (s === "live") return "LIVE";
-  if (s === "final") return "FT";
-  return "NEXT";
+  return ppaStatus(s);
 }
 
 function gameComplete(a: any, b: any, matchFinal: boolean, isCurrent: boolean) {
@@ -66,9 +64,10 @@ function linesFrom(m: any, t0: any, t1: any) {
     if (!current && isPadZero(a, b)) continue;
     if ((a == null || a === "") && (b == null || b === "") && !current) continue;
     const done = gameComplete(a, b, final, current);
+    const score = ppaGameLineScore(a, b);
     lines.push({
       disc: "G" + (i + 1),
-      score: `${a ?? 0}–${b ?? 0}`,
+      score,
       winner: done ? (Number(a) > Number(b) ? sideName(t0) : Number(b) > Number(a) ? sideName(t1) : "") : "",
       live: current && !final,
       court: current ? (m.court || "") : "",
@@ -90,6 +89,8 @@ function toMatch(m: any) {
   const w1 = lines.filter((l: any) => l.winner === b).length;
   const liveLine = lines.find((l: any) => l.live);
   const games = lines.map((l: any) => `${l.disc} ${l.score}${l.live ? " LIVE" : ""}`).join(" · ");
+  const winnerTeam = (m.teams || []).find((t: any) => t && t.winner);
+  const winnerName = winnerTeam ? sideName(winnerTeam) : "";
   return {
     id: "ppa-" + m.id,
     date,
@@ -106,11 +107,11 @@ function toMatch(m: any) {
     status: st,
     start: m.plannedStart || "",
     hasClock: !!m.plannedStart,
-    score: st === "NEXT" && !w0 && !w1 && !liveLine ? "" : `${w0}-${w1}`,
+    score: ppaListedScore(w0, w1, lines),
     games,
     lines,
     court: m.court || "",
-    note: liveLine ? `In play ${liveLine.disc} ${liveLine.score}` : (m.time || ""),
+    note: ppaResultNote({ outcome: m.outcome, winnerName, time: m.time || "", liveLine }),
     watch: "pbtv",
     tz: PPA_TZ,
     venue: PPA_VENUE,

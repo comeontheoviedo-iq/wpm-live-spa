@@ -5,7 +5,16 @@
  */
 import assert from "node:assert/strict";
 import { PPA_LIVE, PPA_LIVE_EVENT_ID, ENDED_PPA } from "../netlify/functions/slate-events.mjs";
-import { isPpaTbaDate, keepPpaMatch, mergePpaDateKey, ppaBoardDate } from "../netlify/functions/ppa-keep.mjs";
+import {
+  isPpaTbaDate,
+  keepPpaMatch,
+  mergePpaDateKey,
+  ppaBoardDate,
+  ppaGameLineScore,
+  ppaListedScore,
+  ppaResultNote,
+  ppaStatus,
+} from "../netlify/functions/ppa-keep.mjs";
 
 const UA = { "User-Agent": "WPM-LIVE/1.0", Accept: "application/json" };
 const LV = PPA_LIVE_EVENT_ID;
@@ -84,6 +93,21 @@ assert.equal((bcn.matches || []).length, 0, "Barcelona window ended with no scor
 const first = tickMatches.find((m) => m.time === "8:00 AM PDT") || tickMatches[0];
 assert.ok(first, "ticker sample");
 assert.match(ppaBoardDate(first, now), /^2026-(09|10)-/, "ticker date stays on the Vegas week");
+assert.equal(ppaStatus("live"), "LIVE");
+assert.equal(ppaStatus("IN_PROGRESS"), "LIVE");
+assert.equal(ppaStatus("upnext"), "NEXT");
+assert.equal(ppaStatus("scheduled"), "NEXT");
+assert.equal(ppaStatus("final"), "FT");
+assert.equal(ppaGameLineScore(null, null), "–");
+assert.equal(ppaGameLineScore(11, 4), "11–4");
+assert.equal(ppaListedScore(0, 0, []), "");
+assert.equal(ppaListedScore(0, 0, [{ score: "–", live: true }]), "");
+assert.equal(ppaListedScore(2, 1, []), "2-1");
+assert.equal(
+  ppaResultNote({ outcome: "walkover", winnerName: "Pisnik / Alshon" }),
+  "Walkover · Pisnik / Alshon"
+);
+assert.equal(ppaResultNote({ time: "12:00 PM PDT" }), "12:00 PM PDT");
 assert.equal(PPA_LIVE.tz, "America/Los_Angeles");
 assert.equal(PPA_LIVE.venue, "Darling Tennis Center, Las Vegas");
 

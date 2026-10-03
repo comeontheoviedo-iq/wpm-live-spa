@@ -101,6 +101,35 @@ export function matchBoardDate(m, { bracketDate, eventEndDate } = {}) {
   return bracketDate || "";
 }
 
+/**
+ * Match score from games won. A dash-only live line is not 0-0.
+ * Numeric 0–0 on a live line may stay 0-0 because Den sent those digits.
+ */
+export function denListedScore(winsA, winsB, lines) {
+  const w0 = Number(winsA) || 0;
+  const w1 = Number(winsB) || 0;
+  if (w0 || w1) return `${w0}-${w1}`;
+  const realZero = (lines || []).some((l) => {
+    if (!l || !l.live) return false;
+    const pts = String(l.score || "").split("–");
+    if (pts.length < 2) return false;
+    if (String(pts[0]).trim() === "" || String(pts[1]).trim() === "") return false;
+    return Number(pts[0]) === 0 && Number(pts[1]) === 0;
+  });
+  return realZero ? "0-0" : "";
+}
+
+/** FT with no played games. Names the winner when Den recorded one. */
+export function denUnscoredNote(reason, winnerName) {
+  const s = statusToken(reason);
+  let label = "Result recorded (no game scores)";
+  if (s === "WITHDRAWAL" || s === "WITHDRAWN") label = "Withdrawal";
+  else if (s === "WALKOVER" || s === "WO" || s === "WALKOVER_WIN") label = "Walkover";
+  else if (s === "RETIREMENT" || s === "RETIRED") label = "Retirement";
+  const who = String(winnerName || "").trim();
+  return who ? `${label} · ${who}` : label;
+}
+
 /** True when start ISO came from the match row, not a bracket session fallback. */
 export function matchHasClock(m) {
   return !!(denParts(m?.startTime) || denParts(m?.scheduledTime));

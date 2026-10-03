@@ -4,6 +4,8 @@
  */
 import {
   addDays,
+  denListedScore,
+  denUnscoredNote,
   keepAppMatch,
   matchBoardDate,
   matchHasClock,
@@ -80,5 +82,12 @@ assert(addDays(TODAY, 2) === SUN, "Fri+2=Sun");
 // On Sunday the same Final belongs on today's board
 assert(keepAppMatch(wazirRow, SUN, SUN) === true, "Sunday Final kept on Sunday");
 assert(wazirRow.date === SUN, "date truth Sunday");
+
+assert(denListedScore(0, 0, [{ score: "–", live: true }]) === "", "dash live line is not 0-0");
+assert(denListedScore(0, 0, []) === "", "empty FT stays blank");
+assert(denListedScore(2, 0, [{ score: "11–4", live: false }]) === "2-0", "games won stay");
+assert(denListedScore(0, 0, [{ score: "0–0", live: true }]) === "0-0", "source 0–0 on a live line may stay");
+assert(denUnscoredNote("WITHDRAWAL", "Jackson Clements") === "Withdrawal · Jackson Clements", "withdrawal names the winner");
+assert(denUnscoredNote("", "") === "Result recorded (no game scores)", "blank reason stays generic");
 
 console.log("app-dates ok");
