@@ -94,8 +94,8 @@ if ("Notification" in window && Notification.permission === "granted") {
   setTimeout(() => { syncPushSubscription(); }, 2500);
 }
 
-const SAFE_SW = "/sw.js?v=20261002e";
-const SAFE_SW_MARK = "20261002e";
+const SAFE_SW = "/sw.js?v=20261002f";
+const SAFE_SW_MARK = "20261002f";
 const GIJON_DRAW_URL = "https://toppickleballtour.com/wp-content/uploads/2026/09/TOP-PICKLEBALL-TOUR-GIJON-GRUPOS.pdf";
 /** Application-server VAPID public key (safe to embed). Private stays in Netlify env. */
 const VAPID_PUBLIC_KEY = "BEuWn2rcxKeLXPFa3KJzys7rLOtFX8GUZ9ckfFhsqEVO0Y2PE3WfnOivmFJV3EUVCf1c1g31qSiVoNDbcJQO8GQ";
@@ -108,8 +108,8 @@ function urlBase64ToUint8Array(base64String){
   for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
   return out;
 }
-const TOUR_IDS = ["app","ppa","wc","gpa","npl","asia","ppa-eu","app-asia","mlp-asia","tpb"];
-const TOUR_LABELS = {app:"APP", ppa:"PPA", wc:"World Cup", gpa:"GPA", npl:"NPL", asia:"PPA Asia", "ppa-eu":"PPA Europe", "app-asia":"APP Asia", "mlp-asia":"MLP Asia", tpb:"TOP Pickleball"};
+const TOUR_IDS = ["app","ppa","wc","gpa","npl","asia","ppa-eu","app-asia","mlp-asia","tpb","rta"];
+const TOUR_LABELS = {app:"APP", ppa:"PPA", wc:"World Cup", gpa:"GPA", npl:"NPL", asia:"PPA Asia", "ppa-eu":"PPA Europe", "app-asia":"APP Asia", "mlp-asia":"MLP Asia", tpb:"TOP Pickleball", rta:"RTA2000"};
 function isTourFollowKey(k){
   const s = String(k || "");
   return s.indexOf("tour:") === 0 && TOUR_IDS.indexOf(s.slice(5)) !== -1;
@@ -126,12 +126,15 @@ function looksLikeStoredEvent(raw){
   if (/^(overland|arizona|gij[oó]n|gijon|columbus|las vegas|barcelona|mesa)$/i.test(s)) return true;
   if (/\b(overland park|gij[oó]n|arizona open|las vegas open|columbus open|barcelona open)\b/i.test(s)) return true;
   if (/^(APP|PPA|TPB|GPA|MLP)\b/.test(s) && /\b(open|tour|asia)\b/i.test(s)) return true;
+  if (/\brta2000\b/i.test(s)) return true;
+  if (/\brta\b/i.test(s) && /farnham/i.test(s)) return true;
   return false;
 }
 function tourFromEventBlob(raw){
   let decoded = String(raw || "");
   try { decoded = decodeURIComponent(decoded); } catch(e) {}
   const blob = decoded.toLowerCase();
+  if (/rta2000|farnham|^ev:rta\b|slate:rta/.test(blob)) return "tour:rta";
   if (/app-asia|chongqing|taipei|bangkok|ho chi minh|india open/.test(blob)) return "tour:app-asia";
   if (/\bmlp\b|mlp-asia/.test(blob)) return "tour:mlp-asia";
   if (/gij|tpb|top pickleball/.test(blob)) return "tour:tpb";
@@ -420,8 +423,8 @@ function effectiveStatus(m){
   if (m.status === "LIVE") return "LIVE";
   if ((m.lines || []).some(l => l.live)) return "LIVE";
   // Soft window only for tours that supply an explicit end (desk/WC windows).
-  // PPA + APP: API status is authority — never clock-promote NEXT→LIVE.
-  if (m.tour !== "ppa" && m.tour !== "app" && m.tour !== "app-asia") {
+  // PPA, APP, and RTA: API status is authority — never clock-promote NEXT→LIVE.
+  if (m.tour !== "ppa" && m.tour !== "app" && m.tour !== "app-asia" && m.tour !== "rta") {
     const now = Date.now();
     const start = parseUtc(m.start);
     const end = parseUtc(m.end);
@@ -446,7 +449,17 @@ function blankResultLabel(m){
   if (/no game scores/i.test(note)) return "FT";
   return "";
 }
+function rtaLiveBlank(m){
+  if (!m || m.tour !== "rta" || effectiveStatus(m) !== "LIVE") return false;
+  const raw = String(m.score || "").trim();
+  if (raw && !/^0\s*[-–]\s*0$/.test(raw)) return false;
+  return !(m.lines || []).some(l => {
+    const pts = String(l.score || "").split(/[–-]/);
+    return (Number(pts[0]) || 0) > 0 || (Number(pts[1]) || 0) > 0;
+  });
+}
 function centerScore(m){
+  if (rtaLiveBlank(m)) return "";
   const st = effectiveStatus(m);
   if (m && m.score) return m.score;
   if (st === "NEXT") return "vs";
@@ -616,6 +629,16 @@ function competition(m){
       eventKey: eventFollowKey(m)
     };
   }
+  if (m.tour === "rta") {
+    return {
+      id: "rta",
+      tour: "rta",
+      title: "RTA2000 · "+shortEventLabel(m.comp || "Farnham", eventFollowKey(m)),
+      place: m.venue || "Hurlands Pickleball + Padel Club, Farnham, England",
+      rank: 2,
+      eventKey: eventFollowKey(m)
+    };
+  }
   const d = ((m.div||"")+" "+(m.cat||"")).toLowerCase();
   if (d.includes("open")) return {id:"wc-open", tour:"wc", title:"World Cup · Open", place:"Da Nang", rank:2};
   if (d.includes("junior")) return {id:"wc-jr", tour:"wc", title:"World Cup · Juniors", place:"Da Nang", rank:3};
@@ -688,6 +711,7 @@ function shortEventLabel(name, key){
   if (/chongqing/i.test(blob)) return "Chongqing";
   if (/kuala lumpur/i.test(blob)) return "Kuala Lumpur";
   if (/penang/i.test(blob)) return "Penang";
+  if (/farnham|rta2000|^ev:rta\b/i.test(blob)) return "Farnham";
   if (/gij/i.test(blob)) return "Gijón";
   if (/barcelona/i.test(blob)) return "Barcelona";
   if (/world cup|^ev:wc$/i.test(blob)) return "World Cup";
@@ -757,6 +781,7 @@ function passesBoardFilter(m){
   // All: soft-hide APP amateur unless LIVE (keeps All from flooding)
   if (state.filter === "all" && m.tour === "app" && appTier(m) === "amateur" && effectiveStatus(m) !== "LIVE") return false;
   if (state.filter === "wc" && m.tour !== "wc") return false;
+  if (state.filter === "rta" && m.tour !== "rta") return false;
   if (state.filter === "npl" && m.tour !== "npl") return false;
   if (state.filter === "asia" && m.tour !== "asia") return false;
   if (state.filter === "following" && !followsBoardMatch(m)) return false;
@@ -989,8 +1014,9 @@ function matchRow(raw, opts){
   const st = effectiveStatus(m);
   let when = st==="LIVE" ? "LIVE" : st==="FT" ? "FT" : nextWhenLabel(m);
   if (st === "NEXT" && opts && opts.hideDate) when = scheduledLocalLabel(m) || "NEXT";
-  const mark = m.score ? "" : (st==="NEXT" ? "vs" : (blankResultLabel(m) || (st==="LIVE" ? "–" : (st==="FT" ? "FT" : "vs"))));
-  const sc = String(m.score || "").split("-");
+  const rtaBlank = rtaLiveBlank(m);
+  const mark = rtaBlank ? "" : (m.score ? "" : (st==="NEXT" ? "vs" : (blankResultLabel(m) || (st==="LIVE" ? "–" : (st==="FT" ? "FT" : "vs")))));
+  const sc = String(rtaBlank ? "" : (m.score || "")).split("-");
   const sa = sc[0] || "";
   const sb = sc[1] != null ? sc[1] : "";
   const linePreview = (m.lines||[]).slice(0,4).map(l => l.score ? `${l.disc} ${l.score}` : l.disc).join(" · ") || (m.games||"").split(" · ").slice(0,3).join(" · ");
@@ -1008,7 +1034,7 @@ function matchRow(raw, opts){
         <div class="a">${sideLinks(m.a)}</div>
         <div class="b">${sideLinks(m.b)}</div>
       </div>
-      <a class="scorecol" href="/match/${m.id}">${mark ? `<span class="kick">${esc(mark)}</span>` : `<div>${esc(sa)}</div><div>${esc(sb)}</div>`}</a>
+      <a class="scorecol" href="/match/${m.id}">${rtaBlank ? "<span class='kick'></span>" : (mark ? `<span class="kick">${esc(mark)}</span>` : `<div>${esc(sa)}</div><div>${esc(sb)}</div>`)}</a>
     </div>
     <a class="games" href="/match/${m.id}">${tierMark(m)}${div?`<b>${div}</b>`:""}${facts?` · ${facts}`:""}${reason?` · ${esc(reason)}`:""}${linePreview?" · "+linePreview:""}${chip}</a>
   </div>`;
@@ -1375,6 +1401,7 @@ function viewHome(){
           <button data-f="app-pro" class="${state.filter==="app-pro"?"on":""}">APP Pro</button>
           <button data-f="app" class="${state.filter==="app"?"on":""}">APP</button>
           <button data-f="npl" class="${state.filter==="npl"?"on":""}">NPL</button>
+          <button data-f="rta" class="${state.filter==="rta"?"on":""}">RTA2000</button>
           <button data-f="wc" class="${state.filter==="wc"?"on":""}">World Cup</button>
           <button data-f="following" class="${state.filter==="following"?"on":""}">Following</button>
         </div>
@@ -1392,6 +1419,7 @@ function viewHome(){
 function leagueRail(){
   const items=[
     ["all","All competitions"],
+    ["rta","RTA2000 Farnham"],
     ["ppa","PPA Tour (US)"],
     ["ppa-eu","PPA Europe"],
     ["tpb","TOP Pickleball"],
@@ -3245,6 +3273,7 @@ async function pull(){
   await overlay("/api/ppa", "ppa");
   await overlay("/api/app", "app");
   await overlay("/api/sportssync", "app-asia");
+  await overlay("/api/rta", "rta");
   state.heroByDate = state.heroByDate || {};
   const liveN = (state.matches||[]).filter(m => effectiveStatus(m)==="LIVE").length;
   const appQuiet = state.appBoard && state.appBoard.preServe && !liveN;
