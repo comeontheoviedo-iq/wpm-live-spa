@@ -14,8 +14,8 @@ import {
   MAX_PUSH_PER_SUB_PER_RUN,
 } from "../netlify/functions/push-lib.mjs";
 
-const js = fs.readFileSync("js/wpm-20261002d.js", "utf8");
-const siteJs = fs.readFileSync("site/js/wpm-20261002d.js", "utf8");
+const js = fs.readFileSync("js/wpm-20261002e.js", "utf8");
+const siteJs = fs.readFileSync("site/js/wpm-20261002e.js", "utf8");
 assert.equal(siteJs, js);
 
 const columbus = {
@@ -131,6 +131,12 @@ assert.equal(js.includes("function matchDayFollowStrip"), false);
 assert.equal(js.includes("function followChips"), false);
 assert.equal(js.includes("Follow Columbus"), false);
 assert.ok(js.includes("Scheduled · not live until Den says so"));
+assert.ok(js.includes("Scheduled · not live yet"));
+assert.ok(js.includes("function eventHasStarted"));
+assert.ok(js.includes("Nothing live right now"));
+assert.ok(js.includes("No results for this day yet"));
+assert.ok(js.includes("Nothing scheduled for this day"));
+assert.equal(js.includes("No live ties"), false);
 assert.ok(js.includes("Time to be assigned"));
 assert.ok(js.includes("amateur"));
 assert.ok(js.includes("on the APP chip"));

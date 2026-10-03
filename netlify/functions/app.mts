@@ -1,7 +1,7 @@
 import type { Config, Context } from "@netlify/functions";
 import { rosterText, tagsFor } from "./follow-tags.mjs";
 import { bracketIndexEntry, discFromAppBracket, isKnockoutBracket, polishAppRound } from "./app-rounds.mjs";
-import { addDays, keepAppMatch, matchBoardDate, matchHasClock, ymdInTz as ymdInTzShared } from "./app-dates.mjs";
+import { addDays, denListedScore, denUnscoredNote, keepAppMatch, matchBoardDate, matchHasClock, ymdInTz as ymdInTzShared } from "./app-dates.mjs";
 import {
   APP_LIVE,
   ENDED_APP,
@@ -429,6 +429,15 @@ function toMatch(m: any, bracket: any, ev: ActiveEvent) {
   const liveLine = lines.find((l) => l.live);
   const games = lines.map((l) => `${l.disc} ${l.score}${l.live ? " LIVE" : ""}`).join(" · ");
   const court = courtLabel(m);
+  const winnerId = m.winningTeamId;
+  const winnerName =
+    winnerId != null && winnerId !== ""
+      ? m.team1 && m.team1.teamId === winnerId
+        ? a
+        : m.team2 && m.team2.teamId === winnerId
+          ? b
+          : ""
+      : "";
   const roster = rosterText([m.team1, m.team2]);
   const round = polishAppRound({
     round: m.round,
@@ -464,8 +473,8 @@ function toMatch(m: any, bracket: any, ev: ActiveEvent) {
     status: st,
     denStatus: statusToken(raw),
     start,
-    // Never emit phantom 0-0: FT with no played games (walkover/empty Den row) stays score-blank.
-    score: !w0 && !w1 && !liveLine ? "" : `${w0}-${w1}`,
+    // Never emit phantom 0-0. A dash-only in-progress line is not a score.
+    score: denListedScore(w0, w1, lines),
     games,
     lines,
     court,
@@ -474,7 +483,7 @@ function toMatch(m: any, bracket: any, ev: ActiveEvent) {
     note: liveLine
       ? `In play ${liveLine.disc}${liveLine.score && liveLine.score !== "–" ? " " + liveLine.score : ""}`
       : st === "FT" && !lines.length
-        ? "Result recorded (no game scores)"
+        ? denUnscoredNote(m.incompleteReason, winnerName)
         : court || "",
     watch: "", // stay in-app — no bounce to Den/APPTV as product path
     venue: ev.venue,
