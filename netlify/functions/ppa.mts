@@ -4,8 +4,8 @@ import { discFromDivName } from "./app-rounds.mjs";
 import { PPA_LIVE } from "./slate-events.mjs";
 import { keepPpaMatch, mergePpaDateKey, ppaBoardDate, ppaGameLineScore, ppaListedScore, ppaResultNote, ppaStatus } from "./ppa-keep.mjs";
 
-const EVENT = PPA_LIVE.eventId; // Rate Las Vegas Open 2026-09-28 · Darling Tennis Center
-const PPA_TZ = PPA_LIVE.tz; // America/Los_Angeles — ticker clock is the "8:00 AM PDT" string
+const EVENT = PPA_LIVE.eventId; // Veolia Chicago Cup 2026-10-05 · Life Time North Shore
+const PPA_TZ = PPA_LIVE.tz; // America/Chicago — ticker clock is the "8:00 AM CDT" string
 const PPA_NAME = PPA_LIVE.name;
 const PPA_VENUE = PPA_LIVE.venue;
 const PPA_EVENT_KEY = "ev:ppa:" + EVENT;

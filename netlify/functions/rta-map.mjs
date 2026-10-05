@@ -349,6 +349,31 @@ export function mapRtaPacks(packs, opts = {}) {
   };
 }
 
+function ymdInTz(now, tz) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz || "UTC",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+}
+
+/**
+ * After the event window, an unplayed row is not upcoming.
+ * LIVE and FT stay. A row that already has game lines stays (do not hide a real score).
+ * Never invent a result for the rows this drops.
+ */
+export function keepRtaMatch(m, now = new Date(), event = FARNHAM) {
+  if (!m) return false;
+  if (m.status === "LIVE" || m.status === "FT") return true;
+  if (Array.isArray(m.lines) && m.lines.length) return true;
+  if (String(m.score || "").trim()) return true;
+  const today = ymdInTz(now, (event && event.tz) || FARNHAM.tz);
+  const end = String((event && event.end) || "").slice(0, 10);
+  if (end && today > end) return false;
+  return true;
+}
+
 function preferMatch(next, prev) {
   const rank = (m) => (m.status === "LIVE" ? 3 : m.lines && m.lines.length ? 2 : m.status === "FT" ? 1 : 0);
   return rank(next) > rank(prev);

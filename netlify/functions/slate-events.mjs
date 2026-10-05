@@ -5,19 +5,36 @@
  */
 import { CHONGQING, CHONGQING_DESK_NOTE } from "./sportssync-map.mjs";
 
-/** Live /api/ppa EVENT — Rate Las Vegas Open (Darling Tennis Center). */
-export const PPA_LIVE_EVENT_ID = "86926aef-0566-4fbb-87cf-a48068a9f1c6";
+/** Live /api/ppa EVENT — Veolia Chicago Cup (Life Time North Shore). */
+export const PPA_LIVE_EVENT_ID = "203e1164-b4f9-47e9-bacf-ff81f8748025";
 
-/** April Las Vegas Open. Not this September event — never wire /api/ppa to it. */
+/**
+ * Rate Las Vegas Open. Finished 4 Oct 2026 (scores API all final, latest day 2026-10-04).
+ * Archive only. Never wire /api/ppa back to this UUID.
+ */
+export const PPA_LAS_VEGAS_EVENT_ID = "86926aef-0566-4fbb-87cf-a48068a9f1c6";
+
+/** April Las Vegas Open. Not the September event — never wire /api/ppa to it. */
 export const PPA_APRIL_LAS_VEGAS_PREFIX = "92d37566";
 
 export const PPA_LIVE = {
   eventId: PPA_LIVE_EVENT_ID,
+  name: "Veolia Chicago Cup",
+  venue: "Life Time North Shore Sport & Racquetball, Chicago, IL",
+  tz: "America/Chicago",
+  start: "2026-10-05",
+  end: "2026-10-11",
+  firstServe: "8:00 AM CDT",
+};
+
+/** Finished PPA week. Results stay on /api/archive. Not the live board. */
+export const PPA_LAS_VEGAS = {
+  eventId: PPA_LAS_VEGAS_EVENT_ID,
   name: "PPA Rate Las Vegas Open",
   venue: "Darling Tennis Center, Las Vegas",
   tz: "America/Los_Angeles",
   start: "2026-09-28",
-  firstServe: "8:00 AM PDT",
+  end: "2026-10-04",
 };
 
 /**
@@ -151,7 +168,7 @@ export const ENDED_PPA = {
     ended: true,
     parked: false,
     note:
-      "Window ended 27 Sep 2026 with no scores on the official PPA scores API. Unparked \u2014 do not cut /api/ppa to this UUID. Live board is Rate Las Vegas Open (" +
+      "Window ended 27 Sep 2026 with no scores on the official PPA scores API. Unparked \u2014 do not cut /api/ppa to this UUID. Live board is Veolia Chicago Cup (" +
       PPA_LIVE_EVENT_ID +
       ").",
   },
@@ -337,26 +354,6 @@ export const HCMC = {
   connector: { type: "none" },
 };
 
-/** Next PPA after Las Vegas. UUID is the brackets link, not the wired /api/ppa EVENT. */
-export const PPA_CHICAGO = {
-  id: "slate:ppa-chicago-2026",
-  name: "Veolia Chicago Cup",
-  venue: "Life Time North Shore Sport & Racquetball, Northbrook, IL",
-  timezone: "America/Chicago",
-  tour: "ppa",
-  host: "PPA",
-  tier: "",
-  start: "2026-10-05",
-  end: "2026-10-11",
-  status: "results-only",
-  onLive: false,
-  ppaEventId: "203e1164-b4f9-47e9-bacf-ff81f8748025",
-  officialUrl: "https://www.ppatour.com/events/2026/veolia-chicago-cup/",
-  note:
-    "Upcoming PPA. Brackets UUID 203e1164-b4f9-47e9-bacf-ff81f8748025 had scheduled scores on 2026-10-02. Not the live board — do not cut /api/ppa off Rate Las Vegas Open (86926aef-0566-4fbb-87cf-a48068a9f1c6). Not LIVE until the ticker title matches.",
-  connector: { type: "none" },
-};
-
 export const PPA_VIRGINIA_BEACH = {
   id: "slate:ppa-virginia-beach-2026",
   name: "Mojo Energy Pouches Virginia Beach Open",
@@ -372,7 +369,7 @@ export const PPA_VIRGINIA_BEACH = {
   ppaEventId: "429c7980-e1b9-4800-805f-dfb160781cd9",
   officialUrl: "https://www.ppatour.com/events/2026/virginia-beach-open/",
   note:
-    "Upcoming PPA. Brackets UUID 429c7980-e1b9-4800-805f-dfb160781cd9 had scheduled scores on 2026-10-02. Not the live board — do not cut /api/ppa off Rate Las Vegas Open (86926aef-0566-4fbb-87cf-a48068a9f1c6). Not LIVE until the ticker title matches.",
+    "Upcoming PPA. Brackets UUID 429c7980-e1b9-4800-805f-dfb160781cd9 had scheduled scores on 2026-10-02. Not the live board — do not cut /api/ppa off Veolia Chicago Cup (203e1164-b4f9-47e9-bacf-ff81f8748025). Not LIVE until the ticker title matches.",
   connector: { type: "none" },
 };
 
@@ -398,7 +395,7 @@ export const MLP_ASIA_SEASON = {
 
 /**
  * RTA2000 Farnham. Tournated 8510. Own tour — not an APP or PPA chip.
- * Columbus 18448 and Rate Las Vegas stay the other live pins.
+ * /api/app stays Columbus Den 18448 until Louisville. Live PPA is Veolia Chicago Cup.
  */
 export const FARNHAM = {
   id: "slate:rta-farnham-2026",
@@ -415,7 +412,7 @@ export const FARNHAM = {
   officialUrl:
     "https://play.rtapickleballtour.com/tournament/8510/draws?category=34477&segment=MD",
   note:
-    "Tournated tournament 8510 at Hurlands. /api/rta reads drawsDetail. Not APP and not PPA. Do not cut Columbus Den 18448 or Rate Las Vegas 86926aef-0566-4fbb-87cf-a48068a9f1c6.",
+    "Tournated tournament 8510 at Hurlands. Window ended 4 Oct 2026. /api/rta reads drawsDetail. Unplayed rows after the window are not NEXT. Not APP and not PPA. Do not cut /api/app off Columbus Den 18448. Do not cut /api/ppa off Veolia Chicago Cup 203e1164-b4f9-47e9-bacf-ff81f8748025.",
   connector: { type: "url", scoreUrl: "/api/rta" },
 };
 
@@ -424,7 +421,6 @@ export const SLATE = [
   GIJON,
   BARCELONA,
   CHONGQING_SLATE,
-  PPA_CHICAGO,
   PPA_VIRGINIA_BEACH,
   LOUISVILLE,
   BANGKOK,
@@ -443,7 +439,7 @@ export function coverageSeedFor(name) {
 export const FILTER_COPY = {
   tpb: "TOP Pickleball Tour (powered by APP, not APP Den). Scores delayed \u2014 no live path. Official draw PDF only.",
   "ppa-eu":
-    "PPA Tour Europe. Barcelona window ended 27 Sep 2026 with no scores. Not the live board \u2014 Rate Las Vegas Open is /api/ppa.",
+    "PPA Tour Europe. Barcelona window ended 27 Sep 2026 with no scores. Not the live board \u2014 Veolia Chicago Cup is /api/ppa.",
   "app-asia": "APP Asia Tour \u2014 not MLP Asia. No Den Live id. SportsSync /api/sportssync is results-only once a real tournamentId is listed. Not LIVE.",
   "mlp-asia": MLP_ASIA_NOTE,
   asia: "PPA Asia \u2014 results-only until a working ticker is wired. Not APP Asia, not MLP Asia.",
@@ -644,11 +640,11 @@ export function isLivePpaEventId(id) {
   return String(id || "").trim() === PPA_LIVE_EVENT_ID;
 }
 
-/** Ticker title must be Rate Las Vegas. A bare "Las Vegas" title is not this event. */
+/** Ticker title must be Veolia Chicago Cup. A bare "Chicago" title is not this event. */
 export function ppaTickerTitleAligned(title) {
   const t = String(title || "").trim();
   if (!t) return true;
-  return /rate/i.test(t) && /las vegas/i.test(t);
+  return /veolia/i.test(t) && /chicago cup/i.test(t);
 }
 
 /** APP Asia Tour names on GPA \u2014 still APP, never MLP. */
@@ -785,7 +781,6 @@ export function staticWatchEvents() {
       note: BARCELONA.note,
     },
     watchFromSeed(CHONGQING_SLATE),
-    watchFromSeed(PPA_CHICAGO),
     watchFromSeed(PPA_VIRGINIA_BEACH),
     watchFromSeed(LOUISVILLE),
     watchFromSeed(BANGKOK),

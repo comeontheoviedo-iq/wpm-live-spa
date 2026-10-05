@@ -1,6 +1,6 @@
 # RTA2000 Farnham
 
-Own tour chip **RTA2000** (`rta`). Not APP. Not PPA. Do not cut Columbus Den **18448** or Rate Las Vegas **86926aef-0566-4fbb-87cf-a48068a9f1c6**.
+Own tour chip **RTA2000** (`rta`). Not APP. Not PPA. Window ended 4 Oct 2026. Unplayed matches the source still marks `upcoming` (loser-bracket rows dated 2 Oct) are dropped from `/api/rta` after that end date. They are not NEXT and they are not given a score. Do not cut `/api/app` off Columbus Den **18448**. Do not cut `/api/ppa` off Veolia Chicago Cup **203e1164-b4f9-47e9-bacf-ff81f8748025**.
 
 | | |
 |--|--|

@@ -78,7 +78,7 @@ Public JSON: GPA events merged with armed flags (`armed`, `onLive`, `status`, `c
 - **APP Asia Chongqing** — Den id **not found**. SportsSync id **not listed** (organizer 1645900: KL 89, Penang 222 only, 2026-09-30). Calendar/results-only. A later real SportsSync id arms `/api/sportssync` as results-only, never LIVE. APP Asia Tour, **not** MLP Asia. No fake LIVE. See [`sportssync-asia.md`](./sportssync-asia.md).
 - **TPB Gijón 2026** — seeded slate, scores delayed, official draw PDF. No Den id. See `docs/slate-europe.md`.
 - **PPA Barcelona Open** — ended 27 Sep 2026, UUID `1655a7c9-904a-44c9-aa29-b279fca900e8`, no scores, unparked. Do not cut `/api/ppa` there.
-- **PPA Rate Las Vegas Open** — live `/api/ppa` UUID `86926aef-0566-4fbb-87cf-a48068a9f1c6`, Darling Tennis Center, `America/Los_Angeles`. Not April `92d37566-…`.
+- **Veolia Chicago Cup** — live `/api/ppa` UUID `203e1164-b4f9-47e9-bacf-ff81f8748025`, Life Time North Shore Sport & Racquetball, Chicago, IL, `America/Chicago`. Rate Las Vegas `86926aef-…` ended 4 Oct (archive only). Not April `92d37566-…`.
 - **`/api/app` follows** query / env / Blobs `wpm-app` `active-tournament` / `calendar-armed` / fallback **18448**. Stale Overland `18453` on env or blobs is skipped. LIVE only when Den matches are RUNNING.
 - D-Joy Leg 3 still awaits a published live URL (`connector: djoy`).
 - Cross-link: [`app-den-ids.md`](./app-den-ids.md)

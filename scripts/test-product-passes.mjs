@@ -19,7 +19,7 @@ import {
 } from "../netlify/functions/finished-archive.mjs";
 import { APP_LIVE, PPA_LIVE } from "../netlify/functions/slate-events.mjs";
 
-const js = fs.readFileSync("js/wpm-20261002f.js", "utf8");
+const js = fs.readFileSync("js/wpm-20261005a.js", "utf8");
 const start = js.indexOf("const TOUR_IDS");
 const end = js.indexOf("function migrateFollows");
 const context = {};
@@ -36,6 +36,8 @@ for (const fn of [normalizeFollowKey, context.normalizeFollowKey]) {
   assert.equal(fn("Gijón"), "tour:tpb");
   assert.equal(fn("Gijon"), "tour:tpb");
   assert.equal(fn("Las Vegas"), "tour:ppa");
+  assert.equal(fn("Veolia Chicago Cup"), "tour:ppa");
+  assert.equal(fn("Chicago Cup"), "tour:ppa");
   assert.equal(fn("slate:tpb-gijon-2026"), "tour:tpb");
   assert.equal(fn("APP Dillons Overland Park Open"), "tour:app");
   assert.equal(fn("PPA Veolia Arizona Open"), "tour:ppa");
@@ -71,15 +73,28 @@ assert.equal(atlanta.ppaEventId, "cd808ec7-e9a9-4647-b226-173889c0145e");
 assert.equal(cary.ppaEventId, "b177c3be-53a6-4df8-b1cb-94cb5b0f97d1");
 assert.equal(cary.name, "Veolia Pickleball National Championships");
 assert.equal(grandRapids.ppaEventId, "d31aaa25-050c-4b4b-8537-0c69b7ea674a");
-assert.equal(FINISHED_EVENTS.some((e) => e.denTournamentId === "18448"), false);
-assert.equal(FINISHED_EVENTS.some((e) => String(e.ppaEventId || "").startsWith("86926aef")), false);
+const columbusDone = FINISHED_EVENTS.find((e) => e.id === "columbus");
+const vegasDone = FINISHED_EVENTS.find((e) => e.id === "las-vegas");
+assert.equal(columbusDone.denTournamentId, "18448");
+assert.equal(columbusDone.current, false);
+assert.equal(columbusDone.end, "2026-10-04");
+assert.equal(vegasDone.ppaEventId, "86926aef-0566-4fbb-87cf-a48068a9f1c6");
+assert.equal(vegasDone.current, false);
+assert.equal(vegasDone.end, "2026-10-04");
+assert.equal(vegasDone.name, "PPA Rate Las Vegas Open");
 assert.equal(FINISHED_EVENTS.some((e) => String(e.ppaEventId || "").startsWith("2006a790")), false);
+assert.equal(FINISHED_EVENTS.some((e) => e.id === "chicago-cup"), false);
 assert.equal(APP_LIVE.eventId, "18448");
-assert.equal(PPA_LIVE.eventId, "86926aef-0566-4fbb-87cf-a48068a9f1c6");
-assert.equal(CURRENT_PINS.find((e) => e.id === "columbus").denTournamentId, "18448");
-assert.equal(CURRENT_PINS.find((e) => e.id === "las-vegas").ppaEventId, PPA_LIVE.eventId);
-assert.equal(CURRENT_PINS.find((e) => e.id === "columbus").current, true);
-assert.equal(CURRENT_PINS.find((e) => e.id === "las-vegas").current, true);
+assert.equal(PPA_LIVE.eventId, "203e1164-b4f9-47e9-bacf-ff81f8748025");
+assert.equal(PPA_LIVE.name, "Veolia Chicago Cup");
+assert.equal(PPA_LIVE.tz, "America/Chicago");
+const cupPin = CURRENT_PINS.find((e) => e.id === "chicago-cup");
+assert.equal(cupPin.ppaEventId, PPA_LIVE.eventId);
+assert.equal(cupPin.current, true);
+assert.equal(cupPin.end, "2026-10-11");
+assert.equal(cupPin.venue, PPA_LIVE.venue);
+assert.equal(CURRENT_PINS.some((e) => e.id === "columbus"), false);
+assert.equal(CURRENT_PINS.some((e) => e.id === "las-vegas"), false);
 
 const kept = selectProBrackets([
   { bracketName: "Men's Pro Singles" },
@@ -154,11 +169,10 @@ assert.equal(weekIsFinished([{ status: "FT", date: "2026-10-04" }], "2026-10-04"
 assert.equal(pinEnded("2026-10-04", "2026-10-02"), false);
 assert.equal(pinEnded("2026-10-04", "2026-10-05"), true);
 
-const columbusPin = CURRENT_PINS.find((e) => e.id === "columbus");
-const vegasPin = CURRENT_PINS.find((e) => e.id === "las-vegas");
-assert.equal(eventIsFinished(columbusPin, [], "2026-10-02"), false);
-assert.equal(eventIsFinished(columbusPin, [], "2026-10-05"), true);
-assert.equal(eventIsFinished(vegasPin, [{ status: "final", dateKey: "2026-10-02" }, { status: "scheduled", dateKey: "2026-10-03" }], "2026-10-02"), false);
+assert.equal(eventIsFinished(columbusDone, [], "2026-10-05"), true);
+assert.equal(eventIsFinished(vegasDone, [], "2026-10-05"), true);
+assert.equal(eventIsFinished(cupPin, [{ status: "scheduled", dateKey: "2026-10-05" }], "2026-10-05"), false);
+assert.equal(eventIsFinished(cupPin, [{ status: "final", dateKey: "2026-10-11" }], "2026-10-12"), true);
 assert.equal(eventIsFinished(overland, [], "2026-10-02"), true);
 assert.equal(eventIsFinished(arizona, [], "2026-10-02"), true);
 assert.equal(eventIsFinished(chicago, [], "2026-10-02"), true);
@@ -170,7 +184,7 @@ const archiveSrc = fs.readFileSync("netlify/functions/finished-archive.mjs", "ut
 const appLoad = archiveSrc.slice(archiveSrc.indexOf("async function loadAppFinished"), archiveSrc.indexOf("async function loadPpaFinished"));
 const ppaLoad = archiveSrc.slice(archiveSrc.indexOf("async function loadPpaFinished"), archiveSrc.indexOf("function pack"));
 assert.equal(appLoad.includes("matches: []"), false, "Columbus FT rows stay available before the pin ends");
-assert.equal(ppaLoad.includes("matches: []"), false, "Las Vegas final rows stay available before the week ends");
+assert.equal(ppaLoad.includes("matches: []"), false, "PPA final rows stay available before the week ends");
 assert.ok(appLoad.includes("eventIsFinished"));
 assert.ok(ppaLoad.includes("eventIsFinished"));
 assert.equal(appLoad.includes('"status":"LIVE"'), false);
@@ -270,6 +284,8 @@ assert.ok(js.includes("const badge = snap ?"));
 assert.ok(js.includes("Coming soon"));
 assert.ok(js.includes("18448"));
 assert.ok(js.includes("86926aef"));
+assert.ok(js.includes("203e1164"));
+assert.ok(js.includes("Veolia Chicago Cup"));
 assert.equal(js.includes("92d37566"), false);
 
 const rail = js.slice(js.indexOf("function followingBox"), js.indexOf("function followingRail"));

@@ -28,7 +28,7 @@ import {
 const COLUMBUS_NOTE =
   "Den registration external-tournament/8057937 exists; Den Live tournamentId not published yet (no denlive link on APP page)";
 const EUROPE_BEFORE =
-  "PPA Tour Europe. Barcelona window ended 27 Sep 2026 with no scores. Not the live board — Rate Las Vegas Open is /api/ppa.";
+  "PPA Tour Europe. Barcelona window ended 27 Sep 2026 with no scores. Not the live board — Veolia Chicago Cup is /api/ppa.";
 
 assert.equal(FILTER_COPY["ppa-eu"], EUROPE_BEFORE);
 assert.equal(textHasDeskJargon(EUROPE_BEFORE), true);
@@ -111,7 +111,7 @@ assert.equal(endedPublic.note, "Event ended");
 assert.equal(textHasDeskJargon(endedPublic.note), false);
 assert.equal(ENDED_PPA.barcelona.ppaEventId, "1655a7c9-904a-44c9-aa29-b279fca900e8");
 assert.match(ENDED_PPA.barcelona.note, /\/api\/ppa/);
-assert.match(ENDED_PPA.barcelona.note, /86926aef/, "desk seed keeps the live UUID");
+assert.match(ENDED_PPA.barcelona.note, /203e1164/, "desk seed keeps the live UUID");
 
 const cal = fs.readFileSync("netlify/functions/calendar.mts", "utf8");
 assert.ok(cal.includes("applyAppCalendarCut"));
@@ -143,8 +143,8 @@ assert.equal(chongqing.note, "Results will appear when available");
 assert.equal(chongqing.onLive, false);
 assert.equal(JSON.stringify(chongqing).includes("18448"), false);
 
-const js = fs.readFileSync("js/wpm-20261002f.js", "utf8");
-const siteJs = fs.readFileSync("site/js/wpm-20261002f.js", "utf8");
+const js = fs.readFileSync("js/wpm-20261005a.js", "utf8");
+const siteJs = fs.readFileSync("site/js/wpm-20261005a.js", "utf8");
 assert.equal(siteJs, js);
 assert.equal(js.includes("Barcelona window ended"), false);
 assert.equal(js.includes("Rate Las Vegas Open is /api/ppa"), false);
