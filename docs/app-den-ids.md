@@ -7,7 +7,7 @@
 
 | Event (GPA) | Dates | Den Live `tournamentId` | Venue / tz guess | Notes |
 |-------------|-------|-------------------------|------------------|-------|
-| APP Columbus Open presented by The James | Oct 1–4, 2026 | **18448** | Pickle & Chill, Columbus, OH · `America/New_York` | **Live on `/api/app`.** GPA short name “APP Columbus Open”. Den brackets exist (Pending at cut; 0 matches). Registration external id `8057937` is **not** the scoring id. |
+| APP Columbus Open presented by The James | Oct 1–4, 2026 | **18448** | Pickle & Chill, Columbus, OH · `America/New_York` | **Still `/api/app` until Louisville.** Window ended 4 Oct. Archive `columbus` is `current: false`. Do not cut to Den **18454** yet. Registration external id `8057937` is **not** the scoring id. |
 | APP Dillons Overland Park Open | Sep 17–20, 2026 | **18453** | AdventHealth Sports Park at Bluhawk · `America/Chicago` | **Ended.** Disarmed / not `onLive`. Was the September live path. |
 | APP Japan – Sendai (Xebio / Asia Qualifier) | Sep 19–20, 2026 (JST site: Sep 18–20) | **not found** | Motoyama Seisakujo Aoba Arena, Sendai · `Asia/Tokyo` | **Not on Pickleball Den.** Registration / draws: Tournated `games.japanpickleball.org/tournament/11359`. No denlive link. |
 | APP Asia Chongqing Open | Oct 2–6, 2026 | **not found** | Chongqing, China · `Asia/Shanghai` | APP Asia Tour (**not MLP Asia**). **No Den id. No SportsSync id** after the 2026-10-02 hunt (organizer 1645900 still KL 89 / Penang 222; sitemap titles have no Chongqing; 390/391 unresolved). Calendar/results-only. Do not invent either id. Do not fake LIVE. See [`sportssync-asia.md`](./sportssync-asia.md). |

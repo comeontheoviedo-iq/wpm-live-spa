@@ -80,3 +80,16 @@
 - Calendar can store `connector.type=sportssync` once a real id exists. Chongqing + 89/222 is stripped. `onLive` stays false.
 - Client `wpm-20260930c.js` (desk field + FT-only overlay). Shop stays Coming soon.
 
+## 2026-10-05 — PPA cut to Veolia Chicago Cup
+
+- Ticker title `PPA Tour: Veolia Chicago Cup`. 20 `upnext` rows, first-serve `8:00 AM CDT` (`plannedStart` `2026-10-05T08:00:00Z` is the API timestamp; the board clock is the ticker string).
+- `/api/ppa` EVENT cut from finished Rate Las Vegas `86926aef-0566-4fbb-87cf-a48068a9f1c6` to `203e1164-b4f9-47e9-bacf-ff81f8748025`. Venue Life Time North Shore Sport & Racquetball, Chicago, IL (PPA event header). TZ `America/Chicago`. Dates 5–11 Oct 2026. Presented by Storm, PPA Tour Cup, 1,500 pts.
+- Scores feed for the Chicago UUID: 71 scheduled rows, `dateKey` `9999-12-31` (Date TBA), null games. Those stay off the day board unless the ticker gives a `plannedStart`. No phantom 0–0. LIVE only when the ticker says `live`.
+- **PPA Rate Las Vegas Open** scores API: 205 matches, all `final`, latest day **2026-10-04**. Archive id `las-vegas`, `end` `2026-10-04`, `current: false`. Results stay. Not the live board. Not April `92d37566-…`.
+- **APP Columbus Open** Den **18448** window ended 4 Oct. Archive `columbus` is `current: false`. `/api/app` stays **18448** until Louisville Den **18454** (15–18 Oct) and Den is RUNNING. Do not cut `/api/app` now.
+- **Virginia Beach** `429c7980-…` stays results-only. Do not cut `/api/ppa` off Chicago.
+- **RTA2000 Farnham** ended 4 Oct. Source still had 5 loser-bracket rows dated 2 Oct with status `upcoming` and no score. Those are not NEXT. No invented result.
+- **Chongqing** stays results-only. Shop stays Coming soon.
+- Client `wpm-20261005a.js` · SW `wpm-static-20261005a`.
+- Cloudflare Worker `wpm-live-spa-static` bundles these functions (`api/ppa.mts` reads `PPA_LIVE`). There is no second handler in the repo. Redeploy that worker from this commit or prod `/api/ppa` keeps Rate Las Vegas.
+

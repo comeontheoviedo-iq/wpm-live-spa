@@ -6,6 +6,7 @@ import {
   ENDED_APP,
   ENDED_PPA,
   PARKED_PPA,
+  PPA_LAS_VEGAS,
   PPA_LIVE,
   PPA_LIVE_EVENT_ID,
   GIJON,
@@ -60,7 +61,7 @@ const KNOWN = {
     timezone: "America/New_York",
     name: "Humana APP Louisville Open",
   },
-  ppaLasVegas: {
+  ppaChicago: {
     type: "ppa",
     ppaEventId: PPA_LIVE_EVENT_ID,
     scorePath: "/api/ppa",
@@ -68,6 +69,17 @@ const KNOWN = {
     name: PPA_LIVE.name,
     venue: PPA_LIVE.venue,
     live: true,
+  },
+  /** Ended 4 Oct 2026. Archive only — not the live /api/ppa path. */
+  ppaLasVegas: {
+    type: "ppa",
+    ppaEventId: PPA_LAS_VEGAS.eventId,
+    scorePath: null,
+    timezone: PPA_LAS_VEGAS.tz,
+    name: PPA_LAS_VEGAS.name,
+    venue: PPA_LAS_VEGAS.venue,
+    live: false,
+    ended: true,
   },
   /** Ended 27 Sep 2026, no scores. Unparked — not a live path and not a cutover target. */
   ppaBarcelona: {

@@ -1,13 +1,13 @@
 /**
  * Finished-tournament results for the reader archive.
- * Live pins stay APP Den 18448 (Columbus) and PPA 86926aef (Las Vegas).
- * This module only serves completed events, and only FT rows.
- * It never marks LIVE and never invents a score.
+ * Live pin is PPA Veolia Chicago Cup (203e1164). /api/app stays Den 18448
+ * until Louisville, but Columbus and Las Vegas are finished archive events.
+ * This module only serves FT rows. It never marks LIVE and never invents a score.
  */
 import { discFromAppBracket, discFromDivName, isKnockoutBracket, polishAppRound } from "./app-rounds.mjs";
 import { matchBoardDate } from "./app-dates.mjs";
 import { rosterText, tagsFor } from "./follow-tags.mjs";
-import { APP_LIVE, ENDED_APP, PPA_LIVE } from "./slate-events.mjs";
+import { APP_LIVE, ENDED_APP, PPA_LAS_VEGAS, PPA_LIVE } from "./slate-events.mjs";
 
 const DEN = "https://denlive.pickleballden.com";
 const UA = { "User-Agent": "WPM-LIVE/1.0", Accept: "application/json" };
@@ -34,7 +34,8 @@ const GRAND_RAPIDS_ID = "d31aaa25-050c-4b4b-8537-0c69b7ea674a";
 /**
  * Finished weeks with a verified score source, oldest first.
  * Charlotte Challenger (2006a790-…) still had scheduled rows on 2026-10-02, so it stays off.
- * Columbus 18448 and Las Vegas 86926aef stay on CURRENT_PINS.
+ * Columbus 18448 and Las Vegas 86926aef are finished (current false).
+ * Chicago Cup stays on CURRENT_PINS until that week is actually over.
  */
 export const FINISHED_EVENTS = [
   {
@@ -133,10 +134,6 @@ export const FINISHED_EVENTS = [
     ppaEventId: GRAND_RAPIDS_ID,
     current: false,
   },
-];
-
-/** Live pins. Listed so the client can offer them once the week has actually finished. */
-export const CURRENT_PINS = [
   {
     id: "columbus",
     tour: "app",
@@ -147,19 +144,33 @@ export const CURRENT_PINS = [
     start: APP_LIVE.start,
     end: APP_LIVE.end,
     denTournamentId: APP_LIVE.eventId,
-    current: true,
+    current: false,
   },
   {
     id: "las-vegas",
     tour: "ppa",
     label: "Las Vegas",
+    name: PPA_LAS_VEGAS.name,
+    venue: PPA_LAS_VEGAS.venue,
+    tz: PPA_LAS_VEGAS.tz,
+    start: PPA_LAS_VEGAS.start,
+    end: PPA_LAS_VEGAS.end,
+    ppaEventId: PPA_LAS_VEGAS.eventId,
+    current: false,
+  },
+];
+
+/** Live pin. Listed so the client can offer it once the week has actually finished. */
+export const CURRENT_PINS = [
+  {
+    id: "chicago-cup",
+    tour: "ppa",
+    label: "Chicago",
     name: PPA_LIVE.name,
     venue: PPA_LIVE.venue,
     tz: PPA_LIVE.tz,
     start: PPA_LIVE.start,
-    // Not a guessed final day. The live feed decides "done"; this is only a backstop
-    // so the past list still has Vegas after the pin moves on.
-    end: "2026-10-06",
+    end: PPA_LIVE.end,
     ppaEventId: PPA_LIVE.eventId,
     current: true,
   },

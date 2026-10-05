@@ -14,7 +14,6 @@ import {
   MLP_ASIA_NOTE,
   ARIZONA_APP,
   LOUISVILLE,
-  PPA_CHICAGO,
   PPA_VIRGINIA_BEACH,
   coverageSeedFor,
   isAppAsiaName,
@@ -515,9 +514,9 @@ async function probeSportsSyncOrganizer() {
   };
 }
 
-/** Upcoming PPA UUIDs. Scheduled scores do not move /api/ppa off Rate Las Vegas. */
+/** Upcoming PPA UUIDs. Scheduled scores do not move /api/ppa off Veolia Chicago Cup. */
 async function probeUpcomingPpa() {
-  const seeds = [PPA_CHICAGO, PPA_VIRGINIA_BEACH];
+  const seeds = [PPA_VIRGINIA_BEACH];
   const out = [];
   for (const seed of seeds) {
     const scores = await fetchJson(`https://www.ppatour.com/api/scores/?event=${seed.ppaEventId}`);
@@ -649,15 +648,16 @@ export async function buildRadarReport(opts = {}) {
         "Run `node scripts/event-radar.mjs` or GET /api/radar",
         "Escalate P0 actions only (blocked_by_intake on PPA/APP/PPA Europe)",
         "If PPA ticker title ≠ wired EVENT → cut ppa.mts EVENT same day",
-        "Live PPA is Rate Las Vegas Open 86926aef-… Darling Tennis Center, America/Los_Angeles",
+        "Live PPA is Veolia Chicago Cup 203e1164-… Life Time North Shore, America/Chicago",
+        "Rate Las Vegas 86926aef ended 4 Oct 2026 — archive only, current false. Do not wire /api/ppa there",
         "Barcelona 1655a7c9 ended 27 Sep 2026 with no scores — unparked; do not cut /api/ppa there",
         "Do not wire the April Las Vegas UUID 92d37566-…",
         "Watch Gijón for Den/Tournated — until then scores delayed + draw PDF only",
-        "Live APP is Columbus Open Den 18448 (Pickle & Chill, America/New_York, /api/app). Overland 18453 ended — disarmed, not onLive.",
+        "APP Columbus Den 18448 ended 4 Oct. /api/app stays on 18448 until Louisville. Archive current is false. Overland 18453 ended — disarmed, not onLive.",
         "Chongqing has no Den id and no SportsSync id (hunt 2026-10-02: organizer 1645900 still 89/222; sitemap titles 91–471 have no Chongqing; 390/391 are unresolved Taipei/Bangkok links). Do not invent an id. Do not fake LIVE.",
         "When a Chongqing SportsSync id is real, arm connector type sportssync on /calendar. /api/sportssync stays results-only (FT). LIVE is unsafe until a scores row proves an in-progress status.",
         "Louisville Den 18454 is known for 15–18 Oct. Do not cut /api/app off Columbus 18448 until that window and Den is RUNNING.",
-        "Upcoming PPA (Chicago 203e1164, Virginia Beach 429c7980) stay results-only. Do not cut /api/ppa off Rate Las Vegas.",
+        "Upcoming PPA Virginia Beach 429c7980 stays results-only. Do not cut /api/ppa off Veolia Chicago Cup.",
         "If new APP on GPA → find Den tournamentId → intake checklist → ship /api/app id",
         "MLP Asia ≠ APP Asia Tour — never merge those chips",
         "Never invent scores; shop stays closed; do not regress APP/Web Push",

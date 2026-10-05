@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 /**
  * Seeded slate honesty: Gijón delayed + draw PDF, Barcelona ended/unparked,
- * Rate Las Vegas Open is the live PPA EVENT, MLP Asia is not APP.
+ * Veolia Chicago Cup is the live PPA EVENT, MLP Asia is not APP.
  */
 import assert from "node:assert/strict";
 import {
   PPA_LIVE,
   PPA_LIVE_EVENT_ID,
+  PPA_LAS_VEGAS,
+  PPA_LAS_VEGAS_EVENT_ID,
   PPA_APRIL_LAS_VEGAS_PREFIX,
   APP_LIVE,
   ENDED_APP,
@@ -32,17 +34,25 @@ import {
   staticWatchEvents,
 } from "../netlify/functions/slate-events.mjs";
 
+const CHI = "203e1164-b4f9-47e9-bacf-ff81f8748025";
 const LV = "86926aef-0566-4fbb-87cf-a48068a9f1c6";
 const BCN = "1655a7c9-904a-44c9-aa29-b279fca900e8";
 const MESA = "62c01642-1bb2-4f9a-9998-599f8fdefe5c";
 
-assert.equal(PPA_LIVE_EVENT_ID, LV);
-assert.equal(PPA_LIVE.eventId, LV);
-assert.equal(PPA_LIVE.name, "PPA Rate Las Vegas Open");
-assert.equal(PPA_LIVE.venue, "Darling Tennis Center, Las Vegas");
-assert.equal(PPA_LIVE.tz, "America/Los_Angeles");
-assert.equal(PPA_LIVE.start, "2026-09-28");
-assert.equal(PPA_LIVE.firstServe, "8:00 AM PDT");
+assert.equal(PPA_LIVE_EVENT_ID, CHI);
+assert.equal(PPA_LIVE.eventId, CHI);
+assert.equal(PPA_LIVE.name, "Veolia Chicago Cup");
+assert.equal(PPA_LIVE.venue, "Life Time North Shore Sport & Racquetball, Chicago, IL");
+assert.equal(PPA_LIVE.tz, "America/Chicago");
+assert.equal(PPA_LIVE.start, "2026-10-05");
+assert.equal(PPA_LIVE.end, "2026-10-11");
+assert.equal(PPA_LIVE.firstServe, "8:00 AM CDT");
+assert.equal(PPA_LAS_VEGAS_EVENT_ID, LV);
+assert.equal(PPA_LAS_VEGAS.eventId, LV);
+assert.equal(PPA_LAS_VEGAS.name, "PPA Rate Las Vegas Open");
+assert.equal(PPA_LAS_VEGAS.end, "2026-10-04");
+assert.equal(PPA_LAS_VEGAS.tz, "America/Los_Angeles");
+assert.notEqual(PPA_LIVE_EVENT_ID, LV);
 assert.equal(PPA_LIVE_EVENT_ID.startsWith(PPA_APRIL_LAS_VEGAS_PREFIX), false);
 assert.notEqual(PPA_LIVE_EVENT_ID, BCN);
 assert.notEqual(PPA_LIVE_EVENT_ID, MESA);
@@ -57,11 +67,15 @@ assert.equal(isEndedPpaEventId(BCN), true);
 assert.equal(isBlockedPpaEventId(BCN), true);
 assert.equal(isBlockedPpaEventId(PPA_APRIL_LAS_VEGAS_PREFIX + "-0000-0000-0000-000000000000"), true);
 assert.equal(isBlockedPpaEventId(LV), false);
-assert.equal(isLivePpaEventId(LV), true);
+assert.equal(isBlockedPpaEventId(CHI), false);
+assert.equal(isLivePpaEventId(CHI), true);
+assert.equal(isLivePpaEventId(LV), false);
 assert.equal(isLivePpaEventId(BCN), false);
 
-assert.equal(ppaTickerTitleAligned("PPA Tour: Rate Las Vegas Open"), true);
+assert.equal(ppaTickerTitleAligned("PPA Tour: Veolia Chicago Cup"), true);
+assert.equal(ppaTickerTitleAligned("PPA Tour: Rate Las Vegas Open"), false);
 assert.equal(ppaTickerTitleAligned("PPA Tour: Veolia Arizona Open"), false);
+assert.equal(ppaTickerTitleAligned("Chicago"), false);
 assert.equal(ppaTickerTitleAligned("Las Vegas Open"), false);
 assert.equal(ppaTickerTitleAligned(""), true);
 
@@ -130,13 +144,15 @@ assert.equal(lou.tour, "app");
 assert.equal(lou.onLive, false);
 assert.equal(lou.board, "results_only");
 assert.equal(lou.scorePath, null);
-const chi = watch.find((e) => /chicago cup/i.test(e.name));
-assert.ok(chi);
-assert.equal(chi.tour, "ppa");
-assert.equal(chi.ppaEventId, "203e1164-b4f9-47e9-bacf-ff81f8748025");
-assert.notEqual(chi.ppaEventId, LV);
-assert.equal(chi.scorePath, null);
-assert.equal(chi.onLive, false);
+assert.equal(watch.some((e) => /chicago cup/i.test(e.name)), false);
+const vb = watch.find((e) => /virginia beach/i.test(e.name));
+assert.ok(vb);
+assert.equal(vb.tour, "ppa");
+assert.equal(vb.ppaEventId, "429c7980-e1b9-4800-805f-dfb160781cd9");
+assert.notEqual(vb.ppaEventId, CHI);
+assert.equal(vb.scorePath, null);
+assert.equal(vb.onLive, false);
+assert.equal(vb.board, "results_only");
 const cqWatch = watch.find((e) => /chongqing/i.test(e.name));
 assert.ok(cqWatch);
 assert.equal(cqWatch.tour, "app-asia");
@@ -147,10 +163,10 @@ assert.equal(isAppAsiaName("APP Arizona Open"), false);
 assert.equal(isAppAsiaName("MLP Asia 2026"), false);
 
 import { WIRED } from "../netlify/functions/radar-lib.mjs";
-assert.equal(WIRED.ppa.eventId, LV);
+assert.equal(WIRED.ppa.eventId, CHI);
 assert.equal(WIRED.ppa.name, PPA_LIVE.name);
 assert.equal(WIRED.ppa.venue, PPA_LIVE.venue);
-assert.equal(WIRED.ppa.tz, "America/Los_Angeles");
+assert.equal(WIRED.ppa.tz, "America/Chicago");
 assert.equal(WIRED.ppa.scorePath, "/api/ppa");
 assert.notEqual(WIRED.ppa.eventId, BCN);
 assert.equal(String(WIRED.ppa.eventId).startsWith(PPA_APRIL_LAS_VEGAS_PREFIX), false);
@@ -214,4 +230,4 @@ assert.notEqual(cq.connector?.denTournamentId, "18448");
 assert.equal(isAppAsiaName("APP Asia Chongqing Open"), true);
 assert.equal(isAppAsiaName("APP Columbus Open"), false);
 
-console.log("ok slate-events · Gijón delayed · Barcelona ended · Las Vegas live · Columbus 18448 · MLP ≠ APP");
+console.log("ok slate-events · Gijón delayed · Barcelona ended · Chicago Cup live · Las Vegas archived · Columbus 18448 · MLP ≠ APP");

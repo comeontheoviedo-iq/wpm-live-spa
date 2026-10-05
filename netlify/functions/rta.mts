@@ -6,6 +6,7 @@ import {
   RTA_GRAPHQL,
   RTA_SEGMENTS,
   RTA_TOURNAMENT_ID,
+  keepRtaMatch,
   mapRtaPacks,
 } from "./rta-map.mjs";
 
@@ -120,7 +121,10 @@ export default async (_req: Request, _context?: Context) => {
     }));
 
   const mapped = mapRtaPacks(packs, { tagsFor });
-  const liveCount = mapped.matches.filter((m) => m.status === "LIVE").length;
+  // Farnham ended 4 Oct. Source still marks unplayed loser-bracket rows "upcoming".
+  // Those are not NEXT. Do not invent a score for them.
+  const matches = mapped.matches.filter((m) => keepRtaMatch(m));
+  const liveCount = matches.filter((m) => m.status === "LIVE").length;
   const allFailed = failed.length === settled.length;
   const delayed = allFailed;
 
@@ -133,7 +137,7 @@ export default async (_req: Request, _context?: Context) => {
       delayed,
       reader: delayed ? "Scores delayed" : "",
       liveCount,
-      matches: delayed ? [] : mapped.matches,
+      matches: delayed ? [] : matches,
       categories: mapped.categories,
       segments: RTA_SEGMENTS,
       degraded: failed.length
