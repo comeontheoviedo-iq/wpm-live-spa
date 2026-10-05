@@ -656,7 +656,7 @@ export async function buildRadarReport(opts = {}) {
         "APP Columbus Den 18448 ended 4 Oct. /api/app stays on 18448 until Louisville. Archive current is false. Overland 18453 ended — disarmed, not onLive.",
         "Chongqing has no Den id and no SportsSync id (hunt 2026-10-02: organizer 1645900 still 89/222; sitemap titles 91–471 have no Chongqing; 390/391 are unresolved Taipei/Bangkok links). Do not invent an id. Do not fake LIVE.",
         "When a Chongqing SportsSync id is real, arm connector type sportssync on /calendar. /api/sportssync stays results-only (FT). LIVE is unsafe until a scores row proves an in-progress status.",
-        "Louisville Den 18454 is known for 15–18 Oct. Do not cut /api/app off Columbus 18448 until that window and Den is RUNNING.",
+        "Louisville Den 18454 is the ready next pin (15–18 Oct, APP_NEXT). /api/app stays Columbus 18448 until APP_LIVE = APP_NEXT. Smoke ?tournamentId=18454. Do not mark LIVE until Den is RUNNING after that cut.",
         "Upcoming PPA Virginia Beach 429c7980 stays results-only. Do not cut /api/ppa off Veolia Chicago Cup.",
         "If new APP on GPA → find Den tournamentId → intake checklist → ship /api/app id",
         "MLP Asia ≠ APP Asia Tour — never merge those chips",

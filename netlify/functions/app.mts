@@ -4,6 +4,7 @@ import { bracketIndexEntry, discFromAppBracket, isKnockoutBracket, polishAppRoun
 import { addDays, denListedScore, denUnscoredNote, keepAppMatch, matchBoardDate, matchHasClock, ymdInTz as ymdInTzShared } from "./app-dates.mjs";
 import {
   APP_LIVE,
+  APP_NEXT,
   ENDED_APP,
   applyAppCalendarCut,
   appBoardPhase,
@@ -11,6 +12,7 @@ import {
   isDenLiveStatus,
   isDenRunningBracket,
   isEndedAppDenId,
+  isPreparedNextDenId,
 } from "./slate-events.mjs";
 import { getStore } from "@netlify/blobs";
 
@@ -41,10 +43,10 @@ const PROFILES: Record<
     venue: "Detroit, MI",
     tz: "America/Detroit",
   },
-  "18454": {
-    name: "Humana APP Louisville Open",
-    venue: "Louisville, KY",
-    tz: "America/New_York",
+  [APP_NEXT.eventId]: {
+    name: APP_NEXT.name,
+    venue: APP_NEXT.venue,
+    tz: APP_NEXT.tz,
   },
 };
 
@@ -117,7 +119,8 @@ async function readAppConfig(): Promise<ActiveEvent | null> {
       tz?: string;
     } | null;
     const id = String(cfg?.tournamentId || cfg?.denTournamentId || "").replace(/\D/g, "");
-    if (!id) return null;
+    // Louisville 18454 can sit in blobs ahead of the cut. It is not the pin until APP_LIVE moves.
+    if (!id || isPreparedNextDenId(id)) return null;
     const base = profileFor(id, {
       name: cfg?.name,
       venue: cfg?.venue,
@@ -146,11 +149,11 @@ async function readCalendarArmed(): Promise<ActiveEvent | null> {
     } | null;
     const raw = Array.isArray(data?.events) ? data!.events! : [];
     const events = applyAppCalendarCut(raw);
-    const appRows = events.filter(
-      (e) =>
-        e?.connector?.type === "app" &&
-        String(e?.connector?.denTournamentId || "").replace(/\D/g, "")
-    );
+    const appRows = events.filter((e) => {
+      const id = String(e?.connector?.denTournamentId || "").replace(/\D/g, "");
+      if (!id || isPreparedNextDenId(id)) return false;
+      return e?.connector?.type === "app";
+    });
     if (!appRows.length) return null;
 
     // Prefer in-window live-path / onLive, else any live-path, else first with den id
@@ -193,7 +196,8 @@ async function readCalendarArmed(): Promise<ActiveEvent | null> {
  * Priority: ?tournamentId= → env APP_DEN_TOURNAMENT_ID → Blobs wpm-app active-tournament
  * → Blobs wpm-desk calendar-armed (APP connector, code-seeds Columbus) → fallback 18448.
  * Ended Overland 18453 is ignored on env and blobs so a stale pin cannot keep the live path.
- * Query still accepts 18453 for historical smoke. LIVE only from Den RUNNING statuses.
+ * Prepared next pin Louisville 18454 is ignored on env and blobs until APP_LIVE = APP_NEXT.
+ * Query still accepts 18453 and 18454 for smoke. LIVE only from Den RUNNING statuses.
  */
 async function resolveActive(req?: Request): Promise<ActiveEvent> {
   const q = req ? new URL(req.url).searchParams.get("tournamentId") : null;
@@ -201,13 +205,13 @@ async function resolveActive(req?: Request): Promise<ActiveEvent> {
     return { ...profileFor(q), source: "query" };
   }
   const envId = envGet("APP_DEN_TOURNAMENT_ID") || envGet("DEN_TOURNAMENT_ID");
-  if (envId && /^\d+$/.test(envId.trim()) && !isEndedAppDenId(envId)) {
+  if (envId && /^\d+$/.test(envId.trim()) && !isEndedAppDenId(envId) && !isPreparedNextDenId(envId)) {
     return { ...profileFor(envId.trim()), source: "env" };
   }
   const fromApp = await readAppConfig();
-  if (fromApp && !isEndedAppDenId(fromApp.id)) return fromApp;
+  if (fromApp && !isEndedAppDenId(fromApp.id) && !isPreparedNextDenId(fromApp.id)) return fromApp;
   const fromCal = await readCalendarArmed();
-  if (fromCal && !isEndedAppDenId(fromCal.id)) return fromCal;
+  if (fromCal && !isEndedAppDenId(fromCal.id) && !isPreparedNextDenId(fromCal.id)) return fromCal;
   return { ...profileFor(FALLBACK_ID), source: "fallback" };
 }
 

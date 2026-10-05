@@ -82,6 +82,10 @@ Body:
 
 Local: `node scripts/test-match-day.mjs`.
 
+## Chicago LIVE starts (2026-10-05b)
+
+PPA push fires only when `/api/ppa` sets `status: "LIVE"` and `tickerLive: true`. That flag is the ticker row's `status === "live"`. `upnext`, a scores-only `live`, and a line flag do not send. Cards tag seed last names plus every player last name on the Chicago match (`D. Denardo` → `Denardo`), so a followed player who is not on the seed list still matches. `tour:ppa` matches `m.tour === "ppa"` for every real LIVE start on that board. The 6-per-run tour cap and the 6-hour de-dupe are unchanged.
+
 ## Tag coverage (2026-09-18e)
 
 - Shared `netlify/functions/follow-tags.mjs`: `SEED_FOLLOW_TAGS` (~40 high-signal last names) + `tagsFor(a,b)` used by **PPA** and **APP** match mapping.

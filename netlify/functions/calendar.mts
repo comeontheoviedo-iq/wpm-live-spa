@@ -60,6 +60,11 @@ const KNOWN = {
     scorePath: "/api/app",
     timezone: "America/New_York",
     name: "Humana APP Louisville Open",
+    venue: "Kentucky International Convention Center, Louisville, KY",
+    start: "2026-10-15",
+    end: "2026-10-18",
+    live: false,
+    nextPin: true,
   },
   ppaChicago: {
     type: "ppa",

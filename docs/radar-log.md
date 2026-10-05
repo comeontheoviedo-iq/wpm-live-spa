@@ -91,5 +91,12 @@
 - **RTA2000 Farnham** ended 4 Oct. Source still had 5 loser-bracket rows dated 2 Oct with status `upcoming` and no score. Those are not NEXT. No invented result.
 - **Chongqing** stays results-only. Shop stays Coming soon.
 - Client `wpm-20261005a.js` · SW `wpm-static-20261005a`.
+
+## 2026-10-05b — Chicago density, push tags, Louisville next pin
+
+- Client `wpm-20261005b.js` · SW `wpm-static-20261005b` · CSS `?v=20261005b`. No DNS, Netlify, or Cloudflare change in this slice.
+- Chicago day board: ticker clock and court when the feed has them, MS/WS/MD/WD/XD flips, idle qualifiers say “Nothing live right now” with day-scoped NEXT/FT. Date TBA stays off the day board. LIVE only from the ticker `live` flag. No invented 0–0.
+- Push: PPA sends only when `tickerLive` is true. Cards tag player last names on the match plus `tour:ppa` via `m.tour`.
+- Louisville Den 18454 is `APP_NEXT` (ready, not live). `/api/app` stays Columbus 18448 until `APP_LIVE = APP_NEXT`.
 - Cloudflare Worker `wpm-live-spa-static` bundles these functions (`api/ppa.mts` reads `PPA_LIVE`). There is no second handler in the repo. Redeploy that worker from this commit or prod `/api/ppa` keeps Rate Las Vegas.
 

@@ -19,7 +19,7 @@ import {
 } from "../netlify/functions/finished-archive.mjs";
 import { APP_LIVE, PPA_LIVE } from "../netlify/functions/slate-events.mjs";
 
-const js = fs.readFileSync("js/wpm-20261005a.js", "utf8");
+const js = fs.readFileSync("js/wpm-20261005b.js", "utf8");
 const start = js.indexOf("const TOUR_IDS");
 const end = js.indexOf("function migrateFollows");
 const context = {};

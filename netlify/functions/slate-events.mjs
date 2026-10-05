@@ -43,7 +43,8 @@ export const PPA_LAS_VEGAS = {
  * Den Live title is the presented-by name. Brackets may be Pending with 0 matches —
  * that is not LIVE and not a phantom 0–0.
  */
-export const APP_LIVE = {
+/** Columbus. Still the /api/app pin so the finished week can be read. Archive current is false. */
+export const APP_COLUMBUS = {
   eventId: "18448",
   name: "APP Columbus Open presented by The James",
   shortName: "APP Columbus Open",
@@ -55,6 +56,36 @@ export const APP_LIVE = {
   /** eventId("APP Columbus Open", "2026-10-01") — gpa:app columbus open / 2026-10-01 */
   calendarId: "gpa:app%20columbus%20open:2026-10-01",
 };
+
+/**
+ * Ready next pin. Humana APP Louisville, Den 18454, 15–18 Oct 2026.
+ * Not selected by /api/app while APP_LIVE is Columbus.
+ * Louisville week flip is one binding: `export const APP_LIVE = APP_NEXT`.
+ * Smoke before that with /api/app?tournamentId=18454. Do not mark LIVE until Den is RUNNING.
+ */
+export const APP_NEXT = {
+  eventId: "18454",
+  name: "Humana APP Louisville Open",
+  shortName: "Humana APP Louisville Open",
+  venue: "Kentucky International Convention Center, Louisville, KY",
+  tz: "America/New_York",
+  start: "2026-10-15",
+  end: "2026-10-18",
+  scorePath: "/api/app",
+  calendarId: "gpa:humana%20app%20louisville%20open:2026-10-15",
+  ready: true,
+  live: false,
+};
+
+/** Live /api/app Den tournament. Louisville week: change this to APP_NEXT. */
+export const APP_LIVE = APP_COLUMBUS;
+
+/** True for Louisville 18454 until that id is the live pin. Query smoke still allowed. */
+export function isPreparedNextDenId(id) {
+  const s = String(id || "").replace(/\D/g, "");
+  if (!s || s === String(APP_LIVE.eventId)) return false;
+  return s === String(APP_NEXT.eventId);
+}
 
 /** Overland ended 20 Sep 2026. Disarmed — not onLive, not the /api/app fallback. */
 export const ENDED_APP = {
@@ -220,24 +251,25 @@ export const BARCELONA = {
 export const MLP_ASIA_NOTE =
   "MLP Asia \u2260 APP. MLP Asia is the PPA/MLP franchise. APP Asia Tour (Chongqing / Taipei / Bangkok / HCMC / India) stays on the APP Asia chip \u2014 never chip MLP Asia as APP.";
 
-/** Mid-Oct APP Pro. Den 18454 is known. Columbus 18448 stays the live /api/app pin. */
+/** Mid-Oct APP Pro. Den 18454 is the ready next pin. Columbus 18448 stays /api/app. */
 export const LOUISVILLE = {
   id: "slate:app-louisville-2026",
-  name: "Humana APP Louisville Open",
-  venue: "Kentucky International Convention Center, Louisville, KY",
-  timezone: "America/New_York",
+  name: APP_NEXT.name,
+  venue: APP_NEXT.venue,
+  timezone: APP_NEXT.tz,
   tour: "app",
   host: "APP",
   tier: "",
-  start: "2026-10-15",
-  end: "2026-10-18",
+  start: APP_NEXT.start,
+  end: APP_NEXT.end,
   status: "results-only",
   onLive: false,
-  denTournamentId: "18454",
+  nextPin: true,
+  denTournamentId: APP_NEXT.eventId,
   officialUrl: "https://theapp.global/tour-schedule/2026-app-louisville",
   note:
-    "Known Den id 18454. Registration external-tournament/3523724 is not the scoring id. Not the live board — Columbus Den 18448 stays /api/app. Do not mark LIVE until Den status is RUNNING in this window.",
-  connector: { type: "none" },
+    "Ready next pin Den 18454, 15–18 Oct, Kentucky International Convention Center, America/New_York. Smoke /api/app?tournamentId=18454. Not the live board — Columbus Den 18448 stays /api/app. Registration external-tournament/3523724 is not the scoring id. Flip by setting APP_LIVE = APP_NEXT. Do not mark LIVE until Den status is RUNNING after that cut.",
+  connector: { type: "none", denTournamentId: APP_NEXT.eventId, nextPin: true },
 };
 
 /** Next APP Pro after Louisville. No published Den scoring id. */
@@ -689,6 +721,7 @@ function watchFromSeed(seed, extra = {}) {
     officialUrl: seed.officialUrl || "",
     scorePath: null,
     onLive: false,
+    nextPin: seed.nextPin === true,
     intake: {
       name: true,
       venue: Boolean(seed.venue),

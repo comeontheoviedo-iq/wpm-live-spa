@@ -34,6 +34,11 @@ export function mergePpaDateKey(prev, incoming) {
  * PPA status words that may paint LIVE. upnext / scheduled stay NEXT.
  * Never clock-promote.
  */
+/** Ticker live flag only. upnext / scheduled / a bare scores "live" are not this. */
+export function ppaTickerLive(raw) {
+  return String(raw || "").toLowerCase() === "live";
+}
+
 export function ppaStatus(raw) {
   const t = String(raw || "")
     .toLowerCase()
@@ -41,6 +46,33 @@ export function ppaStatus(raw) {
   if (t === "live" || t === "running" || t === "inprogress" || t === "started" || t === "playing") return "LIVE";
   if (t === "final" || t === "completed" || t === "complete" || t === "finished" || t === "closed") return "FT";
   return "NEXT";
+}
+
+/**
+ * Board status. LIVE only when the ticker row's status is the live flag.
+ * A scores payload that says live without that flag stays NEXT — never a fake LIVE.
+ */
+export function ppaPublicStatus(rawStatus, tickerLive) {
+  if (tickerLive === true) return "LIVE";
+  if (ppaTickerLive(rawStatus)) return "NEXT";
+  return ppaStatus(rawStatus);
+}
+
+/** Official ticker clock ("8:00 AM CDT"). Empty when the feed has no clock string. */
+export function ppaClockLabel(raw) {
+  const s = String(raw || "").trim();
+  if (!s) return "";
+  if (/\d/.test(s) && /\b(AM|PM)\b/i.test(s)) return s;
+  return "";
+}
+
+/** Court label only when the feed sent one. Bare numbers become "Court N". */
+export function ppaCourtLabel(raw) {
+  const s = String(raw || "").trim();
+  if (!s) return "";
+  if (/^court\b/i.test(s)) return s;
+  if (/^\d+$/.test(s)) return "Court " + s;
+  return s;
 }
 
 /** Game line. Null slots stay a dash — never coerced to 0–0. */
@@ -52,20 +84,20 @@ export function ppaGameLineScore(a, b) {
 
 /**
  * Match score from games won. Blank when nothing was played.
- * A live line whose source scores are numeric 0–0 may stay 0-0.
+ * A live 0–0 with no points stays blank — never a fake 0–0.
+ * Games-won 0-0 is only used once a live line has a real point.
  */
 export function ppaListedScore(winsA, winsB, lines) {
   const w0 = Number(winsA) || 0;
   const w1 = Number(winsB) || 0;
   if (w0 || w1) return `${w0}-${w1}`;
-  const realZero = (lines || []).some((l) => {
+  const pointsPlayed = (lines || []).some((l) => {
     if (!l || !l.live) return false;
     const pts = String(l.score || "").split(/[–-]/);
     if (pts.length < 2) return false;
-    if (String(pts[0]).trim() === "" || String(pts[1]).trim() === "") return false;
-    return Number(pts[0]) === 0 && Number(pts[1]) === 0;
+    return (Number(pts[0]) || 0) > 0 || (Number(pts[1]) || 0) > 0;
   });
-  return realZero ? "0-0" : "";
+  return pointsPlayed ? "0-0" : "";
 }
 
 /** Walkover / withdrawal / retirement. Names the winner when the feed has one. */
