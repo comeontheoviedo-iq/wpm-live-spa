@@ -5,7 +5,7 @@
  */
 import fs from "node:fs";
 import assert from "node:assert/strict";
-import { matchFollowKeys, normalizeFollowKey, rosterText, tagsFor, tourFollowMatches } from "../netlify/functions/follow-tags.mjs";
+import { lastNameTags, matchFollowKeys, normalizeFollowKey, rosterText, tagsFor, tagsForSides, tourFollowMatches } from "../netlify/functions/follow-tags.mjs";
 import {
   followLabel,
   isMatchLive,
@@ -14,8 +14,8 @@ import {
   MAX_PUSH_PER_SUB_PER_RUN,
 } from "../netlify/functions/push-lib.mjs";
 
-const js = fs.readFileSync("js/wpm-20261005a.js", "utf8");
-const siteJs = fs.readFileSync("site/js/wpm-20261005a.js", "utf8");
+const js = fs.readFileSync("js/wpm-20261005b.js", "utf8");
+const siteJs = fs.readFileSync("site/js/wpm-20261005b.js", "utf8");
 assert.equal(siteJs, js);
 
 const columbus = {
@@ -42,8 +42,10 @@ assert.equal(isMatchLive({ ...columbus, status: "NEXT", denStatus: "SCHEDULED" }
 assert.equal(isMatchLive({ ...columbus, status: "LIVE", denStatus: "PENDING" }), false);
 assert.equal(isMatchLive({ ...columbus, status: "LIVE", denStatus: "SCHEDULED", lines: [{ live: true }] }), false);
 assert.equal(isMatchLive({ ...columbus, status: "NEXT", denStatus: "WAITING_FOR_COURT" }), false);
-assert.equal(isMatchLive({ tour: "ppa", status: "LIVE", a: "Waters", b: "Bright" }), true);
-assert.equal(isMatchLive({ tour: "ppa", status: "NEXT", a: "Waters", b: "Bright" }), false);
+assert.equal(isMatchLive({ tour: "ppa", status: "LIVE", tickerLive: true, a: "Waters", b: "Bright" }), true);
+assert.equal(isMatchLive({ tour: "ppa", status: "LIVE", a: "Waters", b: "Bright" }), false);
+assert.equal(isMatchLive({ tour: "ppa", status: "LIVE", tickerLive: false, lines: [{ live: true }] }), false);
+assert.equal(isMatchLive({ tour: "ppa", status: "NEXT", tickerLive: false, a: "Waters", b: "Bright" }), false);
 
 assert.deepEqual(matchFollowKeys(columbus, ["Waters"]), ["Waters"]);
 assert.equal(normalizeFollowKey("ev:app:18448"), "tour:app");
@@ -74,6 +76,36 @@ const fullName = {
 };
 assert.deepEqual(matchFollowKeys(fullName, ["Anna Leigh Waters"]), ["Anna Leigh Waters"]);
 assert.ok(tagsFor(fullName.a + " " + fullName.roster).includes("Waters"));
+
+const chicago = {
+  id: "ppa-chi-1",
+  tour: "ppa",
+  status: "LIVE",
+  tickerLive: true,
+  a: "Denardo",
+  b: "Try",
+  roster: "D. Denardo vs C. Try",
+  tags: tagsForSides("Denardo", "Try", "D. Denardo vs C. Try"),
+  comp: "Veolia Chicago Cup",
+  div: "Men's Singles · Round 64",
+  court: "Court 2",
+  clock: "8:00 AM CDT",
+  eventKey: "ev:ppa:203e1164-b4f9-47e9-bacf-ff81f8748025",
+};
+assert.ok(chicago.tags.includes("Denardo"));
+assert.ok(chicago.tags.includes("Try"));
+assert.equal(chicago.tags.includes("D"), false);
+assert.deepEqual(lastNameTags("D. Denardo vs C. Try"), ["Denardo", "Try"]);
+assert.deepEqual(matchFollowKeys(chicago, ["Denardo"]), ["Denardo"]);
+assert.deepEqual(matchFollowKeys(chicago, ["tour:ppa"]), ["tour:ppa"]);
+assert.deepEqual(matchFollowKeys(chicago, ["tour:app"]), []);
+assert.equal(isMatchLive(chicago), true);
+assert.equal(isMatchLive({ ...chicago, status: "NEXT", tickerLive: false }), false);
+const chicagoPayload = notifyPayload(chicago, ["Denardo", "tour:ppa"]);
+assert.match(chicagoPayload.body, /Following · Denardo, PPA/);
+assert.equal(chicagoPayload.tag, "ppa-chi-1");
+assert.equal(chicagoPayload.data.url, "/match/ppa-chi-1");
+assert.equal(chicagoPayload.body.includes("0-0"), false);
 
 const roster = rosterText([
   { players: [{ name: "Anna Leigh Waters" }, { name: "Anna Bright" }] },
@@ -134,6 +166,12 @@ assert.ok(js.includes("Scheduled · not live until Den says so"));
 assert.ok(js.includes("Scheduled · not live yet"));
 assert.ok(js.includes("function eventHasStarted"));
 assert.ok(js.includes("Nothing live right now"));
+assert.ok(js.includes("Idle qualifiers"));
+assert.ok(js.includes("function dayCatOn"));
+assert.ok(js.includes("function discMark"));
+assert.ok(js.includes("m.clock"));
+assert.ok(js.includes("tickerLive"));
+assert.ok(js.includes("Louisville"));
 assert.ok(js.includes("No results for this day yet"));
 assert.ok(js.includes("Nothing scheduled for this day"));
 assert.equal(js.includes("No live ties"), false);

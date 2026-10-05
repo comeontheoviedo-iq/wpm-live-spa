@@ -1,8 +1,19 @@
 import type { Config } from "@netlify/functions";
-import { rosterText, tagsFor } from "./follow-tags.mjs";
+import { rosterText, tagsForSides } from "./follow-tags.mjs";
 import { discFromDivName } from "./app-rounds.mjs";
 import { PPA_LIVE } from "./slate-events.mjs";
-import { keepPpaMatch, mergePpaDateKey, ppaBoardDate, ppaGameLineScore, ppaListedScore, ppaResultNote, ppaStatus } from "./ppa-keep.mjs";
+import {
+  keepPpaMatch,
+  mergePpaDateKey,
+  ppaBoardDate,
+  ppaClockLabel,
+  ppaCourtLabel,
+  ppaGameLineScore,
+  ppaListedScore,
+  ppaPublicStatus,
+  ppaResultNote,
+  ppaTickerLive,
+} from "./ppa-keep.mjs";
 
 const EVENT = PPA_LIVE.eventId; // Veolia Chicago Cup 2026-10-05 · Life Time North Shore
 const PPA_TZ = PPA_LIVE.tz; // America/Chicago — ticker clock is the "8:00 AM CDT" string
@@ -25,8 +36,8 @@ function gamesWon(g: any[]) {
   return nums;
 }
 
-function mapStatus(s: string) {
-  return ppaStatus(s);
+function mapStatus(m: any) {
+  return ppaPublicStatus(m?.status, m?.tickerLive === true);
 }
 
 function gameComplete(a: any, b: any, matchFinal: boolean, isCurrent: boolean) {
@@ -52,8 +63,9 @@ function isPadZero(a: any, b: any) {
 function linesFrom(m: any, t0: any, t1: any) {
   const g0 = t0?.games || [];
   const g1 = t1?.games || [];
-  const liveIdx = m.status === "live" && m.liveGame != null ? Number(m.liveGame) : -1;
-  const final = m.status === "final";
+  const tickerLive = m.tickerLive === true;
+  const liveIdx = tickerLive && m.liveGame != null ? Number(m.liveGame) : -1;
+  const final = !tickerLive && String(m.status || "").toLowerCase() === "final";
   const n = Math.max(g0.length, g1.length, liveIdx + 1, 0);
   const lines = [];
   for (let i = 0; i < n; i++) {
@@ -70,7 +82,7 @@ function linesFrom(m: any, t0: any, t1: any) {
       score,
       winner: done ? (Number(a) > Number(b) ? sideName(t0) : Number(b) > Number(a) ? sideName(t1) : "") : "",
       live: current && !final,
-      court: current ? (m.court || "") : "",
+      court: current ? ppaCourtLabel(m.court) : "",
     });
   }
   return lines;
@@ -82,9 +94,11 @@ function toMatch(m: any) {
   const a = sideName(t0);
   const b = sideName(t1);
   const roster = rosterText([t0, t1]);
-  const st = mapStatus(m.status);
+  const st = mapStatus(m);
   const date = ppaBoardDate(m);
   const lines = linesFrom(m, t0, t1);
+  const clock = ppaClockLabel(m.time);
+  const court = ppaCourtLabel(m.court);
   const w0 = lines.filter((l: any) => l.winner === a).length;
   const w1 = lines.filter((l: any) => l.winner === b).length;
   const liveLine = lines.find((l: any) => l.live);
@@ -99,18 +113,20 @@ function toMatch(m: any) {
     div: [m.division || m.divisionLabel, m.round || m.roundLabel].filter(Boolean).join(" · "),
     round: m.round || m.roundLabel || "",
     disc: discFromDivName(m.division || m.divisionLabel || ""),
-    session: m.court ? "Court " + m.court : "",
+    session: court,
     a,
     b,
     roster,
-    tags: tagsFor(`${a} ${b} ${roster}`),
+    tags: tagsForSides(a, b, roster),
     status: st,
+    tickerLive: m.tickerLive === true,
     start: m.plannedStart || "",
-    hasClock: !!m.plannedStart,
+    hasClock: !!clock || !!m.plannedStart,
+    clock,
     score: ppaListedScore(w0, w1, lines),
     games,
     lines,
-    court: m.court || "",
+    court,
     note: ppaResultNote({ outcome: m.outcome, winnerName, time: m.time || "", liveLine }),
     watch: "pbtv",
     tz: PPA_TZ,
@@ -127,10 +143,16 @@ export default async () => {
   const tick = tickRes.ok ? await tickRes.json() : { matches: [] };
   const scores = scoreRes.ok ? await scoreRes.json() : { matches: [] };
   const byId: Record<string, any> = {};
-  for (const m of scores.matches || []) byId[m.id] = m;
+  for (const m of scores.matches || []) byId[m.id] = { ...m, tickerLive: false };
   for (const m of tick.matches || []) {
     const prev = byId[m.id] || {};
-    byId[m.id] = { ...prev, ...m, dateKey: mergePpaDateKey(prev, m) };
+    // LIVE only from this ticker row's live flag. Scores "live" without it stays off.
+    byId[m.id] = {
+      ...prev,
+      ...m,
+      dateKey: mergePpaDateKey(prev, m),
+      tickerLive: ppaTickerLive(m.status),
+    };
   }
   const now = new Date();
   const all = Object.values(byId).map(toMatch);

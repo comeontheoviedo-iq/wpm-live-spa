@@ -11,6 +11,8 @@ import {
   PPA_LAS_VEGAS_EVENT_ID,
   PPA_APRIL_LAS_VEGAS_PREFIX,
   APP_LIVE,
+  APP_COLUMBUS,
+  APP_NEXT,
   ENDED_APP,
   ENDED_PPA,
   PARKED_PPA,
@@ -23,6 +25,7 @@ import {
   applyAppCalendarCut,
   columbusArmedRow,
   isEndedAppDenId,
+  isPreparedNextDenId,
   isParkedPpaEventId,
   isEndedPpaEventId,
   isBlockedPpaEventId,
@@ -142,8 +145,10 @@ assert.ok(lou);
 assert.equal(lou.denId, "18454");
 assert.equal(lou.tour, "app");
 assert.equal(lou.onLive, false);
+assert.equal(lou.nextPin, true);
 assert.equal(lou.board, "results_only");
 assert.equal(lou.scorePath, null);
+assert.match(lou.note, /APP_LIVE = APP_NEXT/);
 assert.equal(watch.some((e) => /chicago cup/i.test(e.name)), false);
 const vb = watch.find((e) => /virginia beach/i.test(e.name));
 assert.ok(vb);
@@ -171,6 +176,21 @@ assert.equal(WIRED.ppa.scorePath, "/api/ppa");
 assert.notEqual(WIRED.ppa.eventId, BCN);
 assert.equal(String(WIRED.ppa.eventId).startsWith(PPA_APRIL_LAS_VEGAS_PREFIX), false);
 
+assert.equal(APP_COLUMBUS.eventId, "18448");
+assert.equal(APP_LIVE, APP_COLUMBUS);
+assert.equal(APP_NEXT.eventId, "18454");
+assert.equal(APP_NEXT.name, "Humana APP Louisville Open");
+assert.equal(APP_NEXT.venue, "Kentucky International Convention Center, Louisville, KY");
+assert.equal(APP_NEXT.tz, "America/New_York");
+assert.equal(APP_NEXT.start, "2026-10-15");
+assert.equal(APP_NEXT.end, "2026-10-18");
+assert.equal(APP_NEXT.scorePath, "/api/app");
+assert.equal(APP_NEXT.live, false);
+assert.equal(APP_NEXT.ready, true);
+assert.notEqual(APP_LIVE.eventId, APP_NEXT.eventId);
+assert.equal(isPreparedNextDenId("18454"), true);
+assert.equal(isPreparedNextDenId("18448"), false);
+assert.equal(isPreparedNextDenId("18453"), false);
 assert.equal(APP_LIVE.eventId, "18448");
 assert.equal(APP_LIVE.name, "APP Columbus Open presented by The James");
 assert.equal(APP_LIVE.shortName, "APP Columbus Open");

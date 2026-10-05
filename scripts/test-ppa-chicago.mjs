@@ -18,7 +18,12 @@ import {
   keepPpaMatch,
   mergePpaDateKey,
   ppaBoardDate,
+  ppaClockLabel,
+  ppaCourtLabel,
+  ppaListedScore,
+  ppaPublicStatus,
   ppaStatus,
+  ppaTickerLive,
 } from "../netlify/functions/ppa-keep.mjs";
 
 const UA = { "User-Agent": "WPM-LIVE/1.0", Accept: "application/json" };
@@ -33,6 +38,25 @@ assert.equal(PPA_LIVE.tz, "America/Chicago");
 assert.equal(PPA_LIVE.firstServe, "8:00 AM CDT");
 assert.equal(LV, "86926aef-0566-4fbb-87cf-a48068a9f1c6");
 assert.equal(PPA_LAS_VEGAS.end, "2026-10-04");
+assert.equal(ppaTickerLive("live"), true);
+assert.equal(ppaTickerLive("upnext"), false);
+assert.equal(ppaTickerLive("LIVE"), true);
+assert.equal(ppaPublicStatus("live", true), "LIVE");
+assert.equal(ppaPublicStatus("live", false), "NEXT");
+assert.equal(ppaPublicStatus("upnext", false), "NEXT");
+assert.equal(ppaPublicStatus("final", false), "FT");
+assert.equal(ppaPublicStatus("scheduled", false), "NEXT");
+assert.equal(ppaClockLabel("8:00 AM CDT"), "8:00 AM CDT");
+assert.equal(ppaClockLabel(""), "");
+assert.equal(ppaClockLabel("In play G1"), "");
+assert.equal(ppaCourtLabel(""), "");
+assert.equal(ppaCourtLabel("3"), "Court 3");
+assert.equal(ppaCourtLabel("Center Court"), "Center Court");
+assert.equal(ppaStatus("upnext"), "NEXT");
+assert.equal(ppaListedScore(0, 0, [{ live: true, score: "0–0" }]), "");
+assert.equal(ppaListedScore(0, 0, [{ live: true, score: "5–3" }]), "0-0");
+assert.equal(ppaListedScore(1, 0, []), "1-0");
+assert.equal(ppaListedScore(0, 0, []), "");
 
 const ppaSrc = fs.readFileSync("netlify/functions/ppa.mts", "utf8");
 assert.ok(ppaSrc.includes("PPA_LIVE.eventId"));

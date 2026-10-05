@@ -101,6 +101,8 @@ export function isMatchLive(m) {
   if (m.tour === "app" || (m.denStatus != null && String(m.denStatus) !== "")) {
     return matchCountsAsLive(m);
   }
+  // PPA: the ticker live flag only. A line flag or a scores "live" must not push.
+  if (m.tour === "ppa") return m.status === "LIVE" && m.tickerLive === true;
   if (m.status === "LIVE") return true;
   if ((m.lines || []).some((l) => l && l.live)) return true;
   return false;

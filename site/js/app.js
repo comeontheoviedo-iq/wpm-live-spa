@@ -94,8 +94,8 @@ if ("Notification" in window && Notification.permission === "granted") {
   setTimeout(() => { syncPushSubscription(); }, 2500);
 }
 
-const SAFE_SW = "/sw.js?v=20261005a";
-const SAFE_SW_MARK = "20261005a";
+const SAFE_SW = "/sw.js?v=20261005b";
+const SAFE_SW_MARK = "20261005b";
 const GIJON_DRAW_URL = "https://toppickleballtour.com/wp-content/uploads/2026/09/TOP-PICKLEBALL-TOUR-GIJON-GRUPOS.pdf";
 /** Application-server VAPID public key (safe to embed). Private stays in Netlify env. */
 const VAPID_PUBLIC_KEY = "BEuWn2rcxKeLXPFa3KJzys7rLOtFX8GUZ9ckfFhsqEVO0Y2PE3WfnOivmFJV3EUVCf1c1g31qSiVoNDbcJQO8GQ";
@@ -408,6 +408,13 @@ function effectiveStatus(m){
   // PPA ticker says upnext until live; promoting NEXT→LIVE from start age caused false LIVE.
   if (!m) return "NEXT";
   if (m.status === "FT") return "FT";
+  // PPA: ticker live flag only. A line flag or a scores "live" is not a LIVE chip.
+  if (m.tour === "ppa") {
+    if (m.tickerLive === true) return "LIVE";
+    if (m.tickerLive === false) return "NEXT";
+    if (m.status === "LIVE") return "LIVE";
+    return "NEXT";
+  }
   // APP: LIVE chip only when Den says the match is running. Pending brackets stay NEXT.
   if (m.tour === "app") {
     const token = m.denStatus == null ? "" : String(m.denStatus);
@@ -458,10 +465,21 @@ function rtaLiveBlank(m){
     return (Number(pts[0]) || 0) > 0 || (Number(pts[1]) || 0) > 0;
   });
 }
+function liveHasPoints(m){
+  if (!m) return false;
+  const raw = String(m.score || "").trim();
+  if (raw && !/^0\s*[-–]\s*0$/.test(raw)) return true;
+  return (m.lines || []).some(l => {
+    const pts = String(l.score || "").split(/[–-]/);
+    if (pts.length < 2) return false;
+    return (Number(pts[0]) || 0) > 0 || (Number(pts[1]) || 0) > 0;
+  });
+}
 function centerScore(m){
   if (rtaLiveBlank(m)) return "";
   const st = effectiveStatus(m);
-  if (m && m.score) return m.score;
+  if (st === "LIVE" && !liveHasPoints(m)) return "";
+  if (m && m.score && !(st === "LIVE" && /^0\s*[-–]\s*0$/.test(String(m.score).trim()) && !liveHasPoints(m))) return m.score;
   if (st === "NEXT") return "vs";
   const mark = blankResultLabel(m);
   if (mark) return mark;
@@ -508,18 +526,20 @@ function cleanLines(m){
     return m;
   }
   let aWins=0,bWins=0;
-  let realPoints=false;
   lines.forEach(l => {
     const pts = String(l.score||"").split(/[–-]/);
-    if (lineHasDigits(l.score)) realPoints = true;
     if (!gameLooksFinished(pts[0], pts[1])) return;
     if (Number(pts[0]) > Number(pts[1])) aWins++;
     else if (Number(pts[1]) > Number(pts[0])) bWins++;
   });
   const anyLive = lines.some(l => l.live);
+  const pointsPlayed = lines.some(l => {
+    const pts = String(l.score || "").split(/[–-]/);
+    return (Number(pts[0]) || 0) > 0 || (Number(pts[1]) || 0) > 0;
+  });
   let score = "";
   if (aWins || bWins) score = `${aWins}-${bWins}`;
-  else if (realPoints && anyLive) score = "0-0";
+  else if (pointsPlayed && anyLive) score = "0-0";
   else if (m.status === "FT" && m.score && !isPhantomZeroScore(m.score)) score = m.score;
   return Object.assign({}, m, {
     lines,
@@ -684,9 +704,20 @@ function matchDisc(m){
   if (["MS","WS","MD","WD","XD"].includes(d)) return d;
   return discFromDivName((m && (m.div || m.round || m.comp)) || "");
 }
+function dayCatOn(){
+  if (state.archiveId || state.boardMode === "draw") return false;
+  if (state.boardMode !== "live" && state.boardMode !== "matches" && state.boardMode !== "results") return false;
+  return state.filter === "ppa" || state.filter === "all" || state.filter === "following";
+}
+function catChipsHtml(){
+  const label = {};
+  RESULT_CATS.forEach(([id,l]) => { label[id] = l; });
+  const order = ["all","MS","WS","MD","WD","XD"];
+  return `<div class="chips cat-chips">${order.map(id=>`<button class="chip ${state.resultCat===id?"on":""}" data-cat="${id}" title="${esc(label[id]||id)}">${id==="all"?"All":id}</button>`).join("")}</div>`;
+}
 function persistResultCat(){
   try { sessionStorage.setItem("wpm-result-cat", state.resultCat || "all"); } catch(e) {}
-  if (state.boardMode !== "results") return;
+  if (state.boardMode !== "results" && !dayCatOn()) return;
   const cat = state.resultCat && state.resultCat !== "all" ? "cat="+state.resultCat : "";
   const hash = cat ? "#"+cat : "";
   const next = location.pathname + location.search + hash;
@@ -705,6 +736,7 @@ function shortEventLabel(name, key){
   const k = String(key || "");
   const blob = n + " " + k;
   if (/columbus/i.test(blob) || /18448/.test(k)) return "Columbus";
+  if (/louisville|18454/i.test(blob)) return "Louisville";
   if (/overland/i.test(blob) || /18453/.test(k)) return "Overland";
   if (/arizona|mesa/i.test(n) || /62c01642/i.test(k)) return "Arizona";
   if (/veolia chicago|chicago cup|203e1164/i.test(blob) || k === "ev:ppa") return "Chicago";
@@ -786,7 +818,7 @@ function passesBoardFilter(m){
   if (state.filter === "npl" && m.tour !== "npl") return false;
   if (state.filter === "asia" && m.tour !== "asia") return false;
   if (state.filter === "following" && !followsBoardMatch(m)) return false;
-  if (state.boardMode === "results" && state.resultCat && state.resultCat !== "all") {
+  if ((state.boardMode === "results" || dayCatOn()) && state.resultCat && state.resultCat !== "all") {
     if (matchDisc(m) !== state.resultCat) return false;
   }
   // Competitions without a live path: never leak PPA/APP/WC as if they belonged here.
@@ -984,6 +1016,8 @@ function courtOnCard(m){
 /** Scheduled local clock only when Den/PPA supplied it. Never invent bracket 09:00. */
 function scheduledLocalLabel(m){
   if (!m) return "";
+  const clock = String(m.clock || "").trim();
+  if (clock) return clock;
   const note = String(m.note || "").trim();
   if (m.tour === "ppa" && note && !/^In play/i.test(note) && /\d/.test(note) && /(AM|PM|MST|MDT|PST|PDT|CST|CDT|EST|EDT)/i.test(note)) {
     return note;
@@ -1002,11 +1036,18 @@ function tierMark(m){
   if (appTier(m) !== "pro") return "";
   return `<em class="tier-chip">Pro</em>`;
 }
-/** Court and clock in one place on every card. Clock stays off NEXT rows — it is the status column. Never invent either. */
+function discMark(m){
+  const d = matchDisc(m);
+  if (!d) return "";
+  return `<em class="disc-chip">${d}</em>`;
+}
+/** Court and ticker clock only when the feed sent them. Never invent either. */
 function cardFacts(m, st){
   const court = courtOnCard(m);
-  const clock = st === "NEXT" ? "" : scheduledLocalLabel(m);
-  const bits = [court, clock].filter(Boolean);
+  const clock = scheduledLocalLabel(m);
+  const bits = [];
+  if (court) bits.push(court);
+  if (clock && (st !== "NEXT" || court)) bits.push(clock);
   if (!bits.length) return "";
   return `<span class="card-facts">${esc(bits.join(" · "))}</span>`;
 }
@@ -1015,8 +1056,9 @@ function matchRow(raw, opts){
   const st = effectiveStatus(m);
   let when = st==="LIVE" ? "LIVE" : st==="FT" ? "FT" : nextWhenLabel(m);
   if (st === "NEXT" && opts && opts.hideDate) when = scheduledLocalLabel(m) || "NEXT";
-  const rtaBlank = rtaLiveBlank(m);
-  const mark = rtaBlank ? "" : (m.score ? "" : (st==="NEXT" ? "vs" : (blankResultLabel(m) || (st==="LIVE" ? "–" : (st==="FT" ? "FT" : "vs")))));
+  const noPoints = st === "LIVE" && !liveHasPoints(m);
+  const rtaBlank = rtaLiveBlank(m) || noPoints;
+  const mark = rtaBlank ? "" : (m.score ? "" : (st==="NEXT" ? "vs" : (blankResultLabel(m) || (st==="LIVE" ? "" : (st==="FT" ? "FT" : "vs")))));
   const sc = String(rtaBlank ? "" : (m.score || "")).split("-");
   const sa = sc[0] || "";
   const sb = sc[1] != null ? sc[1] : "";
@@ -1037,7 +1079,7 @@ function matchRow(raw, opts){
       </div>
       <a class="scorecol" href="/match/${m.id}">${rtaBlank ? "<span class='kick'></span>" : (mark ? `<span class="kick">${esc(mark)}</span>` : `<div>${esc(sa)}</div><div>${esc(sb)}</div>`)}</a>
     </div>
-    <a class="games" href="/match/${m.id}">${tierMark(m)}${div?`<b>${div}</b>`:""}${facts?` · ${facts}`:""}${reason?` · ${esc(reason)}`:""}${linePreview?" · "+linePreview:""}${chip}</a>
+    <a class="games" href="/match/${m.id}">${discMark(m)}${tierMark(m)}${div?`<b>${div}</b>`:""}${facts?` · ${facts}`:""}${reason?` · ${esc(reason)}`:""}${linePreview?" · "+linePreview:""}${chip}</a>
   </div>`;
 }
 const SLATE_CAP = 18;
@@ -1408,7 +1450,7 @@ function viewHome(){
           <button data-f="following" class="${state.filter==="following"?"on":""}">Following</button>
         </div>
       </div>
-      ${state.boardMode==="results"?`<div class="chips cat-chips">${RESULT_CATS.map(([id,l])=>`<button class="chip ${state.resultCat===id?"on":""}" data-cat="${id}">${l}</button>`).join("")}</div>`:""}
+      ${(state.boardMode==="results" || dayCatOn()) ? catChipsHtml() : ""}
       ${amateurPoolNote(list)}
     </div>
     <div class="panel">${pastNavHtml()}${state.boardMode==="draw" ? drawBoard() : (state.archiveId ? archiveBoardHtml() : (blocks || preServeBoard(state.filter, state.boardMode) || slateEmpty(state.filter)))}</div>
@@ -1575,7 +1617,11 @@ function tourPreServe(tour){
   const board = tour === "app" ? state.appBoard : state.ppaBoard;
   if (board && board.delayed && !board.preServe) return false;
   const rows = dayTourMatches(tour);
-  if (rows.length && rows.every(m => effectiveStatus(m) === "NEXT")) return true;
+  // A day slate of NEXT or FT is match day. Idle qualifiers are not "play starts soon".
+  if (rows.some(m => {
+    const st = effectiveStatus(m);
+    return st === "NEXT" || st === "FT";
+  })) return false;
   if (rows.length) return false;
   if (board && board.preServe) return true;
   const armed = armedRowForTour(tour);

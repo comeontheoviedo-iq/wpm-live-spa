@@ -71,6 +71,45 @@ export function tagsFor(a, b) {
   return tags;
 }
 
+const SKIP_LAST = new Set(["tbd", "tba", "bye", "winner", "loser", "vs", "court"]);
+
+/**
+ * Last-name token from each side. Skips initials ("D" in "D. Denardo") and placeholders.
+ * Used so a followed player who is not on the seed list still tags a PPA card.
+ */
+export function lastNameTags(text) {
+  const parts = String(text || "").split(/\s+vs\s+|\s*\/\s*/i);
+  const tags = [];
+  const seen = new Set();
+  for (const part of parts) {
+    const toks = nameTokens(part).filter((t) => t.length >= 2 && !SKIP_LAST.has(t.toLowerCase()));
+    if (!toks.length) continue;
+    const last = toks[toks.length - 1];
+    const key = last.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    tags.push(last);
+  }
+  return tags;
+}
+
+/**
+ * Seed follow tags plus every player last name on the card.
+ * Does not add a tour key — tour follows match `m.tour` (`tour:ppa`).
+ */
+export function tagsForSides(a, b, roster) {
+  const blob = `${a || ""} ${b || ""} ${roster || ""}`;
+  const tags = tagsFor(blob);
+  const seen = new Set(tags.map((t) => t.toLowerCase()));
+  for (const tag of lastNameTags(blob)) {
+    const key = tag.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    tags.push(tag);
+  }
+  return tags;
+}
+
 /** Tour-level follows. Not a single tournament (no ev:app:18448). */
 export const TOUR_IDS = ["app", "ppa", "wc", "gpa", "npl", "asia", "ppa-eu", "app-asia", "mlp-asia", "tpb", "rta"];
 

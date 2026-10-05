@@ -33,7 +33,7 @@ MLP, PPA Asia, club opens as **live** boards. GPA calendar / history may show th
 
 **APP Asia Chongqing Open** has **no Den id** and **no SportsSync id** (2026-10-02 hunt: organizer `1645900` still KL 89 and Penang 222; sitemap titles 91–471 have no Chongqing). Calendar/results-only. `/api/sportssync` can attach a real numeric id later and still stays **FT / results-only** — do not fake LIVE or 0–0. See [`sportssync-asia.md`](./sportssync-asia.md).
 
-**Next on the slate (not live pins):** PPA Virginia Beach (do not cut Veolia Chicago Cup), APP Louisville Den **18454** (do not cut `/api/app` off Columbus **18448**; Columbus is finished in the archive, `current: false`), APP Asia Bangkok / Taipei / India / HCMC results-only, MLP Asia 2026 labeled **MLP Asia**.
+**Next on the slate (not live pins):** PPA Virginia Beach (do not cut Veolia Chicago Cup), APP Louisville Den **18454** is the ready next pin (`APP_NEXT` in `slate-events.mjs`: Humana APP Louisville Open, Kentucky International Convention Center, `America/New_York`, 15–18 Oct, score path `/api/app`). `/api/app` stays Columbus **18448** until `export const APP_LIVE = APP_NEXT`. Env and blob pins of 18454 are ignored until that binding changes. Smoke with `/api/app?tournamentId=18454`. Columbus stays finished in the archive, `current: false`. APP Asia Bangkok / Taipei / India / HCMC results-only, MLP Asia 2026 labeled **MLP Asia**.
 
 ## Desk calendar
 
