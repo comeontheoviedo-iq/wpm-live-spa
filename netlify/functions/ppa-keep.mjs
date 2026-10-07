@@ -8,14 +8,98 @@ export function isPpaTbaDate(date) {
   return d === "9999-12-31" || d.startsWith("9999-");
 }
 
-/** Real dateKey, else plannedStart day, else the TBA sentinel, else today. */
+/**
+ * Ticker `plannedStart` is venue wall time with a Z suffix.
+ * "2:00 PM CDT" is stored as 2026-10-07T14:00:00Z, not 19:00Z.
+ * The date prefix is the event-local day. Do not pass it through UTC.
+ */
+export function ppaLocalDayPrefix(iso) {
+  const day = String(iso || "").trim().slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || isPpaTbaDate(day)) return "";
+  return day;
+}
+
+function addIsoDay(iso, n) {
+  const [y, m, d] = String(iso || "").split("-").map(Number);
+  if (!y || !m || !d) return "";
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
+}
+
+/** Minutes east of UTC for an IANA zone. Chicago in October is -300. */
+export function tzOffsetMinutes(tz, instant = new Date()) {
+  const d = instant instanceof Date ? instant : new Date(instant);
+  if (!tz || Number.isNaN(d.getTime())) return 0;
+  try {
+    const fmt = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz,
+      hourCycle: "h23",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+    const parts = Object.fromEntries(fmt.formatToParts(d).map((p) => [p.type, p.value]));
+    const asUtc = Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute, +parts.second);
+    return Math.round((asUtc - d.getTime()) / 60000);
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Board day for one row.
+ * A ticker plannedStart wins: its date prefix is the venue day.
+ * Otherwise the scores dateKey. On finished rows that key is often the UTC
+ * filing date — rebasePpaLocalDates pulls the late-evening spill back.
+ */
 export function ppaBoardDate(m, now = new Date()) {
+  const fromStart = ppaLocalDayPrefix(m?.plannedStart);
+  if (fromStart) return fromStart;
   const dk = String(m?.dateKey || "").trim();
   if (dk && !isPpaTbaDate(dk)) return dk;
-  const fromStart = String(m?.plannedStart || "").slice(0, 10);
-  if (fromStart && !isPpaTbaDate(fromStart)) return fromStart;
   if (isPpaTbaDate(dk)) return "9999-12-31";
   return now.toISOString().slice(0, 10);
+}
+
+/**
+ * Scores dateKey on a finished row is the UTC calendar date the result was filed.
+ * A US evening session crosses 00:00 UTC, so late local finishes land on the next dateKey
+ * while earlier finishes of the same round keep the venue day.
+ * The earliest real dateKey in that round is the event-local day.
+ * Finished and LIVE rows filed on the next UTC date move back one day.
+ * Scheduled rows stay — their dateKey is the planned local day and matches plannedStart.
+ * Scores are not copied or changed. Zones at or east of UTC are left alone.
+ */
+export function rebasePpaLocalDates(matches, tz, now = new Date()) {
+  const rows = Array.isArray(matches) ? matches : [];
+  if (tzOffsetMinutes(tz, now) >= 0) return rows;
+  const byRound = new Map();
+  for (const m of rows) {
+    if (!m || (m.status !== "FT" && m.status !== "LIVE")) continue;
+    const round = String(m.round || "").trim();
+    const day = ppaLocalDayPrefix(m.date);
+    if (!round || !day) continue;
+    const set = byRound.get(round) || new Set();
+    set.add(day);
+    byRound.set(round, set);
+  }
+  const pull = new Map();
+  for (const [round, dates] of byRound) {
+    const sorted = [...dates].sort();
+    if (sorted.length < 2) continue;
+    const earliest = sorted[0];
+    const next = addIsoDay(earliest, 1);
+    if (next && dates.has(next)) pull.set(round, { from: next, to: earliest });
+  }
+  if (!pull.size) return rows;
+  return rows.map((m) => {
+    if (!m || (m.status !== "FT" && m.status !== "LIVE")) return m;
+    const rule = pull.get(String(m.round || "").trim());
+    if (!rule || m.date !== rule.from) return m;
+    return { ...m, date: rule.to };
+  });
 }
 
 /**

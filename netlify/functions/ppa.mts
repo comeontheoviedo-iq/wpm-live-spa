@@ -1,7 +1,7 @@
 import type { Config } from "@netlify/functions";
 import { rosterText, tagsForSides } from "./follow-tags.mjs";
 import { discFromDivName } from "./app-rounds.mjs";
-import { PPA_LIVE } from "./slate-events.mjs";
+import { PPA_LIVE, PPA_NEXT, isPreparedNextPpaId } from "./slate-events.mjs";
 import {
   keepPpaMatch,
   mergePpaDateKey,
@@ -13,13 +13,24 @@ import {
   ppaPublicStatus,
   ppaResultNote,
   ppaTickerLive,
+  rebasePpaLocalDates,
 } from "./ppa-keep.mjs";
 
-const EVENT = PPA_LIVE.eventId; // Veolia Chicago Cup 2026-10-05 · Life Time North Shore
-const PPA_TZ = PPA_LIVE.tz; // America/Chicago — ticker clock is the "8:00 AM CDT" string
-const PPA_NAME = PPA_LIVE.name;
-const PPA_VENUE = PPA_LIVE.venue;
-const PPA_EVENT_KEY = "ev:ppa:" + EVENT;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Default pin is PPA_LIVE (Chicago). ?event=<PPA_NEXT> smokes Virginia Beach only. */
+function resolvePin(req?: Request) {
+  let q = "";
+  try {
+    q = req ? new URL(req.url).searchParams.get("event") || "" : "";
+  } catch {
+    q = "";
+  }
+  if (UUID_RE.test(q) && isPreparedNextPpaId(q) && q.toLowerCase() !== PPA_LIVE.eventId.toLowerCase()) {
+    return { pin: PPA_NEXT, smoke: true };
+  }
+  return { pin: PPA_LIVE, smoke: false };
+}
 
 function sideName(team: any) {
   if (!team) return "TBD";
@@ -88,7 +99,7 @@ function linesFrom(m: any, t0: any, t1: any) {
   return lines;
 }
 
-function toMatch(m: any) {
+function toMatch(m: any, pin: { eventId: string; name: string; venue: string; tz: string }) {
   const t0 = (m.teams || [])[0] || {};
   const t1 = (m.teams || [])[1] || {};
   const a = sideName(t0);
@@ -109,7 +120,7 @@ function toMatch(m: any) {
     id: "ppa-" + m.id,
     date,
     tour: "ppa",
-    comp: PPA_NAME,
+    comp: pin.name,
     div: [m.division || m.divisionLabel, m.round || m.roundLabel].filter(Boolean).join(" · "),
     round: m.round || m.roundLabel || "",
     disc: discFromDivName(m.division || m.divisionLabel || ""),
@@ -129,22 +140,25 @@ function toMatch(m: any) {
     court,
     note: ppaResultNote({ outcome: m.outcome, winnerName, time: m.time || "", liveLine }),
     watch: "pbtv",
-    tz: PPA_TZ,
-    venue: PPA_VENUE,
-    eventKey: PPA_EVENT_KEY,
+    tz: pin.tz,
+    venue: pin.venue,
+    eventKey: "ev:ppa:" + pin.eventId,
   };
 }
 
-export default async () => {
+export default async (req: Request) => {
+  const { pin, smoke } = resolvePin(req);
   const [tickRes, scoreRes] = await Promise.all([
     fetch("https://www.ppatour.com/api/ticker/", { headers: { "User-Agent": "WPM-LIVE/1.0" } }),
-    fetch("https://www.ppatour.com/api/scores/?event=" + EVENT, { headers: { "User-Agent": "WPM-LIVE/1.0" } }),
+    fetch("https://www.ppatour.com/api/scores/?event=" + pin.eventId, { headers: { "User-Agent": "WPM-LIVE/1.0" } }),
   ]);
   const tick = tickRes.ok ? await tickRes.json() : { matches: [] };
   const scores = scoreRes.ok ? await scoreRes.json() : { matches: [] };
   const byId: Record<string, any> = {};
   for (const m of scores.matches || []) byId[m.id] = { ...m, tickerLive: false };
   for (const m of tick.matches || []) {
+    // Smoke of the next pin must not import the live ticker's other matches.
+    if (smoke && !byId[m.id]) continue;
     const prev = byId[m.id] || {};
     // LIVE only from this ticker row's live flag. Scores "live" without it stays off.
     byId[m.id] = {
@@ -155,7 +169,7 @@ export default async () => {
     };
   }
   const now = new Date();
-  const all = Object.values(byId).map(toMatch);
+  const all = rebasePpaLocalDates(Object.values(byId).map((m) => toMatch(m, pin)), pin.tz, now);
   const matches = all
     .filter((m) => keepPpaMatch(m, now))
     .sort((a, b) => Number(b.status === "LIVE") - Number(a.status === "LIVE"));
@@ -182,11 +196,12 @@ export default async () => {
       matches,
       brackets,
       event: {
-        id: EVENT,
-        name: PPA_NAME,
-        venue: PPA_VENUE,
-        tz: PPA_TZ,
-        eventKey: PPA_EVENT_KEY,
+        id: pin.eventId,
+        name: pin.name,
+        venue: pin.venue,
+        tz: pin.tz,
+        eventKey: "ev:ppa:" + pin.eventId,
+        smoke: smoke || undefined,
       },
     },
     { headers: { "Cache-Control": "public, max-age=15" } }

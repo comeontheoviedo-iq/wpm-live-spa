@@ -13,6 +13,7 @@ import {
   APP_LIVE,
   APP_COLUMBUS,
   APP_NEXT,
+  PPA_NEXT,
   ENDED_APP,
   ENDED_PPA,
   PARKED_PPA,
@@ -26,6 +27,7 @@ import {
   columbusArmedRow,
   isEndedAppDenId,
   isPreparedNextDenId,
+  isPreparedNextPpaId,
   isParkedPpaEventId,
   isEndedPpaEventId,
   isBlockedPpaEventId,
@@ -157,7 +159,21 @@ assert.equal(vb.ppaEventId, "429c7980-e1b9-4800-805f-dfb160781cd9");
 assert.notEqual(vb.ppaEventId, CHI);
 assert.equal(vb.scorePath, null);
 assert.equal(vb.onLive, false);
+assert.equal(vb.nextPin, true);
 assert.equal(vb.board, "results_only");
+assert.match(vb.note, /PPA_LIVE = PPA_NEXT/);
+assert.equal(PPA_NEXT.eventId, "429c7980-e1b9-4800-805f-dfb160781cd9");
+assert.equal(PPA_NEXT.name, "Mojo Energy Pouches Virginia Beach Open");
+assert.equal(PPA_NEXT.venue, "Pickleball Virginia Beach, Virginia Beach, VA");
+assert.equal(PPA_NEXT.tz, "America/New_York");
+assert.equal(PPA_NEXT.start, "2026-10-12");
+assert.equal(PPA_NEXT.end, "2026-10-18");
+assert.equal(PPA_NEXT.scorePath, "/api/ppa");
+assert.equal(PPA_NEXT.live, false);
+assert.equal(PPA_NEXT.ready, true);
+assert.notEqual(PPA_LIVE.eventId, PPA_NEXT.eventId);
+assert.equal(isPreparedNextPpaId(PPA_NEXT.eventId), true);
+assert.equal(isPreparedNextPpaId(CHI), false);
 const cqWatch = watch.find((e) => /chongqing/i.test(e.name));
 assert.ok(cqWatch);
 assert.equal(cqWatch.tour, "app-asia");

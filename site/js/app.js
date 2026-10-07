@@ -74,7 +74,9 @@ const state = {
   ppaBoard: null,
   archiveId: "",
   archiveCache: {},
-  archiveCatalog: []
+  archiveCatalog: [],
+  dossier: {},
+  dossierPending: {}
 };
 try { state.selected = JSON.parse(localStorage.getItem("wpm-follows") || "{}"); } catch(e) { state.selected = {}; }
 try { state.notified = JSON.parse(sessionStorage.getItem("wpm-notified-live") || "{}"); } catch(e) { state.notified = {}; }
@@ -94,8 +96,8 @@ if ("Notification" in window && Notification.permission === "granted") {
   setTimeout(() => { syncPushSubscription(); }, 2500);
 }
 
-const SAFE_SW = "/sw.js?v=20261005b";
-const SAFE_SW_MARK = "20261005b";
+const SAFE_SW = "/sw.js?v=20261007a";
+const SAFE_SW_MARK = "20261007a";
 const GIJON_DRAW_URL = "https://toppickleballtour.com/wp-content/uploads/2026/09/TOP-PICKLEBALL-TOUR-GIJON-GRUPOS.pdf";
 /** Application-server VAPID public key (safe to embed). Private stays in Netlify env. */
 const VAPID_PUBLIC_KEY = "BEuWn2rcxKeLXPFa3KJzys7rLOtFX8GUZ9ckfFhsqEVO0Y2PE3WfnOivmFJV3EUVCf1c1g31qSiVoNDbcJQO8GQ";
@@ -343,14 +345,62 @@ function ymdInTz(d, tz){
     return ymd(d instanceof Date ? d : new Date(d));
   }
 }
+function tzOffsetMinutes(tz, instant){
+  const d = instant instanceof Date ? instant : new Date(instant || Date.now());
+  if (!tz || Number.isNaN(d.getTime())) return 0;
+  try {
+    const fmt = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz, hourCycle: "h23",
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", second: "2-digit"
+    });
+    const parts = {};
+    fmt.formatToParts(d).forEach(p => { parts[p.type] = p.value; });
+    const asUtc = Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute, +parts.second);
+    return Math.round((asUtc - d.getTime()) / 60000);
+  } catch(e) { return 0; }
+}
+/**
+ * Same rule as netlify/functions/ppa-keep.mjs rebasePpaLocalDates.
+ * Finished scores dateKey is the UTC filing date. Late venue-evening rows
+ * spill onto the next date. Pull those back onto the round's earliest day.
+ * Scheduled rows stay. Scores are not touched.
+ */
+function rebasePpaLocalDates(matches, tz){
+  const rows = matches || [];
+  if (tzOffsetMinutes(tz) >= 0) return rows;
+  const byRound = {};
+  rows.forEach(m => {
+    if (!m || (m.status !== "FT" && m.status !== "LIVE")) return;
+    const round = String(m.round || "").trim();
+    const day = String(m.date || "").slice(0, 10);
+    if (!round || !/^\d{4}-\d{2}-\d{2}$/.test(day) || day.indexOf("9999") === 0) return;
+    (byRound[round] = byRound[round] || {})[day] = 1;
+  });
+  const pull = {};
+  Object.keys(byRound).forEach(round => {
+    const sorted = Object.keys(byRound[round]).sort();
+    if (sorted.length < 2) return;
+    const next = addDaysIso(sorted[0], 1);
+    if (next && byRound[round][next]) pull[round] = { from: next, to: sorted[0] };
+  });
+  if (!Object.keys(pull).length) return rows;
+  return rows.map(m => {
+    if (!m || (m.status !== "FT" && m.status !== "LIVE")) return m;
+    const rule = pull[String(m.round || "").trim()];
+    if (!rule || m.date !== rule.from) return m;
+    return Object.assign({}, m, { date: rule.to });
+  });
+}
 function addDaysIso(iso, n){
   if (!iso) return "";
   const [y,m,d] = String(iso).split("-").map(Number);
   if (!y || !m || !d) return "";
   return new Date(Date.UTC(y, m-1, d+n)).toISOString().slice(0,10);
 }
-/** Prefer APP event tz (Columbus America/New_York) so "today" matches Den's calendar day. */
+/** PPA day tabs use the PPA event zone. Other boards prefer the APP event zone. */
 function boardTz(){
+  if (state.filter === "ppa") return (state.ppaEvent && state.ppaEvent.tz) || "America/Chicago";
   const ev = state.appEvent || {};
   if (ev.tz) return ev.tz;
   const app = (state.matches||[]).find(m => m.tour === "app" && m.tz);
@@ -2152,6 +2202,78 @@ function personMatchList(list, rec){
     : `<p class="empty">No finished matches yet.</p>`;
   return openHtml + `<div class="panel" style="margin-top:18px"><div class="kicker">Recent results</div>${body}</div>`;
 }
+function dossierCacheKey(name){
+  return String(name || "").toLowerCase().replace(/[.'’]/g, "").replace(/\s+/g, " ").trim();
+}
+function dossierHttps(url){
+  const s = String(url || "").trim();
+  if (!/^https:\/\//i.test(s)) return "";
+  return s;
+}
+function ensureDossier(name){
+  const key = dossierCacheKey(name);
+  if (!key) return null;
+  const hit = state.dossier[key];
+  if (hit) return hit.miss ? null : hit;
+  if (state.dossierPending[key]) return null;
+  state.dossierPending[key] = true;
+  const q = "/api/dossier?name=" + encodeURIComponent(name) + "&n=8";
+  fetch(q, { cache: "no-store" }).then(res => {
+    if (res.status === 404 || res.status === 409) return { miss: true };
+    if (!res.ok) return { miss: true };
+    return res.json().then(data => data || { miss: true }).catch(() => ({ miss: true }));
+  }).then(data => {
+    const pack = data && data.name && !data.miss ? data : { miss: true };
+    const stored = pack.miss ? { miss: true } : pack;
+    state.dossier[key] = stored;
+    if (!stored.miss && stored.search_name) state.dossier[dossierCacheKey(stored.search_name)] = stored;
+  }).catch(() => {
+    state.dossier[key] = { miss: true };
+  }).then(() => {
+    state.dossierPending[key] = false;
+    if (path().startsWith("/player/")) render();
+  });
+  return null;
+}
+function dossierHtml(rec){
+  if (!rec || !rec.name) return "";
+  const d = ensureDossier(rec.name);
+  if (!d || d.miss) return "";
+  const totals = d.seasonTotals || {};
+  const points = totals.points != null ? totals.points + " fantasy pts" : "";
+  const events = totals.eventsPlayed != null ? totals.eventsPlayed + " events" : "";
+  const weeks = totals.gameweeksScored != null ? totals.gameweeksScored + " gameweeks" : "";
+  const head = [points, events, weeks].filter(Boolean).join(" · ");
+  const form = (d.recentForm || []).map(r => {
+    const matches = (r.matches || []).map(g => {
+      const who = g.opponentName ? "vs " + esc(g.opponentName) : "";
+      const line = g.scoreline ? esc(g.scoreline) : "";
+      const mark = g.won === true ? "W" : g.won === false ? "L" : "";
+      return `<span class="games">${mark ? esc(mark) + " " : ""}${esc(g.round || "")} ${who}${line ? " " + line : ""}</span>`;
+    }).join(" ");
+    const meta = [r.tour, r.discipline, r.roundLabel, r.points != null ? r.points + " fantasy pts" : ""].filter(Boolean).map(s => esc(s)).join(" · ");
+    return `<div class="rank-row"><b>${esc(r.furthestRound || "·")}</b><div><strong>${esc(r.eventName || "Event")}</strong><span>${meta}</span>${matches ? `<div>${matches}</div>` : ""}</div></div>`;
+  }).join("");
+  const partners = (d.partnerFrequency || []).slice(0, 8).map(p => {
+    const label = p.name || "";
+    if (!label) return "";
+    return `<a class="chip" href="${playerPath(label)}">${esc(label)}${p.matches != null ? " · " + esc(p.matches) : ""}</a>`;
+  }).join("");
+  const h2h = (d.h2h || []).slice(0, 8).map(h => {
+    const rec = (h.wins != null || h.losses != null) ? `${h.wins || 0}–${h.losses || 0}` : "";
+    return `<div class="rank-row"><b>${esc(rec)}</b><div><strong>${esc(h.opponentName || "")}</strong><span>${h.matches != null ? esc(h.matches) + " matches" : ""}</span></div></div>`;
+  }).join("");
+  const disclaimer = d.disclaimer || "Fantasy points are not LIVE/FT match scores.";
+  return `<div class="panel dossier" style="margin-top:18px">
+    <div class="kicker">2026 season dossier (Fantasy research)</div>
+    ${d.reason ? `<p class="blurb">${esc(d.reason)}</p>` : ""}
+    ${head ? `<p class="games">${esc(head)}</p>` : ""}
+    ${form ? `<div class="slate-kicker">Season event log</div>${form}` : ""}
+    ${partners ? `<div class="slate-kicker">Regular partners</div><div class="chips">${partners}</div>` : ""}
+    ${h2h ? `<div class="slate-kicker">H2H</div>${h2h}` : ""}
+    <p class="games dossier-note">${esc(disclaimer)}</p>
+  </div>`;
+}
 function viewPerson(kind, id){
   id = decodeURIComponent(id||"");
   pullProfileArchives();
@@ -2163,9 +2285,14 @@ function viewPerson(kind, id){
   const following = !!state.selected[followKey];
   const snap = kind === "player" ? wprSnapshot(rec) : null;
   const badge = snap ? `<div class="wpr-badge"><b>${esc(snap.elo)}</b><span>WPR · Open mixed${snap.rank ? " · #"+esc(snap.rank) : ""}</span></div>` : "";
+  const dossier = kind === "player" ? ensureDossier(rec.name) : null;
+  const photo = dossier && !dossier.miss ? dossierHttps(dossier.photo_url) : "";
+  const avatar = photo
+    ? `<img class="avatar photo" src="${escAttr(photo)}" alt="" data-initials="${escAttr(personInitials(rec.name))}">`
+    : `<div class="avatar" aria-hidden="true">${esc(personInitials(rec.name))}</div>`;
   return `<div class="wrap">
     <div class="person-hero">
-      <div class="avatar" aria-hidden="true">${esc(personInitials(rec.name))}</div>
+      ${avatar}
       <div class="who">
         <p class="kicker">${kind==="player"?"Player":"Team"}</p>
         <h2>${esc(rec.name)}</h2>
@@ -2182,6 +2309,7 @@ function viewPerson(kind, id){
       ${rankingCardsHtml(rec.rankings||[])}
     </div>`:""}
     ${kind==="player"?personFormHtml(list, rec):""}
+    ${kind==="player"?dossierHtml(rec):""}
     ${personMatchList(list, rec)}
     ${kind==="player"?waveRecentPanel(rec):""}
     ${stories.length?`<div class="panel"><div class="kicker">From the magazine</div>${stories.map(magTease).join("")}</div>`:""}
@@ -3288,6 +3416,9 @@ async function pull(){
           liveCount: data.liveCount || 0,
           delayed: !!data.delayed
         };
+        if (Array.isArray(data.matches)) {
+          data.matches = rebasePpaLocalDates(data.matches, (data.event && data.event.tz) || "America/Chicago");
+        }
       }
       if (!data || !Array.isArray(data.matches)) return;
       // APP empty is real (pending brackets, no rows). Replace so a stale LIVE row cannot linger.
@@ -3391,6 +3522,16 @@ window.addEventListener("load", async () => {
   }, 12000);
 });
 
+
+document.addEventListener("error", function(ev){
+  const img = ev.target;
+  if (!img || !img.classList || !img.classList.contains("photo")) return;
+  const div = document.createElement("div");
+  div.className = "avatar";
+  div.setAttribute("aria-hidden", "true");
+  div.textContent = img.getAttribute("data-initials") || "";
+  if (img.parentNode) img.replaceWith(div);
+}, true);
 
 document.addEventListener("click", function wpmClick(ev){
   const el = ev.target && ev.target.closest ? ev.target.closest("[data-draw], [data-drawphase], [data-drawpool], [data-drawtour], [data-mode], [data-f], [data-archive], [data-shop], [data-day], [data-more], [data-cat]") : null;
