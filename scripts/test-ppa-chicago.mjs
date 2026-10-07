@@ -6,6 +6,7 @@
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import vm from "node:vm";
 import {
   PPA_LAS_VEGAS,
   PPA_LIVE,
@@ -18,6 +19,8 @@ import {
   keepPpaMatch,
   mergePpaDateKey,
   ppaBoardDate,
+  ppaLocalDayPrefix,
+  rebasePpaLocalDates,
   ppaClockLabel,
   ppaCourtLabel,
   ppaListedScore,
@@ -36,6 +39,37 @@ assert.equal(PPA_LIVE.name, "Veolia Chicago Cup");
 assert.equal(PPA_LIVE.venue, "Life Time North Shore Sport & Racquetball, Chicago, IL");
 assert.equal(PPA_LIVE.tz, "America/Chicago");
 assert.equal(PPA_LIVE.firstServe, "8:00 AM CDT");
+assert.equal(ppaLocalDayPrefix("2026-10-07T14:00:00Z"), "2026-10-07");
+assert.equal(ppaBoardDate({ dateKey: "2026-10-07", plannedStart: "2026-10-06T22:00:00Z" }), "2026-10-06");
+assert.equal(ppaBoardDate({ dateKey: "9999-12-31", plannedStart: "" }), "9999-12-31");
+
+const spillNow = new Date("2026-10-07T12:00:00Z");
+const spillIn = [
+  { round: "Round 64", status: "FT", date: "2026-10-06", score: "2-0" },
+  { round: "Round 64", status: "FT", date: "2026-10-07", score: "0-2" },
+  { round: "Round 32", status: "NEXT", date: "2026-10-07", score: "" },
+];
+const spill = rebasePpaLocalDates(spillIn, "America/Chicago", spillNow);
+assert.equal(spill[0].date, "2026-10-06");
+assert.equal(spill[1].date, "2026-10-06");
+assert.equal(spill[1].score, "0-2");
+assert.equal(spill[2].date, "2026-10-07");
+assert.equal(spill[2].score, "");
+assert.equal(rebasePpaLocalDates(spillIn, "Europe/London", spillNow)[1].date, "2026-10-07");
+
+const clientJs = fs.readFileSync("js/wpm-20261007a.js", "utf8");
+const clientCtx = {};
+vm.runInNewContext(
+  clientJs.slice(clientJs.indexOf("function tzOffsetMinutes"), clientJs.indexOf("function addDaysIso")) +
+    "\n" +
+    clientJs.slice(clientJs.indexOf("function addDaysIso"), clientJs.indexOf("function boardTz")) +
+    "\nthis.rebasePpaLocalDates = rebasePpaLocalDates;",
+  clientCtx
+);
+assert.deepEqual(
+  clientCtx.rebasePpaLocalDates(spillIn, "America/Chicago").map((m) => m.date),
+  spill.map((m) => m.date)
+);
 assert.equal(LV, "86926aef-0566-4fbb-87cf-a48068a9f1c6");
 assert.equal(PPA_LAS_VEGAS.end, "2026-10-04");
 assert.equal(ppaTickerLive("live"), true);
@@ -60,9 +94,10 @@ assert.equal(ppaListedScore(0, 0, []), "");
 
 const ppaSrc = fs.readFileSync("netlify/functions/ppa.mts", "utf8");
 assert.ok(ppaSrc.includes("PPA_LIVE.eventId"));
-assert.ok(ppaSrc.includes("PPA_LIVE.name"));
-assert.ok(ppaSrc.includes("PPA_LIVE.venue"));
-assert.ok(ppaSrc.includes("PPA_LIVE.tz"));
+assert.ok(ppaSrc.includes("rebasePpaLocalDates"));
+assert.ok(ppaSrc.includes("pin.name"));
+assert.ok(ppaSrc.includes("pin.tz"));
+assert.ok(ppaSrc.includes("PPA_NEXT"));
 assert.equal(ppaSrc.includes(LV), false, "ppa.mts must not hardcode the finished Las Vegas UUID");
 assert.equal(ppaSrc.includes("92d37566"), false);
 assert.equal(ppaSrc.includes("62c01642"), false);
@@ -128,7 +163,27 @@ for (const m of scoreMatches) {
     }
   }
 }
-assert.ok(tba > 0, "unscheduled Chicago draw rows stay Date TBA");
+// Mid-event the published draw may have no Date TBA rows left. Any that remain stay off the board.
+
+const r64 = scoreMatches.filter((m) => /round 64/i.test(m.roundLabel || "") && String(m.status).toLowerCase() === "final");
+const r64before = {};
+for (const m of r64) r64before[m.dateKey] = (r64before[m.dateKey] || 0) + 1;
+const r32 = scoreMatches.filter((m) => /round 32/i.test(m.roundLabel || "") && String(m.status).toLowerCase() === "scheduled");
+const mapped = r64.map((m) => ({ round: m.roundLabel, status: "FT", date: m.dateKey, score: JSON.stringify(m.teams) }));
+const scheduled = r32.map((m) => ({ round: m.roundLabel, status: "NEXT", date: m.dateKey, score: "" }));
+const local = rebasePpaLocalDates(mapped.concat(scheduled), "America/Chicago");
+const r64after = {};
+const srcRows = mapped.concat(scheduled);
+local.forEach((m, i) => {
+  assert.equal(m.score, srcRows[i].score, "rebase must not change scores");
+  if (m.status !== "FT") return;
+  r64after[m.date] = (r64after[m.date] || 0) + 1;
+});
+const earliest = Object.keys(r64before).sort()[0];
+assert.ok(earliest, "Round 64 has a filed date");
+assert.ok(local.filter((m) => m.status === "FT").every((m) => m.date === earliest), "finished Round 64 shares the event-local day");
+assert.ok(scheduled.every((m, i) => local[mapped.length + i].date === m.date), "scheduled Round 32 keeps its planned day");
+console.log("chicago dates before", JSON.stringify(r64before), "after", JSON.stringify(r64after));
 
 const vegas = await getJson("https://www.ppatour.com/api/scores/?event=" + LV);
 assert.equal(vegas.tournamentId, LV);

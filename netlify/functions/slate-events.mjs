@@ -5,8 +5,8 @@
  */
 import { CHONGQING, CHONGQING_DESK_NOTE } from "./sportssync-map.mjs";
 
-/** Live /api/ppa EVENT — Veolia Chicago Cup (Life Time North Shore). */
-export const PPA_LIVE_EVENT_ID = "203e1164-b4f9-47e9-bacf-ff81f8748025";
+/** Veolia Chicago Cup (Life Time North Shore). Live until PPA_LIVE flips. */
+export const PPA_CHICAGO_EVENT_ID = "203e1164-b4f9-47e9-bacf-ff81f8748025";
 
 /**
  * Rate Las Vegas Open. Finished 4 Oct 2026 (scores API all final, latest day 2026-10-04).
@@ -17,15 +17,48 @@ export const PPA_LAS_VEGAS_EVENT_ID = "86926aef-0566-4fbb-87cf-a48068a9f1c6";
 /** April Las Vegas Open. Not the September event — never wire /api/ppa to it. */
 export const PPA_APRIL_LAS_VEGAS_PREFIX = "92d37566";
 
-export const PPA_LIVE = {
-  eventId: PPA_LIVE_EVENT_ID,
+export const PPA_CHICAGO = {
+  eventId: PPA_CHICAGO_EVENT_ID,
   name: "Veolia Chicago Cup",
   venue: "Life Time North Shore Sport & Racquetball, Chicago, IL",
   tz: "America/Chicago",
   start: "2026-10-05",
   end: "2026-10-11",
   firstServe: "8:00 AM CDT",
+  scorePath: "/api/ppa",
 };
+
+/**
+ * Ready next pin. Mojo Energy Pouches Virginia Beach Open, 12–18 Oct 2026.
+ * UUID is the eventId on https://www.ppatour.com/events/2026/virginia-beach-open/
+ * (draw component) and tournamentId from scores/?event= (scheduled, Date TBA).
+ * Not selected by /api/ppa while PPA_LIVE is Chicago.
+ * Virginia Beach week flip is one binding: `export const PPA_LIVE = PPA_NEXT`.
+ * Smoke before that with /api/ppa?event=429c7980-e1b9-4800-805f-dfb160781cd9.
+ * Do not mark LIVE until the ticker title matches.
+ */
+export const PPA_NEXT = {
+  eventId: "429c7980-e1b9-4800-805f-dfb160781cd9",
+  name: "Mojo Energy Pouches Virginia Beach Open",
+  venue: "Pickleball Virginia Beach, Virginia Beach, VA",
+  tz: "America/New_York",
+  start: "2026-10-12",
+  end: "2026-10-18",
+  scorePath: "/api/ppa",
+  ready: true,
+  live: false,
+};
+
+/** Live /api/ppa event. Virginia Beach week: change this to PPA_NEXT. */
+export const PPA_LIVE = PPA_CHICAGO;
+export const PPA_LIVE_EVENT_ID = PPA_LIVE.eventId;
+
+/** True for Virginia Beach until that id is the live pin. Query smoke still allowed. */
+export function isPreparedNextPpaId(id) {
+  const s = String(id || "").trim().toLowerCase();
+  if (!s || s === String(PPA_LIVE.eventId).toLowerCase()) return false;
+  return s === String(PPA_NEXT.eventId).toLowerCase();
+}
 
 /** Finished PPA week. Results stay on /api/archive. Not the live board. */
 export const PPA_LAS_VEGAS = {
@@ -388,21 +421,22 @@ export const HCMC = {
 
 export const PPA_VIRGINIA_BEACH = {
   id: "slate:ppa-virginia-beach-2026",
-  name: "Mojo Energy Pouches Virginia Beach Open",
-  venue: "Pickleball Virginia Beach, Virginia Beach, VA",
-  timezone: "America/New_York",
+  name: PPA_NEXT.name,
+  venue: PPA_NEXT.venue,
+  timezone: PPA_NEXT.tz,
   tour: "ppa",
   host: "PPA",
   tier: "",
-  start: "2026-10-12",
-  end: "2026-10-18",
+  start: PPA_NEXT.start,
+  end: PPA_NEXT.end,
   status: "results-only",
   onLive: false,
-  ppaEventId: "429c7980-e1b9-4800-805f-dfb160781cd9",
+  nextPin: true,
+  ppaEventId: PPA_NEXT.eventId,
   officialUrl: "https://www.ppatour.com/events/2026/virginia-beach-open/",
   note:
-    "Upcoming PPA. Brackets UUID 429c7980-e1b9-4800-805f-dfb160781cd9 had scheduled scores on 2026-10-02. Not the live board — do not cut /api/ppa off Veolia Chicago Cup (203e1164-b4f9-47e9-bacf-ff81f8748025). Not LIVE until the ticker title matches.",
-  connector: { type: "none" },
+    "Ready next pin. Mojo Energy Pouches Virginia Beach Open, 12–18 Oct, Pickleball Virginia Beach, America/New_York. UUID 429c7980-e1b9-4800-805f-dfb160781cd9 is the eventId on the PPA event page and the scores API tournamentId (scheduled, Date TBA). Not the live board — /api/ppa stays Veolia Chicago Cup until PPA_LIVE = PPA_NEXT. Smoke /api/ppa?event=429c7980-e1b9-4800-805f-dfb160781cd9. Do not mark LIVE until the ticker title matches.",
+  connector: { type: "none", ppaEventId: PPA_NEXT.eventId, nextPin: true },
 };
 
 /** MLP Asia franchise season. Not APP Asia. */
