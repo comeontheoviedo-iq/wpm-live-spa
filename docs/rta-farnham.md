@@ -1,6 +1,6 @@
 # RTA2000 Farnham
 
-Own tour chip **RTA2000** (`rta`). Not APP. Not PPA. Window ended 4 Oct 2026. Unplayed matches the source still marks `upcoming` (loser-bracket rows dated 2 Oct) are dropped from `/api/rta` after that end date. They are not NEXT and they are not given a score. Do not cut `/api/app` off Columbus Den **18448**. Do not cut `/api/ppa` off Veolia Chicago Cup **203e1164-b4f9-47e9-bacf-ff81f8748025**.
+Own tour chip **RTA2000** (`rta`). Not APP. Not PPA. Window ended 4 Oct 2026. Unplayed matches the source still marks `upcoming` (loser-bracket rows dated 2 Oct) are dropped from `/api/rta` after that end date. They are not NEXT and they are not given a score. Do not cut `/api/app` off Columbus Den **18448**. Do not cut `/api/ppa` off Mojo Energy Pouches Virginia Beach Open **429c7980-e1b9-4800-805f-dfb160781cd9**.
 
 | | |
 |--|--|

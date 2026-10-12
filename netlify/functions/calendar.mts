@@ -6,6 +6,7 @@ import {
   ENDED_APP,
   ENDED_PPA,
   PARKED_PPA,
+  PPA_CHICAGO,
   PPA_LAS_VEGAS,
   PPA_LIVE,
   PPA_LIVE_EVENT_ID,
@@ -66,7 +67,7 @@ const KNOWN = {
     live: false,
     nextPin: true,
   },
-  ppaChicago: {
+  ppaVirginiaBeach: {
     type: "ppa",
     ppaEventId: PPA_LIVE_EVENT_ID,
     scorePath: "/api/ppa",
@@ -74,6 +75,17 @@ const KNOWN = {
     name: PPA_LIVE.name,
     venue: PPA_LIVE.venue,
     live: true,
+  },
+  /** Finished 11 Oct 2026. Archive only — not the live /api/ppa path. */
+  ppaChicago: {
+    type: "ppa",
+    ppaEventId: PPA_CHICAGO.eventId,
+    scorePath: null,
+    timezone: PPA_CHICAGO.tz,
+    name: PPA_CHICAGO.name,
+    venue: PPA_CHICAGO.venue,
+    live: false,
+    ended: true,
   },
   /** Ended 4 Oct 2026. Archive only — not the live /api/ppa path. */
   ppaLasVegas: {

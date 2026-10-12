@@ -100,3 +100,12 @@
 - Louisville Den 18454 is `APP_NEXT` (ready, not live). `/api/app` stays Columbus 18448 until `APP_LIVE = APP_NEXT`.
 - Cloudflare Worker `wpm-live-spa-static` bundles these functions (`api/ppa.mts` reads `PPA_LIVE`). There is no second handler in the repo. Redeploy that worker from this commit or prod `/api/ppa` keeps Rate Las Vegas.
 
+## 2026-10-12 — PPA cut to Virginia Beach
+
+- Ticker title `PPA Tour: Mojo Energy Pouches Virginia Beach Open`. 20 `upnext` rows. Clocks `8:00 AM EDT`, `11:00 AM EDT`, `2:00 PM EDT`. `plannedStart` is venue wall time with a Z suffix (`08:00Z` is 8:00 AM EDT, which is 12:00 UTC).
+- `/api/ppa` pin is `429c7980-e1b9-4800-805f-dfb160781cd9`. Venue Pickleball Virginia Beach, Virginia Beach, VA. TZ `America/New_York`. Dates 12–18 Oct 2026. `PPA_LIVE = PPA_NEXT`.
+- Main-draw scores for that UUID are Date TBA (`9999-12-31`) and stay off the day board. Qualifier rows dated 12 Oct overlap the ticker. Ticker rows are stamped with the pin only when the ticker title contains the pin name.
+- **Veolia Chicago Cup** scores API: all `final`, latest day **2026-10-11**. Archive id `chicago-cup`, `current: false`. Not the live board.
+- **APP Louisville** Den **18454** stays `APP_NEXT`. `/api/app` stays Columbus **18448**.
+- Client `wpm-20261012a.js` · SW `wpm-static-20261012a`. Not deployed.
+

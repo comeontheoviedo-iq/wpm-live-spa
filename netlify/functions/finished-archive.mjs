@@ -1,13 +1,14 @@
 /**
  * Finished-tournament results for the reader archive.
- * Live pin is PPA Veolia Chicago Cup (203e1164). /api/app stays Den 18448
- * until Louisville, but Columbus and Las Vegas are finished archive events.
+ * Live pin is PPA Mojo Energy Pouches Virginia Beach Open (429c7980).
+ * /api/app stays Den 18448 until Louisville. Chicago Cup, Columbus, and
+ * Las Vegas are finished archive events.
  * This module only serves FT rows. It never marks LIVE and never invents a score.
  */
 import { discFromAppBracket, discFromDivName, isKnockoutBracket, polishAppRound } from "./app-rounds.mjs";
 import { matchBoardDate } from "./app-dates.mjs";
 import { rosterText, tagsFor } from "./follow-tags.mjs";
-import { APP_LIVE, ENDED_APP, PPA_LAS_VEGAS, PPA_LIVE } from "./slate-events.mjs";
+import { APP_LIVE, ENDED_APP, PPA_CHICAGO, PPA_LAS_VEGAS, PPA_LIVE } from "./slate-events.mjs";
 
 const DEN = "https://denlive.pickleballden.com";
 const UA = { "User-Agent": "WPM-LIVE/1.0", Accept: "application/json" };
@@ -34,8 +35,8 @@ const GRAND_RAPIDS_ID = "d31aaa25-050c-4b4b-8537-0c69b7ea674a";
 /**
  * Finished weeks with a verified score source, oldest first.
  * Charlotte Challenger (2006a790-…) still had scheduled rows on 2026-10-02, so it stays off.
- * Columbus 18448 and Las Vegas 86926aef are finished (current false).
- * Chicago Cup stays on CURRENT_PINS until that week is actually over.
+ * Columbus 18448, Las Vegas 86926aef, and Chicago Cup 203e1164 are finished
+ * (current false). Virginia Beach stays on CURRENT_PINS until that week ends.
  */
 export const FINISHED_EVENTS = [
   {
@@ -158,14 +159,26 @@ export const FINISHED_EVENTS = [
     ppaEventId: PPA_LAS_VEGAS.eventId,
     current: false,
   },
+  {
+    id: "chicago-cup",
+    tour: "ppa",
+    label: "Chicago",
+    name: PPA_CHICAGO.name,
+    venue: PPA_CHICAGO.venue,
+    tz: PPA_CHICAGO.tz,
+    start: PPA_CHICAGO.start,
+    end: PPA_CHICAGO.end,
+    ppaEventId: PPA_CHICAGO.eventId,
+    current: false,
+  },
 ];
 
 /** Live pin. Listed so the client can offer it once the week has actually finished. */
 export const CURRENT_PINS = [
   {
-    id: "chicago-cup",
+    id: "virginia-beach",
     tour: "ppa",
-    label: "Chicago",
+    label: "Virginia Beach",
     name: PPA_LIVE.name,
     venue: PPA_LIVE.venue,
     tz: PPA_LIVE.tz,

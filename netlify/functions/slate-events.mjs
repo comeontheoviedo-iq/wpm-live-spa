@@ -5,7 +5,7 @@
  */
 import { CHONGQING, CHONGQING_DESK_NOTE } from "./sportssync-map.mjs";
 
-/** Veolia Chicago Cup (Life Time North Shore). Live until PPA_LIVE flips. */
+/** Veolia Chicago Cup (Life Time North Shore). Finished 11 Oct 2026 (Finals FT). Archive only. */
 export const PPA_CHICAGO_EVENT_ID = "203e1164-b4f9-47e9-bacf-ff81f8748025";
 
 /**
@@ -29,13 +29,11 @@ export const PPA_CHICAGO = {
 };
 
 /**
- * Ready next pin. Mojo Energy Pouches Virginia Beach Open, 12–18 Oct 2026.
+ * Mojo Energy Pouches Virginia Beach Open, 12–18 Oct 2026.
  * UUID is the eventId on https://www.ppatour.com/events/2026/virginia-beach-open/
- * (draw component) and tournamentId from scores/?event= (scheduled, Date TBA).
- * Not selected by /api/ppa while PPA_LIVE is Chicago.
- * Virginia Beach week flip is one binding: `export const PPA_LIVE = PPA_NEXT`.
- * Smoke before that with /api/ppa?event=429c7980-e1b9-4800-805f-dfb160781cd9.
- * Do not mark LIVE until the ticker title matches.
+ * and tournamentId on the scores API. Ticker title matched on 12 Oct 2026
+ * (20 upnext rows, clocks 8:00 AM / 11:00 AM / 2:00 PM EDT). That is the week flip.
+ * The next PPA week is not seeded. Do not invent a UUID.
  */
 export const PPA_NEXT = {
   eventId: "429c7980-e1b9-4800-805f-dfb160781cd9",
@@ -44,16 +42,15 @@ export const PPA_NEXT = {
   tz: "America/New_York",
   start: "2026-10-12",
   end: "2026-10-18",
+  firstServe: "8:00 AM EDT",
   scorePath: "/api/ppa",
-  ready: true,
-  live: false,
 };
 
-/** Live /api/ppa event. Virginia Beach week: change this to PPA_NEXT. */
-export const PPA_LIVE = PPA_CHICAGO;
+/** Live /api/ppa event. Week flip is this binding. */
+export const PPA_LIVE = PPA_NEXT;
 export const PPA_LIVE_EVENT_ID = PPA_LIVE.eventId;
 
-/** True for Virginia Beach until that id is the live pin. Query smoke still allowed. */
+/** True only for a prepared next id that is not already the live pin. */
 export function isPreparedNextPpaId(id) {
   const s = String(id || "").trim().toLowerCase();
   if (!s || s === String(PPA_LIVE.eventId).toLowerCase()) return false;
@@ -232,7 +229,7 @@ export const ENDED_PPA = {
     ended: true,
     parked: false,
     note:
-      "Window ended 27 Sep 2026 with no scores on the official PPA scores API. Unparked \u2014 do not cut /api/ppa to this UUID. Live board is Veolia Chicago Cup (" +
+      "Window ended 27 Sep 2026 with no scores on the official PPA scores API. Unparked \u2014 do not cut /api/ppa to this UUID. Live board is Mojo Energy Pouches Virginia Beach Open (" +
       PPA_LIVE_EVENT_ID +
       ").",
   },
@@ -419,26 +416,6 @@ export const HCMC = {
   connector: { type: "none" },
 };
 
-export const PPA_VIRGINIA_BEACH = {
-  id: "slate:ppa-virginia-beach-2026",
-  name: PPA_NEXT.name,
-  venue: PPA_NEXT.venue,
-  timezone: PPA_NEXT.tz,
-  tour: "ppa",
-  host: "PPA",
-  tier: "",
-  start: PPA_NEXT.start,
-  end: PPA_NEXT.end,
-  status: "results-only",
-  onLive: false,
-  nextPin: true,
-  ppaEventId: PPA_NEXT.eventId,
-  officialUrl: "https://www.ppatour.com/events/2026/virginia-beach-open/",
-  note:
-    "Ready next pin. Mojo Energy Pouches Virginia Beach Open, 12–18 Oct, Pickleball Virginia Beach, America/New_York. UUID 429c7980-e1b9-4800-805f-dfb160781cd9 is the eventId on the PPA event page and the scores API tournamentId (scheduled, Date TBA). Not the live board — /api/ppa stays Veolia Chicago Cup until PPA_LIVE = PPA_NEXT. Smoke /api/ppa?event=429c7980-e1b9-4800-805f-dfb160781cd9. Do not mark LIVE until the ticker title matches.",
-  connector: { type: "none", ppaEventId: PPA_NEXT.eventId, nextPin: true },
-};
-
 /** MLP Asia franchise season. Not APP Asia. */
 export const MLP_ASIA_SEASON = {
   id: "slate:mlp-asia-2026",
@@ -461,7 +438,7 @@ export const MLP_ASIA_SEASON = {
 
 /**
  * RTA2000 Farnham. Tournated 8510. Own tour — not an APP or PPA chip.
- * /api/app stays Columbus Den 18448 until Louisville. Live PPA is Veolia Chicago Cup.
+ * /api/app stays Columbus Den 18448 until Louisville. Live PPA is Virginia Beach.
  */
 export const FARNHAM = {
   id: "slate:rta-farnham-2026",
@@ -478,7 +455,7 @@ export const FARNHAM = {
   officialUrl:
     "https://play.rtapickleballtour.com/tournament/8510/draws?category=34477&segment=MD",
   note:
-    "Tournated tournament 8510 at Hurlands. Window ended 4 Oct 2026. /api/rta reads drawsDetail. Unplayed rows after the window are not NEXT. Not APP and not PPA. Do not cut /api/app off Columbus Den 18448. Do not cut /api/ppa off Veolia Chicago Cup 203e1164-b4f9-47e9-bacf-ff81f8748025.",
+    "Tournated tournament 8510 at Hurlands. Window ended 4 Oct 2026. /api/rta reads drawsDetail. Unplayed rows after the window are not NEXT. Not APP and not PPA. Do not cut /api/app off Columbus Den 18448. Do not cut /api/ppa off Mojo Energy Pouches Virginia Beach Open 429c7980-e1b9-4800-805f-dfb160781cd9.",
   connector: { type: "url", scoreUrl: "/api/rta" },
 };
 
@@ -487,7 +464,6 @@ export const SLATE = [
   GIJON,
   BARCELONA,
   CHONGQING_SLATE,
-  PPA_VIRGINIA_BEACH,
   LOUISVILLE,
   BANGKOK,
   ARIZONA_APP,
@@ -505,7 +481,7 @@ export function coverageSeedFor(name) {
 export const FILTER_COPY = {
   tpb: "TOP Pickleball Tour (powered by APP, not APP Den). Scores delayed \u2014 no live path. Official draw PDF only.",
   "ppa-eu":
-    "PPA Tour Europe. Barcelona window ended 27 Sep 2026 with no scores. Not the live board \u2014 Veolia Chicago Cup is /api/ppa.",
+    "PPA Tour Europe. Barcelona window ended 27 Sep 2026 with no scores. Not the live board \u2014 Mojo Energy Pouches Virginia Beach Open is /api/ppa.",
   "app-asia": "APP Asia Tour \u2014 not MLP Asia. No Den Live id. SportsSync /api/sportssync is results-only once a real tournamentId is listed. Not LIVE.",
   "mlp-asia": MLP_ASIA_NOTE,
   asia: "PPA Asia \u2014 results-only until a working ticker is wired. Not APP Asia, not MLP Asia.",
@@ -706,11 +682,18 @@ export function isLivePpaEventId(id) {
   return String(id || "").trim() === PPA_LIVE_EVENT_ID;
 }
 
-/** Ticker title must be Veolia Chicago Cup. A bare "Chicago" title is not this event. */
-export function ppaTickerTitleAligned(title) {
+/**
+ * Ticker title must contain the pinned event name.
+ * "PPA Tour: Mojo Energy Pouches Virginia Beach Open" matches Virginia Beach.
+ * "PPA Tour: Veolia Chicago Cup" does not. A bare "Chicago" or "Virginia Beach" does not.
+ * Empty title does not contradict the pin (older feeds omit it).
+ */
+export function ppaTickerTitleAligned(title, pin = PPA_LIVE) {
   const t = String(title || "").trim();
   if (!t) return true;
-  return /veolia/i.test(t) && /chicago cup/i.test(t);
+  const name = String(pin?.name || "").trim();
+  if (!name) return false;
+  return t.toLowerCase().includes(name.toLowerCase());
 }
 
 /** APP Asia Tour names on GPA \u2014 still APP, never MLP. */
@@ -848,7 +831,6 @@ export function staticWatchEvents() {
       note: BARCELONA.note,
     },
     watchFromSeed(CHONGQING_SLATE),
-    watchFromSeed(PPA_VIRGINIA_BEACH),
     watchFromSeed(LOUISVILLE),
     watchFromSeed(BANGKOK),
     watchFromSeed(ARIZONA_APP),

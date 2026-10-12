@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 /**
  * Seeded slate honesty: Gijón delayed + draw PDF, Barcelona ended/unparked,
- * Veolia Chicago Cup is the live PPA EVENT, MLP Asia is not APP.
+ * Virginia Beach is the live PPA EVENT, Chicago is archive, MLP Asia is not APP.
  */
 import assert from "node:assert/strict";
 import {
+  PPA_CHICAGO,
   PPA_LIVE,
   PPA_LIVE_EVENT_ID,
   PPA_LAS_VEGAS,
@@ -40,18 +41,25 @@ import {
 } from "../netlify/functions/slate-events.mjs";
 
 const CHI = "203e1164-b4f9-47e9-bacf-ff81f8748025";
+const VB = "429c7980-e1b9-4800-805f-dfb160781cd9";
 const LV = "86926aef-0566-4fbb-87cf-a48068a9f1c6";
 const BCN = "1655a7c9-904a-44c9-aa29-b279fca900e8";
 const MESA = "62c01642-1bb2-4f9a-9998-599f8fdefe5c";
 
-assert.equal(PPA_LIVE_EVENT_ID, CHI);
-assert.equal(PPA_LIVE.eventId, CHI);
-assert.equal(PPA_LIVE.name, "Veolia Chicago Cup");
-assert.equal(PPA_LIVE.venue, "Life Time North Shore Sport & Racquetball, Chicago, IL");
-assert.equal(PPA_LIVE.tz, "America/Chicago");
-assert.equal(PPA_LIVE.start, "2026-10-05");
-assert.equal(PPA_LIVE.end, "2026-10-11");
-assert.equal(PPA_LIVE.firstServe, "8:00 AM CDT");
+assert.equal(PPA_LIVE_EVENT_ID, VB);
+assert.equal(PPA_LIVE.eventId, VB);
+assert.equal(PPA_LIVE.name, "Mojo Energy Pouches Virginia Beach Open");
+assert.equal(PPA_LIVE.venue, "Pickleball Virginia Beach, Virginia Beach, VA");
+assert.equal(PPA_LIVE.tz, "America/New_York");
+assert.equal(PPA_LIVE.start, "2026-10-12");
+assert.equal(PPA_LIVE.end, "2026-10-18");
+assert.equal(PPA_LIVE.firstServe, "8:00 AM EDT");
+assert.equal(PPA_CHICAGO.eventId, CHI);
+assert.equal(PPA_CHICAGO.name, "Veolia Chicago Cup");
+assert.equal(PPA_CHICAGO.venue, "Life Time North Shore Sport & Racquetball, Chicago, IL");
+assert.equal(PPA_CHICAGO.tz, "America/Chicago");
+assert.equal(PPA_CHICAGO.end, "2026-10-11");
+assert.notEqual(PPA_LIVE.eventId, PPA_CHICAGO.eventId);
 assert.equal(PPA_LAS_VEGAS_EVENT_ID, LV);
 assert.equal(PPA_LAS_VEGAS.eventId, LV);
 assert.equal(PPA_LAS_VEGAS.name, "PPA Rate Las Vegas Open");
@@ -73,14 +81,17 @@ assert.equal(isBlockedPpaEventId(BCN), true);
 assert.equal(isBlockedPpaEventId(PPA_APRIL_LAS_VEGAS_PREFIX + "-0000-0000-0000-000000000000"), true);
 assert.equal(isBlockedPpaEventId(LV), false);
 assert.equal(isBlockedPpaEventId(CHI), false);
-assert.equal(isLivePpaEventId(CHI), true);
+assert.equal(isLivePpaEventId(VB), true);
+assert.equal(isLivePpaEventId(CHI), false);
 assert.equal(isLivePpaEventId(LV), false);
 assert.equal(isLivePpaEventId(BCN), false);
 
-assert.equal(ppaTickerTitleAligned("PPA Tour: Veolia Chicago Cup"), true);
+assert.equal(ppaTickerTitleAligned("PPA Tour: Mojo Energy Pouches Virginia Beach Open"), true);
+assert.equal(ppaTickerTitleAligned("PPA Tour: Veolia Chicago Cup"), false);
 assert.equal(ppaTickerTitleAligned("PPA Tour: Rate Las Vegas Open"), false);
 assert.equal(ppaTickerTitleAligned("PPA Tour: Veolia Arizona Open"), false);
 assert.equal(ppaTickerTitleAligned("Chicago"), false);
+assert.equal(ppaTickerTitleAligned("Virginia Beach"), false);
 assert.equal(ppaTickerTitleAligned("Las Vegas Open"), false);
 assert.equal(ppaTickerTitleAligned(""), true);
 
@@ -152,27 +163,18 @@ assert.equal(lou.board, "results_only");
 assert.equal(lou.scorePath, null);
 assert.match(lou.note, /APP_LIVE = APP_NEXT/);
 assert.equal(watch.some((e) => /chicago cup/i.test(e.name)), false);
-const vb = watch.find((e) => /virginia beach/i.test(e.name));
-assert.ok(vb);
-assert.equal(vb.tour, "ppa");
-assert.equal(vb.ppaEventId, "429c7980-e1b9-4800-805f-dfb160781cd9");
-assert.notEqual(vb.ppaEventId, CHI);
-assert.equal(vb.scorePath, null);
-assert.equal(vb.onLive, false);
-assert.equal(vb.nextPin, true);
-assert.equal(vb.board, "results_only");
-assert.match(vb.note, /PPA_LIVE = PPA_NEXT/);
-assert.equal(PPA_NEXT.eventId, "429c7980-e1b9-4800-805f-dfb160781cd9");
+assert.equal(watch.some((e) => /virginia beach/i.test(e.name)), false);
+assert.equal(SLATE.some((s) => /virginia beach/i.test(s.name) && s.nextPin), false);
+assert.equal(SLATE.some((s) => /virginia beach/i.test(s.name)), false);
+assert.equal(PPA_NEXT.eventId, VB);
 assert.equal(PPA_NEXT.name, "Mojo Energy Pouches Virginia Beach Open");
 assert.equal(PPA_NEXT.venue, "Pickleball Virginia Beach, Virginia Beach, VA");
 assert.equal(PPA_NEXT.tz, "America/New_York");
 assert.equal(PPA_NEXT.start, "2026-10-12");
 assert.equal(PPA_NEXT.end, "2026-10-18");
 assert.equal(PPA_NEXT.scorePath, "/api/ppa");
-assert.equal(PPA_NEXT.live, false);
-assert.equal(PPA_NEXT.ready, true);
-assert.notEqual(PPA_LIVE.eventId, PPA_NEXT.eventId);
-assert.equal(isPreparedNextPpaId(PPA_NEXT.eventId), true);
+assert.equal(PPA_LIVE, PPA_NEXT);
+assert.equal(isPreparedNextPpaId(PPA_NEXT.eventId), false);
 assert.equal(isPreparedNextPpaId(CHI), false);
 const cqWatch = watch.find((e) => /chongqing/i.test(e.name));
 assert.ok(cqWatch);
@@ -184,10 +186,10 @@ assert.equal(isAppAsiaName("APP Arizona Open"), false);
 assert.equal(isAppAsiaName("MLP Asia 2026"), false);
 
 import { WIRED } from "../netlify/functions/radar-lib.mjs";
-assert.equal(WIRED.ppa.eventId, CHI);
+assert.equal(WIRED.ppa.eventId, VB);
 assert.equal(WIRED.ppa.name, PPA_LIVE.name);
 assert.equal(WIRED.ppa.venue, PPA_LIVE.venue);
-assert.equal(WIRED.ppa.tz, "America/Chicago");
+assert.equal(WIRED.ppa.tz, "America/New_York");
 assert.equal(WIRED.ppa.scorePath, "/api/ppa");
 assert.notEqual(WIRED.ppa.eventId, BCN);
 assert.equal(String(WIRED.ppa.eventId).startsWith(PPA_APRIL_LAS_VEGAS_PREFIX), false);
@@ -266,4 +268,4 @@ assert.notEqual(cq.connector?.denTournamentId, "18448");
 assert.equal(isAppAsiaName("APP Asia Chongqing Open"), true);
 assert.equal(isAppAsiaName("APP Columbus Open"), false);
 
-console.log("ok slate-events · Gijón delayed · Barcelona ended · Chicago Cup live · Las Vegas archived · Columbus 18448 · MLP ≠ APP");
+console.log("ok slate-events · Gijón delayed · Barcelona ended · Virginia Beach live · Chicago archived · Columbus 18448 · Louisville next · MLP ≠ APP");

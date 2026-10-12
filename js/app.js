@@ -96,8 +96,8 @@ if ("Notification" in window && Notification.permission === "granted") {
   setTimeout(() => { syncPushSubscription(); }, 2500);
 }
 
-const SAFE_SW = "/sw.js?v=20261007a";
-const SAFE_SW_MARK = "20261007a";
+const SAFE_SW = "/sw.js?v=20261012a";
+const SAFE_SW_MARK = "20261012a";
 const GIJON_DRAW_URL = "https://toppickleballtour.com/wp-content/uploads/2026/09/TOP-PICKLEBALL-TOUR-GIJON-GRUPOS.pdf";
 /** Application-server VAPID public key (safe to embed). Private stays in Netlify env. */
 const VAPID_PUBLIC_KEY = "BEuWn2rcxKeLXPFa3KJzys7rLOtFX8GUZ9ckfFhsqEVO0Y2PE3WfnOivmFJV3EUVCf1c1g31qSiVoNDbcJQO8GQ";
@@ -125,8 +125,8 @@ function looksLikeStoredEvent(raw){
   const s = String(raw || "").trim();
   if (!s || s.indexOf("tour:") === 0) return false;
   if (s.indexOf("slate:") === 0 || s.indexOf("ev:") === 0 || s.indexOf("gpa:") === 0) return true;
-  if (/^(overland|arizona|gij[oó]n|gijon|columbus|las vegas|barcelona|mesa|chicago cup)$/i.test(s)) return true;
-  if (/\b(overland park|gij[oó]n|arizona open|las vegas open|columbus open|barcelona open|chicago cup|veolia chicago)\b/i.test(s)) return true;
+  if (/^(overland|arizona|gij[oó]n|gijon|columbus|las vegas|barcelona|mesa|chicago cup|virginia beach)$/i.test(s)) return true;
+  if (/\b(overland park|gij[oó]n|arizona open|las vegas open|columbus open|barcelona open|chicago cup|veolia chicago|virginia beach)\b/i.test(s)) return true;
   if (/^(APP|PPA|TPB|GPA|MLP)\b/.test(s) && /\b(open|tour|asia)\b/i.test(s)) return true;
   if (/\brta2000\b/i.test(s)) return true;
   if (/\brta\b/i.test(s) && /farnham/i.test(s)) return true;
@@ -143,7 +143,7 @@ function tourFromEventBlob(raw){
   if (/barcelona|ppa-eu|ppa europe/.test(blob)) return "tour:ppa-eu";
   if (/ppa asia|ppa-asia/.test(blob)) return "tour:asia";
   if (/\bapp\b/.test(blob) && /arizona/.test(blob) && !/\bppa\b/.test(blob)) return "tour:app";
-  if (/arizona|mesa|62c01642|las vegas|86926aef|veolia chicago|chicago cup|203e1164|^ev:ppa\b|\bppa\b/.test(blob)) return "tour:ppa";
+  if (/arizona|mesa|62c01642|las vegas|86926aef|veolia chicago|chicago cup|203e1164|virginia beach|429c7980|^ev:ppa\b|\bppa\b/.test(blob)) return "tour:ppa";
   if (/^ev:wc\b|world cup/.test(blob)) return "tour:wc";
   if (/overland|columbus|18448|18453|^ev:app\b|\bapp\b/.test(blob)) return "tour:app";
   if (/\bnpl\b/.test(blob)) return "tour:npl";
@@ -400,7 +400,7 @@ function addDaysIso(iso, n){
 }
 /** PPA day tabs use the PPA event zone. Other boards prefer the APP event zone. */
 function boardTz(){
-  if (state.filter === "ppa") return (state.ppaEvent && state.ppaEvent.tz) || "America/Chicago";
+  if (state.filter === "ppa") return (state.ppaEvent && state.ppaEvent.tz) || "America/New_York";
   const ev = state.appEvent || {};
   if (ev.tz) return ev.tz;
   const app = (state.matches||[]).find(m => m.tour === "app" && m.tz);
@@ -789,7 +789,8 @@ function shortEventLabel(name, key){
   if (/louisville|18454/i.test(blob)) return "Louisville";
   if (/overland/i.test(blob) || /18453/.test(k)) return "Overland";
   if (/arizona|mesa/i.test(n) || /62c01642/i.test(k)) return "Arizona";
-  if (/veolia chicago|chicago cup|203e1164/i.test(blob) || k === "ev:ppa") return "Chicago";
+  if (/virginia beach|429c7980/i.test(blob)) return "Virginia Beach";
+  if (/veolia chicago|chicago cup|203e1164/i.test(blob)) return "Chicago";
   if (/las vegas|darling/i.test(n) || /86926aef/i.test(k)) return "Las Vegas";
   if (/chongqing/i.test(blob)) return "Chongqing";
   if (/kuala lumpur/i.test(blob)) return "Kuala Lumpur";
@@ -1266,7 +1267,8 @@ const ARCHIVE_FALLBACK = [
   {id:"arizona", tour:"ppa", label:"Arizona", name:"PPA Veolia Arizona Open", venue:"Mesa, AZ", tz:"America/Phoenix", start:"2026-09-14", end:"2026-09-21", current:false},
   {id:"columbus", tour:"app", label:"Columbus", name:"APP Columbus Open presented by The James", venue:"Pickle & Chill, Columbus, OH", tz:"America/New_York", start:"2026-10-01", end:"2026-10-04", current:false},
   {id:"las-vegas", tour:"ppa", label:"Las Vegas", name:"PPA Rate Las Vegas Open", venue:"Darling Tennis Center, Las Vegas", tz:"America/Los_Angeles", start:"2026-09-28", end:"2026-10-04", current:false},
-  {id:"chicago-cup", tour:"ppa", label:"Chicago", name:"Veolia Chicago Cup", venue:"Life Time North Shore Sport & Racquetball, Chicago, IL", tz:"America/Chicago", start:"2026-10-05", end:"2026-10-11", current:true}
+  {id:"chicago-cup", tour:"ppa", label:"Chicago", name:"Veolia Chicago Cup", venue:"Life Time North Shore Sport & Racquetball, Chicago, IL", tz:"America/Chicago", start:"2026-10-05", end:"2026-10-11", current:false},
+  {id:"virginia-beach", tour:"ppa", label:"Virginia Beach", name:"Mojo Energy Pouches Virginia Beach Open", venue:"Pickleball Virginia Beach, Virginia Beach, VA", tz:"America/New_York", start:"2026-10-12", end:"2026-10-18", current:true}
 ];
 const DISC_LABEL = {MS:"Men's singles", WS:"Women's singles", XD:"Mixed doubles", MD:"Men's doubles", WD:"Women's doubles"};
 function weekIsFinished(matches, today){
@@ -1298,9 +1300,9 @@ function ppaFeedFinished(){
   const rows = (state.matches || []).filter(m => {
     if (!m || m.tour !== "ppa") return false;
     const blob = `${m.eventKey || ""} ${m.comp || ""} ${m.venue || ""}`;
-    return /203e1164|chicago cup|veolia chicago/i.test(blob);
+    return /429c7980|virginia beach/i.test(blob);
   });
-  const today = ymdInTz(new Date(), (state.ppaEvent && state.ppaEvent.tz) || "America/Chicago");
+  const today = ymdInTz(new Date(), (state.ppaEvent && state.ppaEvent.tz) || "America/New_York");
   return weekIsFinished(rows, today);
 }
 function vegasInPast(){
@@ -1320,6 +1322,7 @@ function archiveReady(e){
   if (!e.current) return true;
   if (e.id === "las-vegas") return vegasInPast();
   if (e.id === "columbus" || e.tour === "app") return appPinFinished();
+  if (e.id === "virginia-beach") return ppaFeedFinished() || pinEnded(e.end, ymdInTz(new Date(), e.tz || "America/New_York"));
   return false;
 }
 function boardWantsPast(filter){
@@ -1337,7 +1340,7 @@ function livePinLabel(filter){
   if (filter === "app-pro" && !appPinFinished()) return "Columbus";
   if (filter === "ppa" && !ppaFeedFinished()) {
     const ev = state.ppaEvent || {};
-    return shortEventLabel(ev.name || "Veolia Chicago Cup", ev.eventKey || "ev:ppa") || "Chicago";
+    return shortEventLabel(ev.name || "Mojo Energy Pouches Virginia Beach Open", ev.eventKey || "ev:ppa") || "Virginia Beach";
   }
   if (filter === "all" && (!appPinFinished() || !ppaFeedFinished())) return "This week";
   return "";
@@ -1349,7 +1352,7 @@ function ensureFinishedBoard(){
     state.archiveId = "columbus";
     if (state.boardMode === "live" || state.boardMode === "matches") state.boardMode = "results";
   } else if (state.filter === "ppa" && ppaFeedFinished()) {
-    state.archiveId = "chicago-cup";
+    state.archiveId = "virginia-beach";
     if (state.boardMode === "live" || state.boardMode === "matches") state.boardMode = "results";
   }
 }
@@ -1698,8 +1701,8 @@ function preServeModel(tour){
   const ev = state.ppaEvent || {};
   return {
     tour: "ppa",
-    name: armed.name || ev.name || "Veolia Chicago Cup",
-    venue: armed.venue || ev.venue || "Life Time North Shore Sport & Racquetball, Chicago, IL",
+    name: armed.name || ev.name || "Mojo Energy Pouches Virginia Beach Open",
+    venue: armed.venue || ev.venue || "Pickleball Virginia Beach, Virginia Beach, VA",
     start: String(armed.start || "").slice(0, 10),
     eventKey: ev.eventKey || "ev:ppa"
   };
@@ -3417,7 +3420,7 @@ async function pull(){
           delayed: !!data.delayed
         };
         if (Array.isArray(data.matches)) {
-          data.matches = rebasePpaLocalDates(data.matches, (data.event && data.event.tz) || "America/Chicago");
+          data.matches = rebasePpaLocalDates(data.matches, (data.event && data.event.tz) || "America/New_York");
         }
       }
       if (!data || !Array.isArray(data.matches)) return;

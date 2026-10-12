@@ -14,7 +14,6 @@ import {
   MLP_ASIA_NOTE,
   ARIZONA_APP,
   LOUISVILLE,
-  PPA_VIRGINIA_BEACH,
   coverageSeedFor,
   isAppAsiaName,
   matchesSlateName,
@@ -514,9 +513,9 @@ async function probeSportsSyncOrganizer() {
   };
 }
 
-/** Upcoming PPA UUIDs. Scheduled scores do not move /api/ppa off Veolia Chicago Cup. */
+/** Upcoming PPA UUIDs that are not the live pin. None prepared after the Virginia Beach flip. */
 async function probeUpcomingPpa() {
-  const seeds = [PPA_VIRGINIA_BEACH];
+  const seeds = [];
   const out = [];
   for (const seed of seeds) {
     const scores = await fetchJson(`https://www.ppatour.com/api/scores/?event=${seed.ppaEventId}`);
@@ -648,16 +647,18 @@ export async function buildRadarReport(opts = {}) {
         "Run `node scripts/event-radar.mjs` or GET /api/radar",
         "Escalate P0 actions only (blocked_by_intake on PPA/APP/PPA Europe)",
         "If PPA ticker title ≠ wired EVENT → cut ppa.mts EVENT same day",
-        "Live PPA is Veolia Chicago Cup 203e1164-… Life Time North Shore, America/Chicago",
+        "Live PPA is Mojo Energy Pouches Virginia Beach Open 429c7980-… Pickleball Virginia Beach, America/New_York",
+        "Veolia Chicago Cup 203e1164 finished 11 Oct 2026 — archive chicago-cup, current false. Do not wire /api/ppa there",
         "Rate Las Vegas 86926aef ended 4 Oct 2026 — archive only, current false. Do not wire /api/ppa there",
         "Barcelona 1655a7c9 ended 27 Sep 2026 with no scores — unparked; do not cut /api/ppa there",
         "Do not wire the April Las Vegas UUID 92d37566-…",
+        "Ticker rows are stamped with the pin only when the ticker title contains the pin name",
         "Watch Gijón for Den/Tournated — until then scores delayed + draw PDF only",
         "APP Columbus Den 18448 ended 4 Oct. /api/app stays on 18448 until Louisville. Archive current is false. Overland 18453 ended — disarmed, not onLive.",
         "Chongqing has no Den id and no SportsSync id (hunt 2026-10-02: organizer 1645900 still 89/222; sitemap titles 91–471 have no Chongqing; 390/391 are unresolved Taipei/Bangkok links). Do not invent an id. Do not fake LIVE.",
         "When a Chongqing SportsSync id is real, arm connector type sportssync on /calendar. /api/sportssync stays results-only (FT). LIVE is unsafe until a scores row proves an in-progress status.",
         "Louisville Den 18454 is the ready next pin (15–18 Oct, APP_NEXT). /api/app stays Columbus 18448 until APP_LIVE = APP_NEXT. Smoke ?tournamentId=18454. Do not mark LIVE until Den is RUNNING after that cut.",
-        "Virginia Beach 429c7980 is the ready next pin (12–18 Oct, PPA_NEXT). /api/ppa stays Chicago until PPA_LIVE = PPA_NEXT. Smoke ?event=429c7980-e1b9-4800-805f-dfb160781cd9. Do not mark LIVE until the ticker title matches.",
+        "No prepared next PPA pin. Do not invent the week after Virginia Beach.",
         "If new APP on GPA → find Den tournamentId → intake checklist → ship /api/app id",
         "MLP Asia ≠ APP Asia Tour — never merge those chips",
         "Never invent scores; shop stays closed; do not regress APP/Web Push",

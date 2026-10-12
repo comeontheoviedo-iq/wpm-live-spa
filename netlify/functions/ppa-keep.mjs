@@ -25,7 +25,7 @@ function addIsoDay(iso, n) {
   return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
 }
 
-/** Minutes east of UTC for an IANA zone. Chicago in October is -300. */
+/** Minutes east of UTC for an IANA zone. New York in October is -240. Chicago is -300. */
 export function tzOffsetMinutes(tz, instant = new Date()) {
   const d = instant instanceof Date ? instant : new Date(instant);
   if (!tz || Number.isNaN(d.getTime())) return 0;
@@ -46,6 +46,59 @@ export function tzOffsetMinutes(tz, instant = new Date()) {
   } catch {
     return 0;
   }
+}
+
+function wallClockParts(ms, tz) {
+  const fmt = new Intl.DateTimeFormat("en-US", {
+    timeZone: tz,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+  const parts = Object.fromEntries(fmt.formatToParts(new Date(ms)).map((p) => [p.type, p.value]));
+  return {
+    year: parts.year,
+    month: parts.month,
+    day: parts.day,
+    hour: parts.hour === "24" ? "00" : parts.hour,
+    minute: parts.minute,
+    second: parts.second,
+  };
+}
+
+/**
+ * Ticker plannedStart is venue wall time with a Z suffix.
+ * "8:00 AM EDT" is stored as 2026-10-12T08:00:00Z, which is 12:00 UTC, not 08:00 UTC.
+ * "2:00 PM CDT" was stored as 2026-10-07T14:00:00Z, which is 19:00 UTC.
+ * Returns a real UTC instant for sorting, countdowns, and the 48h keep window.
+ * Day bucketing stays on ppaLocalDayPrefix — an evening wall clock can be the next UTC date.
+ * Empty when the feed has no start, or when the zone conversion does not round-trip.
+ */
+export function ppaWallInstant(plannedStart, tz) {
+  const s = String(plannedStart || "").trim();
+  const m = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?/.exec(s);
+  if (!m || !tz) return "";
+  const guess = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +(m[6] || 0));
+  let offset = tzOffsetMinutes(tz, new Date(guess));
+  let utc = guess - offset * 60000;
+  const offset2 = tzOffsetMinutes(tz, new Date(utc));
+  if (offset2 !== offset) utc = guess - offset2 * 60000;
+  const wall = wallClockParts(utc, tz);
+  if (
+    wall.year !== m[1] ||
+    wall.month !== m[2] ||
+    wall.day !== m[3] ||
+    wall.hour !== m[4] ||
+    wall.minute !== m[5] ||
+    wall.second !== String(m[6] || "00").padStart(2, "0")
+  ) {
+    return "";
+  }
+  return new Date(utc).toISOString();
 }
 
 /**
@@ -112,6 +165,59 @@ export function mergePpaDateKey(prev, incoming) {
   if (fromStart && !isPpaTbaDate(fromStart)) return fromStart;
   if (isPpaTbaDate(fromPrev)) return "9999-12-31";
   return fromStart || fromPrev || "";
+}
+
+/** Main draw plus qualifier rows. Same id keeps the row that has a real day. */
+export function ppaScoreRows(scores) {
+  const main = Array.isArray(scores?.matches) ? scores.matches : [];
+  const qual = Array.isArray(scores?.qualifier?.matches) ? scores.qualifier.matches : [];
+  const byId = new Map();
+  for (const m of [...main, ...qual]) {
+    if (!m || m.id == null || m.id === "") continue;
+    const prev = byId.get(m.id);
+    if (!prev) {
+      byId.set(m.id, m);
+      continue;
+    }
+    const prevTba = isPpaTbaDate(prev.dateKey);
+    const nextTba = isPpaTbaDate(m.dateKey);
+    if (prevTba && !nextTba) byId.set(m.id, m);
+  }
+  return [...byId.values()];
+}
+
+function namedScoreTeams(prev) {
+  const teams = Array.isArray(prev?.teams) ? prev.teams : [];
+  const named = teams.some((t) =>
+    (t?.players || []).some((p) => String(typeof p === "string" ? p : p?.name || "").trim())
+  );
+  return named ? teams : null;
+}
+
+/**
+ * Ticker rows belong to the ticker tournament.
+ * When the title does not match the pin, leave the scores draw alone —
+ * never stamp those rows with the pinned event.
+ * Smoke of a different event still ignores ticker ids missing from that draw.
+ * Scores player names win over ticker abbreviations when both exist.
+ */
+export function applyPpaTickerRows(byId, tickerMatches, { aligned = false, smoke = false } = {}) {
+  const out = byId && typeof byId === "object" ? byId : {};
+  if (!aligned) return out;
+  for (const m of tickerMatches || []) {
+    if (!m || m.id == null || m.id === "") continue;
+    if (smoke && !out[m.id]) continue;
+    const prev = out[m.id] || {};
+    const teams = namedScoreTeams(prev) || m.teams;
+    out[m.id] = {
+      ...prev,
+      ...m,
+      teams,
+      dateKey: mergePpaDateKey(prev, m),
+      tickerLive: ppaTickerLive(m.status),
+    };
+  }
+  return out;
 }
 
 /**

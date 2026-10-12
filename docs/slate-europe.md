@@ -2,7 +2,7 @@
 
 Gijón has **no working live score path**. Barcelona’s window **ended 27 Sep 2026 with no scores** and is **unparked** — do not cut `/api/ppa` to it. Shop stays Coming soon. **Never invent scores. Never fake LIVE.**
 
-`/api/ppa` is **Veolia Chicago Cup** (`203e1164-b4f9-47e9-bacf-ff81f8748025`), Life Time North Shore Sport & Racquetball, Chicago, IL, `America/Chicago`, 5–11 Oct 2026. Not Rate Las Vegas `86926aef-…` (finished 4 Oct, archive only). Not the April Las Vegas UUID `92d37566-…`. Not Mesa `62c01642-…`.
+`/api/ppa` is **Mojo Energy Pouches Virginia Beach Open** (`429c7980-e1b9-4800-805f-dfb160781cd9`), Pickleball Virginia Beach, Virginia Beach, VA, `America/New_York`, 12–18 Oct 2026. Veolia Chicago Cup `203e1164-…` finished 11 Oct (archive `chicago-cup`, current false). Not Rate Las Vegas `86926aef-…` (finished 4 Oct, archive only). Not the April Las Vegas UUID `92d37566-…`. Not Mesa `62c01642-…`.
 
 ## TPB Gijón 2026
 
@@ -31,7 +31,7 @@ Tour chip is **TOP Pickleball (`tpb`)**, not APP Den. Powered-by-APP is sponsors
 | Scores | Official scores API returned **0** matches |
 | Live board | **Do not** point `/api/ppa` here |
 
-The ticker moved to Veolia Chicago Cup. Radar must not raise a cutover to Barcelona or back to Rate Las Vegas.
+The ticker moved to Mojo Energy Pouches Virginia Beach Open. Radar must not raise a cutover to Barcelona, back to Veolia Chicago Cup, or back to Rate Las Vegas.
 
 ## Radar honesty
 
