@@ -17,8 +17,8 @@ import {
 } from "../netlify/functions/rta-map.mjs";
 
 assert.equal(APP_LIVE.eventId, "18448");
-assert.equal(PPA_LIVE.eventId, "203e1164-b4f9-47e9-bacf-ff81f8748025");
-assert.equal(PPA_LIVE.name, "Veolia Chicago Cup");
+assert.equal(PPA_LIVE.eventId, "429c7980-e1b9-4800-805f-dfb160781cd9");
+assert.equal(PPA_LIVE.name, "Mojo Energy Pouches Virginia Beach Open");
 assert.equal(FARNHAM.tour, "rta");
 assert.equal(FARNHAM.tz, "Europe/London");
 assert.match(FARNHAM.venue, /Hurlands/);
@@ -302,17 +302,17 @@ assert.equal(md.segments.includes("consolation"), false);
 const ws = categories.find((c) => c.id === 34474);
 assert.deepEqual(ws.segments, []);
 
-const js = fs.readFileSync("js/wpm-20261007a.js", "utf8");
-const siteJs = fs.readFileSync("site/js/wpm-20261007a.js", "utf8");
+const js = fs.readFileSync("js/wpm-20261012a.js", "utf8");
+const siteJs = fs.readFileSync("site/js/wpm-20261012a.js", "utf8");
 assert.equal(siteJs, js);
 assert.ok(js.includes('tour: "rta"') || js.includes('tour:"rta"') || js.includes("tour === \"rta\""));
 assert.ok(js.includes("/api/rta"));
 assert.ok(js.includes('m.tour !== "rta"'));
 assert.ok(js.includes("RTA2000"));
 assert.equal(js.includes("PickleLive"), false);
-assert.ok(fs.readFileSync("site/index.html", "utf8").includes("wpm-20261007a.js"));
+assert.ok(fs.readFileSync("site/index.html", "utf8").includes("wpm-20261012a.js"));
 assert.ok(fs.readFileSync("netlify/functions/app.mts", "utf8").includes("18448"));
 assert.ok(fs.readFileSync("netlify/functions/ppa.mts", "utf8").includes("PPA_LIVE"));
 assert.equal(fs.readFileSync("netlify/functions/slate-events.mjs", "utf8").includes("86926aef-0566-4fbb-87cf-a48068a9f1c6"), true);
 
-console.log("ok rta farnham · own tour · game scores only · unplayed after end not NEXT · Chicago live");
+console.log("ok rta farnham · own tour · game scores only · unplayed after end not NEXT · Virginia Beach live");
