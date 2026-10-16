@@ -2,7 +2,8 @@ import type { Config, Context } from "@netlify/functions";
 import { getStore } from "@netlify/blobs";
 import {
   SLATE,
-  APP_LIVE,
+  APP_COLUMBUS,
+  APP_LOUISVILLE,
   ENDED_APP,
   ENDED_PPA,
   PARKED_PPA,
@@ -32,12 +33,13 @@ const GPA = "https://prneedhqinudasngkqqi.supabase.co/rest/v1";
 const KNOWN = {
   app18448: {
     type: "app",
-    denTournamentId: APP_LIVE.eventId,
-    scorePath: APP_LIVE.scorePath,
-    timezone: APP_LIVE.tz,
-    name: APP_LIVE.shortName,
-    venue: APP_LIVE.venue,
-    live: true,
+    denTournamentId: APP_COLUMBUS.eventId,
+    scorePath: null,
+    timezone: APP_COLUMBUS.tz,
+    name: APP_COLUMBUS.shortName,
+    venue: APP_COLUMBUS.venue,
+    live: false,
+    ended: true,
   },
   app18453: {
     type: "app",
@@ -57,15 +59,14 @@ const KNOWN = {
   },
   app18454: {
     type: "app",
-    denTournamentId: "18454",
-    scorePath: "/api/app",
-    timezone: "America/New_York",
-    name: "Humana APP Louisville Open",
-    venue: "Kentucky International Convention Center, Louisville, KY",
-    start: "2026-10-15",
-    end: "2026-10-18",
-    live: false,
-    nextPin: true,
+    denTournamentId: APP_LOUISVILLE.eventId,
+    scorePath: APP_LOUISVILLE.scorePath,
+    timezone: APP_LOUISVILLE.tz,
+    name: APP_LOUISVILLE.shortName,
+    venue: APP_LOUISVILLE.venue,
+    start: APP_LOUISVILLE.start,
+    end: APP_LOUISVILLE.end,
+    live: true,
   },
   ppaVirginiaBeach: {
     type: "ppa",
@@ -290,6 +291,7 @@ function guessTour(host: string, name: string): string {
 function mergeCalendar(gpaRows: any[], armed: ArmedEvent[]) {
   const byId: Record<string, ArmedEvent> = {};
   for (const a of armed) byId[a.id] = a;
+  const consumedArmed = new Set<string>();
 
   const today = new Date().toISOString().slice(0, 10);
   const events = (gpaRows || []).map((e: any) => {
@@ -297,7 +299,13 @@ function mergeCalendar(gpaRows: any[], armed: ArmedEvent[]) {
     let end = String(e.end_date || start).slice(0, 10);
     const name = e.name || "";
     const id = eventId(name, start);
-    const armedRow = byId[id];
+    let armedRow = byId[id];
+    if (!armedRow) {
+      armedRow = armed.find(
+        (a) => a && a.tour === "app" && (a.onLive || a.status === "live-path") && matchesSlateName(name, a.name)
+      );
+    }
+    if (armedRow?.id) consumedArmed.add(armedRow.id);
     let venue = e.venue || e.location || "";
     const host = e.host || "";
     const tour = guessTour(host, name);
@@ -319,18 +327,29 @@ function mergeCalendar(gpaRows: any[], armed: ArmedEvent[]) {
       // Soft hints. Columbus is code-armed above. Overland is ended. Chongqing has no Den id.
       if (/Overland Park/i.test(name) && tour === "app") {
         note =
-          "Ended 20 Sep 2026. Den 18453 is disarmed (not onLive). Live APP is Columbus Open 18448.";
+          "Ended 20 Sep 2026. Den 18453 is disarmed (not onLive). Live APP is Humana APP Louisville Open 18454.";
         status = "ended";
         onLive = false;
         connector = null;
         timezone = timezone || ENDED_APP.overland.timezone;
       } else if (/Louisville/i.test(name) && tour === "app") {
-        note = LOUISVILLE.note;
         timezone = timezone || LOUISVILLE.timezone;
         if (!venue || /^usa$/i.test(venue)) venue = LOUISVILLE.venue;
-        status = "results-only";
-        onLive = false;
-        connector = null;
+        if (LOUISVILLE.onLive) {
+          status = "live-path";
+          onLive = true;
+          note = "";
+          connector = {
+            type: "app",
+            denTournamentId: LOUISVILLE.denTournamentId,
+            scorePath: "/api/app",
+          };
+        } else {
+          note = LOUISVILLE.note;
+          status = "results-only";
+          onLive = false;
+          connector = null;
+        }
       } else if (/Detroit/i.test(name) && tour === "app") {
         note = "Known Den id 18442 (past) — Den Live brackets verified";
       } else if (/Sendai/i.test(name)) {
@@ -395,7 +414,7 @@ function mergeCalendar(gpaRows: any[], armed: ArmedEvent[]) {
   // Armed rows that no longer appear on GPA slate still surface
   const gpaIds = new Set(events.map((e: any) => e.id));
   for (const a of armed) {
-    if (gpaIds.has(a.id)) continue;
+    if (gpaIds.has(a.id) || consumedArmed.has(a.id)) continue;
     events.push({
       id: a.id,
       name: a.name,

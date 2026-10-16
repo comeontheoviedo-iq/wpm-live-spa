@@ -3,7 +3,9 @@ import { rosterText, tagsFor } from "./follow-tags.mjs";
 import { bracketIndexEntry, discFromAppBracket, isKnockoutBracket, polishAppRound } from "./app-rounds.mjs";
 import { addDays, denListedScore, denUnscoredNote, keepAppMatch, matchBoardDate, matchHasClock, ymdInTz as ymdInTzShared } from "./app-dates.mjs";
 import {
+  APP_COLUMBUS,
   APP_LIVE,
+  APP_LOUISVILLE,
   APP_NEXT,
   ENDED_APP,
   applyAppCalendarCut,
@@ -13,12 +15,12 @@ import {
   isDenRunningBracket,
   isEndedAppDenId,
   isPreparedNextDenId,
+  selectAppLive,
 } from "./slate-events.mjs";
 import { getStore } from "@netlify/blobs";
 
 /** APP (Association of Pickleball Professionals) via Den Live proxies. */
 const DEN = "https://denlive.pickleballden.com";
-const FALLBACK_ID = APP_LIVE.eventId; // APP Columbus Open presented by The James
 const UA = { "User-Agent": "WPM-LIVE/1.0", Accept: "application/json" };
 const BLOB_STORE = "wpm-app";
 const DESK_STORE = "wpm-desk";
@@ -28,10 +30,15 @@ const PROFILES: Record<
   string,
   { name: string; venue: string; tz: string }
 > = {
-  [APP_LIVE.eventId]: {
-    name: APP_LIVE.name,
-    venue: APP_LIVE.venue,
-    tz: APP_LIVE.tz,
+  [APP_LOUISVILLE.eventId]: {
+    name: APP_LOUISVILLE.name,
+    venue: APP_LOUISVILLE.venue,
+    tz: APP_LOUISVILLE.tz,
+  },
+  [APP_COLUMBUS.eventId]: {
+    name: APP_COLUMBUS.name,
+    venue: APP_COLUMBUS.venue,
+    tz: APP_COLUMBUS.tz,
   },
   [ENDED_APP.overland.denTournamentId]: {
     name: ENDED_APP.overland.name,
@@ -42,11 +49,6 @@ const PROFILES: Record<
     name: "APP Detroit Open",
     venue: "Detroit, MI",
     tz: "America/Detroit",
-  },
-  [APP_NEXT.eventId]: {
-    name: APP_NEXT.name,
-    venue: APP_NEXT.venue,
-    tz: APP_NEXT.tz,
   },
 };
 
@@ -119,8 +121,8 @@ async function readAppConfig(): Promise<ActiveEvent | null> {
       tz?: string;
     } | null;
     const id = String(cfg?.tournamentId || cfg?.denTournamentId || "").replace(/\D/g, "");
-    // Louisville 18454 can sit in blobs ahead of the cut. It is not the pin until APP_LIVE moves.
-    if (!id || isPreparedNextDenId(id)) return null;
+    // Ended Columbus 18448 and a not-yet-started next pin cannot override the live board.
+    if (!id || isPreparedNextDenId(id) || isEndedAppDenId(id)) return null;
     const base = profileFor(id, {
       name: cfg?.name,
       venue: cfg?.venue,
@@ -151,8 +153,8 @@ async function readCalendarArmed(): Promise<ActiveEvent | null> {
     const events = applyAppCalendarCut(raw);
     const appRows = events.filter((e) => {
       const id = String(e?.connector?.denTournamentId || "").replace(/\D/g, "");
-      if (!id || isPreparedNextDenId(id)) return false;
-      return e?.connector?.type === "app";
+      if (!id || isPreparedNextDenId(id) || isEndedAppDenId(id)) return false;
+      return e?.connector?.type === "app" && (e.onLive || e.status === "live-path");
     });
     if (!appRows.length) return null;
 
@@ -176,10 +178,11 @@ async function readCalendarArmed(): Promise<ActiveEvent | null> {
     const best = ranked[0];
     const id = String(best.connector!.denTournamentId!).replace(/\D/g, "");
     if (isEndedAppDenId(id)) return null;
+    const pin = selectAppLive();
     const base = profileFor(id, {
-      name: id === APP_LIVE.eventId ? APP_LIVE.name : best.name,
-      venue: best.venue,
-      timezone: best.timezone,
+      name: id === pin.eventId ? pin.name : best.name,
+      venue: id === pin.eventId ? pin.venue : best.venue,
+      timezone: id === pin.eventId ? pin.tz : best.timezone,
     });
     const rawHadLive = raw.some((e) => {
       const den = String(e?.connector?.denTournamentId || "").replace(/\D/g, "");
@@ -191,28 +194,36 @@ async function readCalendarArmed(): Promise<ActiveEvent | null> {
   }
 }
 
+function withKnownDates(ev: ActiveEvent): ActiveEvent {
+  const pin = [APP_LIVE, APP_LOUISVILLE, APP_COLUMBUS, APP_NEXT].find((p) => String(p.eventId) === String(ev.id));
+  if (!pin) return ev;
+  return { ...ev, startDate: ev.startDate || pin.start, endDate: ev.endDate || pin.end };
+}
+
 /**
  * Resolve active Den tournamentId.
  * Priority: ?tournamentId= → env APP_DEN_TOURNAMENT_ID → Blobs wpm-app active-tournament
- * → Blobs wpm-desk calendar-armed (APP connector, code-seeds Columbus) → fallback 18448.
- * Ended Overland 18453 is ignored on env and blobs so a stale pin cannot keep the live path.
- * Prepared next pin Louisville 18454 is ignored on env and blobs until APP_LIVE = APP_NEXT.
- * Query still accepts 18453 and 18454 for smoke. LIVE only from Den RUNNING statuses.
+ * → Blobs wpm-desk calendar-armed (code-seeds the live pin) → selectAppLive().
+ * Ended Overland 18453 and ended Columbus 18448 are ignored on env and blobs.
+ * A prepared next id is ignored until its venue-local start date. Query still smokes any id.
+ * Coded pin is APP_LIVE.eventId. selectAppLive is date-only and speculative for a future APP_NEXT.
+ * LIVE only from Den RUNNING statuses. Unscored matches stay blank, never 0–0.
  */
 async function resolveActive(req?: Request): Promise<ActiveEvent> {
+  const pin = selectAppLive();
   const q = req ? new URL(req.url).searchParams.get("tournamentId") : null;
   if (q && /^\d+$/.test(q)) {
-    return { ...profileFor(q), source: "query" };
+    return withKnownDates({ ...profileFor(q), source: "query" });
   }
   const envId = envGet("APP_DEN_TOURNAMENT_ID") || envGet("DEN_TOURNAMENT_ID");
   if (envId && /^\d+$/.test(envId.trim()) && !isEndedAppDenId(envId) && !isPreparedNextDenId(envId)) {
-    return { ...profileFor(envId.trim()), source: "env" };
+    return withKnownDates({ ...profileFor(envId.trim()), source: "env" });
   }
   const fromApp = await readAppConfig();
-  if (fromApp && !isEndedAppDenId(fromApp.id) && !isPreparedNextDenId(fromApp.id)) return fromApp;
+  if (fromApp && !isEndedAppDenId(fromApp.id) && !isPreparedNextDenId(fromApp.id)) return withKnownDates(fromApp);
   const fromCal = await readCalendarArmed();
-  if (fromCal && !isEndedAppDenId(fromCal.id) && !isPreparedNextDenId(fromCal.id)) return fromCal;
-  return { ...profileFor(FALLBACK_ID), source: "fallback" };
+  if (fromCal && !isEndedAppDenId(fromCal.id) && !isPreparedNextDenId(fromCal.id)) return withKnownDates(fromCal);
+  return withKnownDates({ ...profileFor(pin.eventId), source: "fallback" });
 }
 
 /** Align with Den Live isRunningMatch — never clock-promote. Pending is not LIVE. */
@@ -509,8 +520,8 @@ export default async (req: Request, _context?: Context) => {
     ]);
     const denName = brRes?.tournament?.name;
     if (denName) COMP = denName;
-    const venueName = infoRes?.info?.venue?.name || VENUE;
-    if (venueName) VENUE = venueName;
+    const denVenue = infoRes?.info?.venue?.name;
+    if (denVenue) VENUE = denVenue;
     // refresh active snapshot used by toMatch
     active.name = COMP;
     active.venue = VENUE;
@@ -522,7 +533,7 @@ export default async (req: Request, _context?: Context) => {
     const eventPayload = {
       id: TOURNAMENT_ID,
       name: COMP,
-      venue: venueName,
+      venue: VENUE,
       tz: TZ,
       startDate: active.startDate,
       endDate: active.endDate,
