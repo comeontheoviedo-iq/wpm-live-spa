@@ -128,7 +128,8 @@ assert.equal(liveColumbus.id, APP_LIVE.calendarId);
 assert.equal(liveColumbus.onLive, true);
 assert.equal(liveColumbus.status, "live-path");
 assert.equal(liveColumbus.note, "");
-assert.equal(liveColumbus.connector.denTournamentId, "18448");
+assert.equal(liveColumbus.connector.denTournamentId, "18454");
+assert.equal(liveColumbus.venue, "Kentucky International Convention Center, Louisville, KY");
 assert.equal(JSON.stringify(liveColumbus).includes("8057937"), false);
 
 const chongqing = toReaderEvent({
@@ -143,8 +144,8 @@ assert.equal(chongqing.note, "Results will appear when available");
 assert.equal(chongqing.onLive, false);
 assert.equal(JSON.stringify(chongqing).includes("18448"), false);
 
-const js = fs.readFileSync("js/wpm-20261012a.js", "utf8");
-const siteJs = fs.readFileSync("site/js/wpm-20261012a.js", "utf8");
+const js = fs.readFileSync("js/wpm-20261016a.js", "utf8");
+const siteJs = fs.readFileSync("site/js/wpm-20261016a.js", "utf8");
 assert.equal(siteJs, js);
 assert.equal(js.includes("Barcelona window ended"), false);
 assert.equal(js.includes("Rate Las Vegas Open is /api/ppa"), false);

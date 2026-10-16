@@ -19,7 +19,7 @@ import {
 } from "../netlify/functions/finished-archive.mjs";
 import { APP_LIVE, PPA_LIVE } from "../netlify/functions/slate-events.mjs";
 
-const js = fs.readFileSync("js/wpm-20261012a.js", "utf8");
+const js = fs.readFileSync("js/wpm-20261016a.js", "utf8");
 const start = js.indexOf("const TOUR_IDS");
 const end = js.indexOf("function migrateFollows");
 const context = {};
@@ -91,7 +91,14 @@ assert.equal(cupDone.name, "Veolia Chicago Cup");
 assert.equal(cupDone.tz, "America/Chicago");
 assert.equal(cupDone.end, "2026-10-11");
 assert.equal(cupDone.current, false);
-assert.equal(APP_LIVE.eventId, "18448");
+assert.equal(APP_LIVE.eventId, "18454");
+assert.equal(APP_LIVE.name, "Humana APP Louisville Open");
+assert.equal(APP_LIVE.tz, "America/New_York");
+const louPin = CURRENT_PINS.find((e) => e.id === "louisville");
+assert.equal(louPin.denTournamentId, "18454");
+assert.equal(louPin.current, true);
+assert.equal(louPin.end, "2026-10-18");
+assert.equal(louPin.venue, APP_LIVE.venue);
 assert.equal(PPA_LIVE.eventId, "429c7980-e1b9-4800-805f-dfb160781cd9");
 assert.equal(PPA_LIVE.name, "Mojo Energy Pouches Virginia Beach Open");
 assert.equal(PPA_LIVE.tz, "America/New_York");

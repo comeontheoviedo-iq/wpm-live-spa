@@ -68,12 +68,9 @@ export const PPA_LAS_VEGAS = {
 };
 
 /**
- * Live /api/app Den tournament.
- * GPA calendar row is the short name "APP Columbus Open" (id below).
- * Den Live title is the presented-by name. Brackets may be Pending with 0 matches —
- * that is not LIVE and not a phantom 0–0.
+ * Columbus ended 4 Oct 2026. Finished-tour archive only (current false).
+ * Not the /api/app pin. ?tournamentId=18448 still smokes the old draw.
  */
-/** Columbus. Still the /api/app pin so the finished week can be read. Archive current is false. */
 export const APP_COLUMBUS = {
   eventId: "18448",
   name: "APP Columbus Open presented by The James",
@@ -85,15 +82,16 @@ export const APP_COLUMBUS = {
   scorePath: "/api/app",
   /** eventId("APP Columbus Open", "2026-10-01") — gpa:app columbus open / 2026-10-01 */
   calendarId: "gpa:app%20columbus%20open:2026-10-01",
+  ended: true,
 };
 
 /**
- * Ready next pin. Humana APP Louisville, Den 18454, 15–18 Oct 2026.
- * Not selected by /api/app while APP_LIVE is Columbus.
- * Louisville week flip is one binding: `export const APP_LIVE = APP_NEXT`.
- * Smoke before that with /api/app?tournamentId=18454. Do not mark LIVE until Den is RUNNING.
+ * Humana APP Louisville Open. Den 18454, 15–18 Oct 2026.
+ * Venue Kentucky International Convention Center. Timezone America/New_York.
+ * LIVE still requires a Den RUNNING / IN_PROGRESS / STARTED / PLAYING row.
+ * Pending brackets and unscored matches are not a 0–0.
  */
-export const APP_NEXT = {
+export const APP_LOUISVILLE = {
   eventId: "18454",
   name: "Humana APP Louisville Open",
   shortName: "Humana APP Louisville Open",
@@ -103,18 +101,76 @@ export const APP_NEXT = {
   end: "2026-10-18",
   scorePath: "/api/app",
   calendarId: "gpa:humana%20app%20louisville%20open:2026-10-15",
-  ready: true,
-  live: false,
 };
 
-/** Live /api/app Den tournament. Louisville week: change this to APP_NEXT. */
-export const APP_LIVE = APP_COLUMBUS;
+/**
+ * Chronological Den pins. selectAppLive picks the latest one whose start
+ * date has arrived in that pin's venue timezone. Add the next stop here
+ * (and point APP_NEXT at it) so the board moves on the start date.
+ */
+export const APP_PINS = [APP_COLUMBUS, APP_LOUISVILLE];
 
-/** True for Louisville 18454 until that id is the live pin. Query smoke still allowed. */
-export function isPreparedNextDenId(id) {
+/**
+ * No week after Louisville is seeded. Same object as the live pin, matching
+ * the PPA binding (`PPA_LIVE = PPA_NEXT`). A later distinct APP_NEXT is
+ * appended by selectAppLive and flips on its venue-local start date.
+ */
+export const APP_NEXT = APP_LOUISVILLE;
+
+/** Coded live pin. Request paths call selectAppLive(now) so a warm worker still flips. */
+export const APP_LIVE = APP_LOUISVILLE;
+
+/** Venue-local calendar day. Speculative date helper for the pin flip — not a score. */
+export function ymdInVenueTz(tz, now = new Date()) {
+  const zone = tz || "UTC";
+  try {
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: zone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(now);
+  } catch {
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: "UTC",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(now);
+  }
+}
+
+/**
+ * Live APP pin for an instant.
+ * The latest pin in `pins` whose venue-local start date has arrived.
+ * Before the first start, the earliest pin is returned.
+ * After the current pin's end date, it stays until a later pin's start arrives
+ * so an ended week is not replaced by a silent fallback to Columbus.
+ * Speculative: dates only. Does not fetch Den and does not mark a match LIVE.
+ */
+export function selectAppLive(now = new Date(), pins = APP_PINS) {
+  const list = [...(pins || [])].filter((p) => p && p.eventId && p.start);
+  if (APP_NEXT && !list.some((p) => String(p.eventId) === String(APP_NEXT.eventId))) list.push(APP_NEXT);
+  if (!list.length) return APP_LOUISVILLE;
+  let chosen = null;
+  for (const pin of list) {
+    const today = ymdInVenueTz(pin.tz, now);
+    if (today >= pin.start) chosen = pin;
+  }
+  return chosen || list[0];
+}
+
+/** True for a known Den id whose venue-local start date has not arrived. Query smoke still allowed. */
+export function isPreparedNextDenId(id, now = new Date()) {
   const s = String(id || "").replace(/\D/g, "");
-  if (!s || s === String(APP_LIVE.eventId)) return false;
-  return s === String(APP_NEXT.eventId);
+  if (!s) return false;
+  const live = selectAppLive(now);
+  if (s === String(live.eventId)) return false;
+  const list = [...APP_PINS];
+  if (APP_NEXT && !list.some((p) => String(p.eventId) === String(APP_NEXT.eventId))) list.push(APP_NEXT);
+  const pin = list.find((p) => String(p.eventId) === s);
+  if (!pin || !pin.start) return false;
+  return ymdInVenueTz(pin.tz, now) < pin.start;
 }
 
 /** Overland ended 20 Sep 2026. Disarmed — not onLive, not the /api/app fallback. */
@@ -131,9 +187,15 @@ export const ENDED_APP = {
   },
 };
 
-export function isEndedAppDenId(id) {
+export function isEndedAppDenId(id, now = new Date()) {
   const s = String(id || "").replace(/\D/g, "");
-  return s === ENDED_APP.overland.denTournamentId;
+  if (!s) return false;
+  if (s === ENDED_APP.overland.denTournamentId) return true;
+  const live = selectAppLive(now);
+  if (s === String(live.eventId)) return false;
+  const pin = APP_PINS.find((p) => String(p.eventId) === s);
+  if (!pin || !pin.end) return false;
+  return ymdInVenueTz(pin.tz, now) > pin.end;
 }
 
 export function isEndedOverlandRow(row) {
@@ -143,73 +205,88 @@ export function isEndedOverlandRow(row) {
   return /overland park/i.test(String(row.name || ""));
 }
 
-/** Code-armed calendar row. GPA short name so the id matches the slate. */
-export function columbusArmedRow() {
+/** Code-armed calendar row for whichever APP pin is live at `now`. */
+export function appArmedRow(now = new Date()) {
+  const pin = selectAppLive(now);
   return {
-    id: APP_LIVE.calendarId,
-    name: APP_LIVE.shortName,
-    venue: APP_LIVE.venue,
-    timezone: APP_LIVE.tz,
+    id: pin.calendarId,
+    name: pin.shortName,
+    venue: pin.venue,
+    timezone: pin.tz,
     tour: "app",
     host: "APP",
     tier: "",
-    start: APP_LIVE.start,
-    end: APP_LIVE.end,
+    start: pin.start,
+    end: pin.end,
     connector: {
       type: "app",
-      denTournamentId: APP_LIVE.eventId,
-      scorePath: APP_LIVE.scorePath,
+      denTournamentId: pin.eventId,
+      scorePath: pin.scorePath,
     },
     status: "live-path",
     onLive: true,
     note: "",
-    armedAt: "2026-09-30T00:00:00.000Z",
-    gpaName: APP_LIVE.shortName,
-    gpaStart: APP_LIVE.start,
+    armedAt: "2026-10-15T00:00:00.000Z",
+    gpaName: pin.shortName,
+    gpaStart: pin.start,
   };
 }
 
+/** Older name from the Columbus week. Arms the current APP pin. */
+export function columbusArmedRow(now) {
+  return appArmedRow(now);
+}
+
+function isEndedColumbusRow(row, now = new Date()) {
+  if (!row || typeof row !== "object") return false;
+  if (String(selectAppLive(now).eventId) === APP_COLUMBUS.eventId) return false;
+  const den = String(row?.connector?.denTournamentId || row?.denTournamentId || "").replace(/\D/g, "");
+  if (den === APP_COLUMBUS.eventId) return true;
+  return /columbus open/i.test(String(row.name || ""));
+}
+
 /**
- * Arm Columbus 18448. Drop Overland 18453 so a stale blob cannot keep it onLive.
- * Does not invent a Den id for Chongqing or any other APP Asia row.
+ * Arm the live APP pin. Drop Overland 18453 and ended Columbus 18448 so a
+ * stale blob cannot keep an ended week onLive. Does not invent a Den id
+ * for Chongqing or any other APP Asia row.
  */
-export function applyAppCalendarCut(events) {
+export function applyAppCalendarCut(events, now = new Date()) {
+  const pin = selectAppLive(now);
   const kept = [];
-  let columbus = null;
+  let armed = null;
   for (const e of events || []) {
-    if (isEndedOverlandRow(e)) continue;
+    if (isEndedOverlandRow(e) || isEndedColumbusRow(e, now)) continue;
     const den = String(e?.connector?.denTournamentId || "").replace(/\D/g, "");
-    const isColumbus =
-      e?.id === APP_LIVE.calendarId ||
-      (den === APP_LIVE.eventId && /columbus/i.test(String(e?.name || "")));
-    if (isColumbus) {
-      const seed = columbusArmedRow();
-      columbus = {
+    if (isEndedAppDenId(den, now)) continue;
+    const isLive = e?.id === pin.calendarId || den === String(pin.eventId);
+    if (isLive) {
+      const seed = appArmedRow(now);
+      armed = {
         ...seed,
         ...e,
-        name: APP_LIVE.shortName,
-        venue: APP_LIVE.venue,
-        timezone: APP_LIVE.tz,
-        start: APP_LIVE.start,
-        end: APP_LIVE.end,
+        name: pin.shortName,
+        venue: pin.venue,
+        timezone: pin.tz,
+        start: pin.start,
+        end: pin.end,
         tour: "app",
         host: e.host || "APP",
         connector: {
           ...seed.connector,
           ...(e.connector || {}),
           type: "app",
-          denTournamentId: APP_LIVE.eventId,
-          scorePath: APP_LIVE.scorePath,
+          denTournamentId: pin.eventId,
+          scorePath: pin.scorePath,
         },
         status: "live-path",
         onLive: true,
-        id: APP_LIVE.calendarId,
+        id: pin.calendarId,
       };
       continue;
     }
     kept.push(e);
   }
-  kept.push(columbus || columbusArmedRow());
+  kept.push(armed || appArmedRow(now));
   return kept;
 }
 
@@ -281,25 +358,24 @@ export const BARCELONA = {
 export const MLP_ASIA_NOTE =
   "MLP Asia \u2260 APP. MLP Asia is the PPA/MLP franchise. APP Asia Tour (Chongqing / Taipei / Bangkok / HCMC / India) stays on the APP Asia chip \u2014 never chip MLP Asia as APP.";
 
-/** Mid-Oct APP Pro. Den 18454 is the ready next pin. Columbus 18448 stays /api/app. */
+/** Live APP week. Den 18454. Columbus 18448 is archive-only. */
 export const LOUISVILLE = {
   id: "slate:app-louisville-2026",
-  name: APP_NEXT.name,
-  venue: APP_NEXT.venue,
-  timezone: APP_NEXT.tz,
+  name: APP_LOUISVILLE.name,
+  venue: APP_LOUISVILLE.venue,
+  timezone: APP_LOUISVILLE.tz,
   tour: "app",
   host: "APP",
   tier: "",
-  start: APP_NEXT.start,
-  end: APP_NEXT.end,
-  status: "results-only",
-  onLive: false,
-  nextPin: true,
-  denTournamentId: APP_NEXT.eventId,
+  start: APP_LOUISVILLE.start,
+  end: APP_LOUISVILLE.end,
+  status: "live-path",
+  onLive: true,
+  denTournamentId: APP_LOUISVILLE.eventId,
   officialUrl: "https://theapp.global/tour-schedule/2026-app-louisville",
   note:
-    "Ready next pin Den 18454, 15–18 Oct, Kentucky International Convention Center, America/New_York. Smoke /api/app?tournamentId=18454. Not the live board — Columbus Den 18448 stays /api/app. Registration external-tournament/3523724 is not the scoring id. Flip by setting APP_LIVE = APP_NEXT. Do not mark LIVE until Den status is RUNNING after that cut.",
-  connector: { type: "none", denTournamentId: APP_NEXT.eventId, nextPin: true },
+    "Live APP pin Den 18454, 15–18 Oct 2026, Kentucky International Convention Center, America/New_York. /api/app with no params uses this id. Columbus Den 18448 is archive-only. Registration external-tournament/3523724 is not the scoring id. Do not mark a match LIVE until Den status is RUNNING / IN_PROGRESS / STARTED / PLAYING. A later APP_NEXT flips on its venue-local start date via selectAppLive.",
+  connector: { type: "app", denTournamentId: APP_LOUISVILLE.eventId, scorePath: "/api/app" },
 };
 
 /** Next APP Pro after Louisville. No published Den scoring id. */
@@ -438,7 +514,7 @@ export const MLP_ASIA_SEASON = {
 
 /**
  * RTA2000 Farnham. Tournated 8510. Own tour — not an APP or PPA chip.
- * /api/app stays Columbus Den 18448 until Louisville. Live PPA is Virginia Beach.
+ * Live APP is Humana APP Louisville Open Den 18454. Live PPA is Virginia Beach.
  */
 export const FARNHAM = {
   id: "slate:rta-farnham-2026",
@@ -455,7 +531,7 @@ export const FARNHAM = {
   officialUrl:
     "https://play.rtapickleballtour.com/tournament/8510/draws?category=34477&segment=MD",
   note:
-    "Tournated tournament 8510 at Hurlands. Window ended 4 Oct 2026. /api/rta reads drawsDetail. Unplayed rows after the window are not NEXT. Not APP and not PPA. Do not cut /api/app off Columbus Den 18448. Do not cut /api/ppa off Mojo Energy Pouches Virginia Beach Open 429c7980-e1b9-4800-805f-dfb160781cd9.",
+    "Tournated tournament 8510 at Hurlands. Window ended 4 Oct 2026. /api/rta reads drawsDetail. Unplayed rows after the window are not NEXT. Not APP and not PPA. Do not cut /api/app off Humana APP Louisville Open Den 18454. Do not cut /api/ppa off Mojo Energy Pouches Virginia Beach Open 429c7980-e1b9-4800-805f-dfb160781cd9.",
   connector: { type: "url", scoreUrl: "/api/rta" },
 };
 
@@ -831,7 +907,6 @@ export function staticWatchEvents() {
       note: BARCELONA.note,
     },
     watchFromSeed(CHONGQING_SLATE),
-    watchFromSeed(LOUISVILLE),
     watchFromSeed(BANGKOK),
     watchFromSeed(ARIZONA_APP),
     watchFromSeed(TAIPEI),

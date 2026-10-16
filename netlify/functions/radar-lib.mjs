@@ -4,7 +4,8 @@
  */
 
 import {
-  APP_LIVE,
+  APP_COLUMBUS,
+  APP_LOUISVILLE,
   ENDED_APP,
   PPA_LIVE,
   PPA_LIVE_EVENT_ID,
@@ -18,6 +19,7 @@ import {
   isAppAsiaName,
   matchesSlateName,
   ppaTickerTitleAligned,
+  selectAppLive,
   staticWatchEvents,
 } from "./slate-events.mjs";
 import {
@@ -45,13 +47,16 @@ export const WIRED = {
     tz: PPA_LIVE.tz,
     scorePath: "/api/ppa",
   },
-  app: {
-    tour: "app",
-    eventId: APP_LIVE.eventId,
-    name: APP_LIVE.name,
-    venue: APP_LIVE.venue,
-    tz: APP_LIVE.tz,
-    scorePath: APP_LIVE.scorePath,
+  get app() {
+    const pin = selectAppLive();
+    return {
+      tour: "app",
+      eventId: pin.eventId,
+      name: pin.name,
+      venue: pin.venue,
+      tz: pin.tz,
+      scorePath: pin.scorePath,
+    };
   },
   worldcup: {
     tour: "wc",
@@ -63,8 +68,13 @@ export const WIRED = {
   },
 };
 
-/** Wired live id first. Overland 18453 stays known so radar can see it; it is ended, not live. */
-export const KNOWN_APP_DEN_IDS = [APP_LIVE.eventId, ENDED_APP.overland.denTournamentId, "18442", "18454"];
+/** Live Louisville first. Columbus 18448 and Overland 18453 stay known so radar can see them; both are ended. */
+export const KNOWN_APP_DEN_IDS = [
+  APP_LOUISVILLE.eventId,
+  APP_COLUMBUS.eventId,
+  ENDED_APP.overland.denTournamentId,
+  "18442",
+];
 
 /** Through late October from a 2 Oct desk day: Louisville and the GPA Bangkok row. Later stops stay on static watches. */
 export const HORIZON_DAYS = 28;
@@ -130,7 +140,11 @@ async function probeGpa(today) {
     let end = gpaEnd;
     let venue = row.venue || row.location || "";
     const isApp = host.toUpperCase() === "APP" || /\bAPP\b/i.test(name);
-    const isWiredApp = isApp && /columbus open/i.test(name) && !isAppAsiaName(name);
+    const pin = selectAppLive();
+    const isWiredApp =
+      isApp &&
+      !isAppAsiaName(name) &&
+      (matchesSlateName(name, pin.name) || matchesSlateName(name, pin.shortName || ""));
     const isEndedOverland = isApp && /overland park/i.test(name);
     const appAsia = isAppAsiaName(name);
 
@@ -156,8 +170,10 @@ async function probeGpa(today) {
         note =
           "Ended 20 Sep 2026. Den " +
           ENDED_APP.overland.denTournamentId +
-          " disarmed — not onLive. Live APP is Columbus " +
-          WIRED.app.eventId +
+          " disarmed — not onLive. Live APP is " +
+          pin.name +
+          " " +
+          pin.eventId +
           ".";
       } else if (appAsia) {
         // APP Asia stays results-only until a verified id exists. Never fake LIVE.
@@ -173,6 +189,23 @@ async function probeGpa(today) {
         }
         if (seed?.timezone) tz = seed.timezone;
         if (seed?.venue && (!venue || /^usa$/i.test(venue))) venue = seed.venue;
+      } else if (/columbus open/i.test(name)) {
+        board = "results_only";
+        denId = APP_COLUMBUS.eventId;
+        scorePath = null;
+        tz = APP_COLUMBUS.tz;
+        if (!venue || /^usa$/i.test(venue)) venue = APP_COLUMBUS.venue;
+        inn.scorePath = false;
+        inn.timezone = true;
+        inn.status = "fail";
+        note =
+          "Ended 4 Oct 2026. Den " +
+          APP_COLUMBUS.eventId +
+          " is archive-only. Live APP is " +
+          pin.name +
+          " " +
+          pin.eventId +
+          ".";
       } else if (/louisville/i.test(name)) {
         board = "results_only";
         denId = LOUISVILLE.denTournamentId;
@@ -182,7 +215,7 @@ async function probeGpa(today) {
         inn.scorePath = false;
         inn.timezone = true;
         inn.status = "fail";
-        note = LOUISVILLE.note;
+        note = "Humana APP Louisville Open Den 18454 is not the live pin.";
       } else if (/arizona open/i.test(name)) {
         board = "results_only";
         tz = ARIZONA_APP.timezone;
@@ -587,7 +620,7 @@ export async function buildRadarReport(opts = {}) {
   }
 
   for (const e of gpa.events || []) {
-    if (e.tour === "app" && (e.denId === WIRED.app.eventId || /columbus open/i.test(e.name))) continue;
+    if (e.tour === "app" && (e.denId === WIRED.app.eventId || matchesSlateName(e.name, WIRED.app.name))) continue;
     // Slate seed already carries the desk row (Den id, official dates, MLP ≠ APP).
     if (events.some((have) => matchesSlateName(have.name, e.name))) continue;
     events.push(e);
@@ -654,10 +687,10 @@ export async function buildRadarReport(opts = {}) {
         "Do not wire the April Las Vegas UUID 92d37566-…",
         "Ticker rows are stamped with the pin only when the ticker title contains the pin name",
         "Watch Gijón for Den/Tournated — until then scores delayed + draw PDF only",
-        "APP Columbus Den 18448 ended 4 Oct. /api/app stays on 18448 until Louisville. Archive current is false. Overland 18453 ended — disarmed, not onLive.",
+        "APP Columbus Den 18448 ended 4 Oct. Archive columbus, current false. Overland 18453 ended — disarmed, not onLive.",
         "Chongqing has no Den id and no SportsSync id (hunt 2026-10-02: organizer 1645900 still 89/222; sitemap titles 91–471 have no Chongqing; 390/391 are unresolved Taipei/Bangkok links). Do not invent an id. Do not fake LIVE.",
         "When a Chongqing SportsSync id is real, arm connector type sportssync on /calendar. /api/sportssync stays results-only (FT). LIVE is unsafe until a scores row proves an in-progress status.",
-        "Louisville Den 18454 is the ready next pin (15–18 Oct, APP_NEXT). /api/app stays Columbus 18448 until APP_LIVE = APP_NEXT. Smoke ?tournamentId=18454. Do not mark LIVE until Den is RUNNING after that cut.",
+        "Live APP is Humana APP Louisville Open Den 18454 (15–18 Oct, America/New_York). wired.app follows selectAppLive. Do not mark a match LIVE until Den is RUNNING. A later APP_NEXT flips on its venue-local start date.",
         "No prepared next PPA pin. Do not invent the week after Virginia Beach.",
         "If new APP on GPA → find Den tournamentId → intake checklist → ship /api/app id",
         "MLP Asia ≠ APP Asia Tour — never merge those chips",

@@ -131,8 +131,8 @@ export function looksLikeStoredEvent(raw) {
   const s = String(raw || "").trim();
   if (!s || s.startsWith("tour:")) return false;
   if (s.startsWith("slate:") || s.startsWith("ev:") || s.startsWith("gpa:")) return true;
-  if (/^(overland|arizona|gij[oó]n|gijon|columbus|las vegas|barcelona|mesa|chicago cup|virginia beach)$/i.test(s)) return true;
-  if (/\b(overland park|gij[oó]n|arizona open|las vegas open|columbus open|barcelona open|chicago cup|veolia chicago|virginia beach)\b/i.test(s)) return true;
+  if (/^(overland|arizona|gij[oó]n|gijon|columbus|louisville|las vegas|barcelona|mesa|chicago cup|virginia beach)$/i.test(s)) return true;
+  if (/\b(overland park|gij[oó]n|arizona open|las vegas open|columbus open|louisville|barcelona open|chicago cup|veolia chicago|virginia beach)\b/i.test(s)) return true;
   if (/^(APP|PPA|TPB|GPA|MLP)\b/.test(s) && /\b(open|tour|asia)\b/i.test(s)) return true;
   if (/\brta2000\b/i.test(s)) return true;
   if (/\brta\b/i.test(s) && /farnham/i.test(s)) return true;
@@ -155,7 +155,7 @@ export function tourFromEventBlob(raw) {
   if (/\bapp\b/.test(blob) && /arizona/.test(blob) && !/\bppa\b/.test(blob)) return "tour:app";
   if (/arizona|mesa|62c01642|las vegas|86926aef|veolia chicago|chicago cup|203e1164|virginia beach|429c7980|^ev:ppa\b|\bppa\b/.test(blob)) return "tour:ppa";
   if (/^ev:wc\b|world cup/.test(blob)) return "tour:wc";
-  if (/overland|columbus|18448|18453|^ev:app\b|\bapp\b/.test(blob)) return "tour:app";
+  if (/overland|columbus|louisville|18448|18453|18454|^ev:app\b|\bapp\b/.test(blob)) return "tour:app";
   if (/\bnpl\b/.test(blob)) return "tour:npl";
   if (/\bgpa\b|d-joy|djoy/.test(blob)) return "tour:gpa";
   return "";

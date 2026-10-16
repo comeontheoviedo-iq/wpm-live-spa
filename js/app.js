@@ -96,8 +96,8 @@ if ("Notification" in window && Notification.permission === "granted") {
   setTimeout(() => { syncPushSubscription(); }, 2500);
 }
 
-const SAFE_SW = "/sw.js?v=20261012a";
-const SAFE_SW_MARK = "20261012a";
+const SAFE_SW = "/sw.js?v=20261016a";
+const SAFE_SW_MARK = "20261016a";
 const GIJON_DRAW_URL = "https://toppickleballtour.com/wp-content/uploads/2026/09/TOP-PICKLEBALL-TOUR-GIJON-GRUPOS.pdf";
 /** Application-server VAPID public key (safe to embed). Private stays in Netlify env. */
 const VAPID_PUBLIC_KEY = "BEuWn2rcxKeLXPFa3KJzys7rLOtFX8GUZ9ckfFhsqEVO0Y2PE3WfnOivmFJV3EUVCf1c1g31qSiVoNDbcJQO8GQ";
@@ -125,8 +125,8 @@ function looksLikeStoredEvent(raw){
   const s = String(raw || "").trim();
   if (!s || s.indexOf("tour:") === 0) return false;
   if (s.indexOf("slate:") === 0 || s.indexOf("ev:") === 0 || s.indexOf("gpa:") === 0) return true;
-  if (/^(overland|arizona|gij[oó]n|gijon|columbus|las vegas|barcelona|mesa|chicago cup|virginia beach)$/i.test(s)) return true;
-  if (/\b(overland park|gij[oó]n|arizona open|las vegas open|columbus open|barcelona open|chicago cup|veolia chicago|virginia beach)\b/i.test(s)) return true;
+  if (/^(overland|arizona|gij[oó]n|gijon|columbus|louisville|las vegas|barcelona|mesa|chicago cup|virginia beach)$/i.test(s)) return true;
+  if (/\b(overland park|gij[oó]n|arizona open|las vegas open|columbus open|louisville|barcelona open|chicago cup|veolia chicago|virginia beach)\b/i.test(s)) return true;
   if (/^(APP|PPA|TPB|GPA|MLP)\b/.test(s) && /\b(open|tour|asia)\b/i.test(s)) return true;
   if (/\brta2000\b/i.test(s)) return true;
   if (/\brta\b/i.test(s) && /farnham/i.test(s)) return true;
@@ -145,12 +145,12 @@ function tourFromEventBlob(raw){
   if (/\bapp\b/.test(blob) && /arizona/.test(blob) && !/\bppa\b/.test(blob)) return "tour:app";
   if (/arizona|mesa|62c01642|las vegas|86926aef|veolia chicago|chicago cup|203e1164|virginia beach|429c7980|^ev:ppa\b|\bppa\b/.test(blob)) return "tour:ppa";
   if (/^ev:wc\b|world cup/.test(blob)) return "tour:wc";
-  if (/overland|columbus|18448|18453|^ev:app\b|\bapp\b/.test(blob)) return "tour:app";
+  if (/overland|columbus|louisville|18448|18453|18454|^ev:app\b|\bapp\b/.test(blob)) return "tour:app";
   if (/\bnpl\b/.test(blob)) return "tour:npl";
   if (/\bgpa\b|d-joy|djoy/.test(blob)) return "tour:gpa";
   return "";
 }
-/** Player keys pass through. Event keys (ev:app:18448, Overland, Arizona, Gijón) upgrade to a tour or drop. Mirrors follow-tags.mjs. */
+/** Player keys pass through. Event keys (ev:app:18454, Louisville, Columbus, Overland) upgrade to a tour or drop. Mirrors follow-tags.mjs. */
 function normalizeFollowKey(raw){
   const k = String(raw || "").trim();
   if (!k) return "";
@@ -684,7 +684,7 @@ function competition(m){
     const ev = state.appEvent || {};
     const pro = appTier(m) === "pro";
     const name = ev.name || m.comp || "APP";
-    const place = ev.venue || m.venue || "Pickle & Chill, Columbus, OH";
+    const place = ev.venue || m.venue || "Kentucky International Convention Center, Louisville, KY";
     return pro
       ? {id:"app-pro", tour:"app", title:"APP Pro · "+shortEventLabel(name, eventFollowKey(m)), place, rank:1, eventKey: eventFollowKey(m)}
       : {id:"app", tour:"app", title:"APP · "+shortEventLabel(name, eventFollowKey(m)), place, rank:2, eventKey: eventFollowKey(m)};
@@ -1266,6 +1266,7 @@ const ARCHIVE_FALLBACK = [
   {id:"overland", tour:"app", label:"Overland", name:"APP Dillons Overland Park Open", venue:"AdventHealth Sports Park at Bluhawk, Overland Park, KS", tz:"America/Chicago", start:"2026-09-17", end:"2026-09-20", current:false},
   {id:"arizona", tour:"ppa", label:"Arizona", name:"PPA Veolia Arizona Open", venue:"Mesa, AZ", tz:"America/Phoenix", start:"2026-09-14", end:"2026-09-21", current:false},
   {id:"columbus", tour:"app", label:"Columbus", name:"APP Columbus Open presented by The James", venue:"Pickle & Chill, Columbus, OH", tz:"America/New_York", start:"2026-10-01", end:"2026-10-04", current:false},
+  {id:"louisville", tour:"app", label:"Louisville", name:"Humana APP Louisville Open", venue:"Kentucky International Convention Center, Louisville, KY", tz:"America/New_York", start:"2026-10-15", end:"2026-10-18", current:true},
   {id:"las-vegas", tour:"ppa", label:"Las Vegas", name:"PPA Rate Las Vegas Open", venue:"Darling Tennis Center, Las Vegas", tz:"America/Los_Angeles", start:"2026-09-28", end:"2026-10-04", current:false},
   {id:"chicago-cup", tour:"ppa", label:"Chicago", name:"Veolia Chicago Cup", venue:"Life Time North Shore Sport & Racquetball, Chicago, IL", tz:"America/Chicago", start:"2026-10-05", end:"2026-10-11", current:false},
   {id:"virginia-beach", tour:"ppa", label:"Virginia Beach", name:"Mojo Energy Pouches Virginia Beach Open", venue:"Pickleball Virginia Beach, Virginia Beach, VA", tz:"America/New_York", start:"2026-10-12", end:"2026-10-18", current:true}
@@ -1293,8 +1294,9 @@ function appPinFinished(){
   const ev = state.appEvent || {};
   const id = String(ev.id || ev.eventKey || "");
   const today = ymdInTz(new Date(), ev.tz || "America/New_York");
-  if (id && id.indexOf("18448") === -1) return !!(ev.endDate && today > ev.endDate);
-  return today > (ev.endDate || "2026-10-04");
+  if (/18448|columbus/i.test(id)) return today > (ev.endDate || "2026-10-04");
+  const end = ev.endDate || "2026-10-18";
+  return !!(end && today > end);
 }
 function ppaFeedFinished(){
   const rows = (state.matches || []).filter(m => {
@@ -1337,7 +1339,10 @@ function visiblePast(filter){
   });
 }
 function livePinLabel(filter){
-  if (filter === "app-pro" && !appPinFinished()) return "Columbus";
+  if (filter === "app-pro" && !appPinFinished()) {
+    const ev = state.appEvent || {};
+    return shortEventLabel(ev.name || "Humana APP Louisville Open", ev.eventKey || ev.id || "ev:app:18454") || "Louisville";
+  }
   if (filter === "ppa" && !ppaFeedFinished()) {
     const ev = state.ppaEvent || {};
     return shortEventLabel(ev.name || "Mojo Energy Pouches Virginia Beach Open", ev.eventKey || "ev:ppa") || "Virginia Beach";
@@ -1349,8 +1354,12 @@ function ensureFinishedBoard(){
   if (state.boardMode === "draw") return;
   if (state.archiveId) return;
   if (state.filter === "app-pro" && appPinFinished()) {
-    state.archiveId = "columbus";
-    if (state.boardMode === "live" || state.boardMode === "matches") state.boardMode = "results";
+    const ev = state.appEvent || {};
+    const id = String(ev.id || ev.eventKey || "");
+    if (/18448|columbus/i.test(id)) {
+      state.archiveId = "columbus";
+      if (state.boardMode === "live" || state.boardMode === "matches") state.boardMode = "results";
+    }
   } else if (state.filter === "ppa" && ppaFeedFinished()) {
     state.archiveId = "virginia-beach";
     if (state.boardMode === "live" || state.boardMode === "matches") state.boardMode = "results";
@@ -1692,10 +1701,10 @@ function preServeModel(tour){
     const ev = state.appEvent || {};
     return {
       tour: "app",
-      name: armed.name || ev.name || "APP Columbus Open",
-      venue: armed.venue || ev.venue || "Pickle & Chill, Columbus, OH",
-      start: String(armed.start || ev.startDate || "2026-10-01").slice(0, 10),
-      eventKey: ev.eventKey || "ev:app:18448"
+      name: armed.name || ev.name || "Humana APP Louisville Open",
+      venue: armed.venue || ev.venue || "Kentucky International Convention Center, Louisville, KY",
+      start: String(armed.start || ev.startDate || "2026-10-15").slice(0, 10),
+      eventKey: ev.eventKey || "ev:app:18454"
     };
   }
   const ev = state.ppaEvent || {};

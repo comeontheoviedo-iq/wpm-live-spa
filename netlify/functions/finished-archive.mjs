@@ -1,14 +1,14 @@
 /**
  * Finished-tournament results for the reader archive.
- * Live pin is PPA Mojo Energy Pouches Virginia Beach Open (429c7980).
- * /api/app stays Den 18448 until Louisville. Chicago Cup, Columbus, and
- * Las Vegas are finished archive events.
+ * Live PPA pin is Mojo Energy Pouches Virginia Beach Open (429c7980).
+ * Live APP pin is Humana APP Louisville Open (Den 18454).
+ * Columbus 18448, Chicago Cup, and Las Vegas are finished archive events.
  * This module only serves FT rows. It never marks LIVE and never invents a score.
  */
 import { discFromAppBracket, discFromDivName, isKnockoutBracket, polishAppRound } from "./app-rounds.mjs";
 import { matchBoardDate } from "./app-dates.mjs";
 import { rosterText, tagsFor } from "./follow-tags.mjs";
-import { APP_LIVE, ENDED_APP, PPA_CHICAGO, PPA_LAS_VEGAS, PPA_LIVE } from "./slate-events.mjs";
+import { APP_COLUMBUS, APP_LOUISVILLE, ENDED_APP, PPA_CHICAGO, PPA_LAS_VEGAS, PPA_LIVE } from "./slate-events.mjs";
 
 const DEN = "https://denlive.pickleballden.com";
 const UA = { "User-Agent": "WPM-LIVE/1.0", Accept: "application/json" };
@@ -36,7 +36,7 @@ const GRAND_RAPIDS_ID = "d31aaa25-050c-4b4b-8537-0c69b7ea674a";
  * Finished weeks with a verified score source, oldest first.
  * Charlotte Challenger (2006a790-…) still had scheduled rows on 2026-10-02, so it stays off.
  * Columbus 18448, Las Vegas 86926aef, and Chicago Cup 203e1164 are finished
- * (current false). Virginia Beach stays on CURRENT_PINS until that week ends.
+ * (current false). Virginia Beach and Louisville stay on CURRENT_PINS until those weeks end.
  */
 export const FINISHED_EVENTS = [
   {
@@ -139,12 +139,12 @@ export const FINISHED_EVENTS = [
     id: "columbus",
     tour: "app",
     label: "Columbus",
-    name: APP_LIVE.name,
-    venue: APP_LIVE.venue,
-    tz: APP_LIVE.tz,
-    start: APP_LIVE.start,
-    end: APP_LIVE.end,
-    denTournamentId: APP_LIVE.eventId,
+    name: APP_COLUMBUS.name,
+    venue: APP_COLUMBUS.venue,
+    tz: APP_COLUMBUS.tz,
+    start: APP_COLUMBUS.start,
+    end: APP_COLUMBUS.end,
+    denTournamentId: APP_COLUMBUS.eventId,
     current: false,
   },
   {
@@ -185,6 +185,18 @@ export const CURRENT_PINS = [
     start: PPA_LIVE.start,
     end: PPA_LIVE.end,
     ppaEventId: PPA_LIVE.eventId,
+    current: true,
+  },
+  {
+    id: "louisville",
+    tour: "app",
+    label: "Louisville",
+    name: APP_LOUISVILLE.name,
+    venue: APP_LOUISVILLE.venue,
+    tz: APP_LOUISVILLE.tz,
+    start: APP_LOUISVILLE.start,
+    end: APP_LOUISVILLE.end,
+    denTournamentId: APP_LOUISVILLE.eventId,
     current: true,
   },
 ];
