@@ -73,13 +73,14 @@ Public JSON: GPA events merged with armed flags (`armed`, `onLive`, `status`, `c
 ## Residual
 
 - **APP Japan – Sendai** — **no Den id** (Tournated / JPA). Cannot live-path via `/api/app`. See `docs/app-den-ids.md`.
-- **APP Columbus Open** — armed live-path. Den **18448**, Pickle & Chill, `America/New_York`, `/api/app`. GPA id `gpa:app%20columbus%20open:2026-10-01`. Code seed (`applyAppCalendarCut`) arms this row on read. Registration external id `8057937` is not the scoring id.
+- **APP Columbus Open** — ended 4 Oct 2026. Den **18448**, archive `columbus`, `current: false`. Registration external id `8057937` is not the scoring id.
 - **APP Overland Park** — ended 20 Sep 2026. Den `18453` disarmed, not `onLive`.
 - **APP Asia Chongqing** — Den id **not found**. SportsSync id **not listed** (organizer 1645900: KL 89, Penang 222 only, 2026-09-30). Calendar/results-only. A later real SportsSync id arms `/api/sportssync` as results-only, never LIVE. APP Asia Tour, **not** MLP Asia. No fake LIVE. See [`sportssync-asia.md`](./sportssync-asia.md).
 - **TPB Gijón 2026** — seeded slate, scores delayed, official draw PDF. No Den id. See `docs/slate-europe.md`.
 - **PPA Barcelona Open** — ended 27 Sep 2026, UUID `1655a7c9-904a-44c9-aa29-b279fca900e8`, no scores, unparked. Do not cut `/api/ppa` there.
-- **Mojo Energy Pouches Virginia Beach Open** — live `/api/ppa` UUID `429c7980-e1b9-4800-805f-dfb160781cd9`, Pickleball Virginia Beach, Virginia Beach, VA, `America/New_York`, 12–18 Oct 2026. Veolia Chicago Cup `203e1164-…` finished 11 Oct (archive `chicago-cup`, current false). Rate Las Vegas `86926aef-…` ended 4 Oct (archive only). Not April `92d37566-…`.
-- **`/api/app` follows** query / env / Blobs `wpm-app` `active-tournament` / `calendar-armed` / fallback **18448**. Stale Overland `18453` on env or blobs is skipped. LIVE only when Den matches are RUNNING.
+- **PPA Asia 1500 Hang Seng Bank Hong Kong Slam 2026** — live `/api/ppa` UUID `c7e4fd72-d159-4211-82a2-21adbb21defe`, Kai Tak Arena, Hong Kong, `Asia/Hong_Kong`, 19–25 Oct 2026. Virginia Beach `429c7980-…` finished 18 Oct (archive `virginia-beach`, current false). Veolia Chicago Cup `203e1164-…` finished 11 Oct (archive `chicago-cup`, current false). Rate Las Vegas `86926aef-…` ended 4 Oct (archive only). Not April `92d37566-…`.
+- **Humana APP Louisville Open** — ended 18 Oct 2026. Den **18454**, archive `louisville`, current false. Default `/api/app` is between events. `?tournamentId=18454` still smokes the draw.
+- **`/api/app` follows** query / env / Blobs `wpm-app` `active-tournament` / `calendar-armed`, then the coded pin. After Louisville’s end date the default board is between events, not a LIVE chip. Stale Overland `18453` and Columbus `18448` on env or blobs are skipped. LIVE only when Den matches are RUNNING.
 - D-Joy Leg 3 still awaits a published live URL (`connector: djoy`).
 - Cross-link: [`app-den-ids.md`](./app-den-ids.md)
 

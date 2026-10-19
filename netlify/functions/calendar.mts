@@ -8,9 +8,11 @@ import {
   ENDED_PPA,
   PARKED_PPA,
   PPA_CHICAGO,
+  PPA_HONG_KONG,
   PPA_LAS_VEGAS,
   PPA_LIVE,
   PPA_LIVE_EVENT_ID,
+  PPA_VIRGINIA_BEACH,
   GIJON,
   applyAppCalendarCut,
   asCalendarRow,
@@ -60,22 +62,34 @@ const KNOWN = {
   app18454: {
     type: "app",
     denTournamentId: APP_LOUISVILLE.eventId,
-    scorePath: APP_LOUISVILLE.scorePath,
+    scorePath: null,
     timezone: APP_LOUISVILLE.tz,
     name: APP_LOUISVILLE.shortName,
     venue: APP_LOUISVILLE.venue,
     start: APP_LOUISVILLE.start,
     end: APP_LOUISVILLE.end,
+    live: false,
+    ended: true,
+  },
+  ppaHongKong: {
+    type: "ppa",
+    ppaEventId: PPA_HONG_KONG.eventId,
+    scorePath: "/api/ppa",
+    timezone: PPA_HONG_KONG.tz,
+    name: PPA_HONG_KONG.name,
+    venue: PPA_HONG_KONG.venue,
     live: true,
   },
+  /** Finished 18 Oct 2026. Archive only — not the live /api/ppa path. */
   ppaVirginiaBeach: {
     type: "ppa",
-    ppaEventId: PPA_LIVE_EVENT_ID,
-    scorePath: "/api/ppa",
-    timezone: PPA_LIVE.tz,
-    name: PPA_LIVE.name,
-    venue: PPA_LIVE.venue,
-    live: true,
+    ppaEventId: PPA_VIRGINIA_BEACH.eventId,
+    scorePath: null,
+    timezone: PPA_VIRGINIA_BEACH.tz,
+    name: PPA_VIRGINIA_BEACH.name,
+    venue: PPA_VIRGINIA_BEACH.venue,
+    live: false,
+    ended: true,
   },
   /** Finished 11 Oct 2026. Archive only — not the live /api/ppa path. */
   ppaChicago: {
@@ -327,7 +341,7 @@ function mergeCalendar(gpaRows: any[], armed: ArmedEvent[]) {
       // Soft hints. Columbus is code-armed above. Overland is ended. Chongqing has no Den id.
       if (/Overland Park/i.test(name) && tour === "app") {
         note =
-          "Ended 20 Sep 2026. Den 18453 is disarmed (not onLive). Live APP is Humana APP Louisville Open 18454.";
+          "Ended 20 Sep 2026. Den 18453 is disarmed (not onLive). Louisville 18454 ended 18 Oct. /api/app is between events.";
         status = "ended";
         onLive = false;
         connector = null;
@@ -346,7 +360,7 @@ function mergeCalendar(gpaRows: any[], armed: ArmedEvent[]) {
           };
         } else {
           note = LOUISVILLE.note;
-          status = "results-only";
+          status = LOUISVILLE.ended ? "ended" : "results-only";
           onLive = false;
           connector = null;
         }

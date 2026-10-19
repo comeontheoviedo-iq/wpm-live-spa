@@ -1,6 +1,6 @@
 # RTA2000 Farnham
 
-Own tour chip **RTA2000** (`rta`). Not APP. Not PPA. Window ended 4 Oct 2026. Unplayed matches the source still marks `upcoming` (loser-bracket rows dated 2 Oct) are dropped from `/api/rta` after that end date. They are not NEXT and they are not given a score. Do not cut `/api/app` off Columbus Den **18448**. Do not cut `/api/ppa` off Mojo Energy Pouches Virginia Beach Open **429c7980-e1b9-4800-805f-dfb160781cd9**.
+Own tour chip **RTA2000** (`rta`). Not APP. Not PPA. Window ended 4 Oct 2026. Unplayed matches the source still marks `upcoming` (loser-bracket rows dated 2 Oct) are dropped from `/api/rta` after that end date. They are not NEXT and they are not given a score. Do not cut `/api/app` back onto Humana APP Louisville Open Den **18454**. Do not cut `/api/ppa` off PPA Asia 1500 Hang Seng Bank Hong Kong Slam 2026 **c7e4fd72-d159-4211-82a2-21adbb21defe**.
 
 | | |
 |--|--|

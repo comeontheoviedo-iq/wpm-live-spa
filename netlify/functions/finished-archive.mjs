@@ -1,14 +1,14 @@
 /**
  * Finished-tournament results for the reader archive.
- * Live PPA pin is Mojo Energy Pouches Virginia Beach Open (429c7980).
- * Live APP pin is Humana APP Louisville Open (Den 18454).
- * Columbus 18448, Chicago Cup, and Las Vegas are finished archive events.
+ * Live PPA pin is PPA Asia 1500 Hang Seng Bank Hong Kong Slam 2026 (c7e4fd72).
+ * APP Louisville Den 18454 ended 18 Oct 2026 and is archive-only.
+ * /api/app is between events until a later Den id exists. Arizona has none.
  * This module only serves FT rows. It never marks LIVE and never invents a score.
  */
 import { discFromAppBracket, discFromDivName, isKnockoutBracket, polishAppRound } from "./app-rounds.mjs";
 import { matchBoardDate } from "./app-dates.mjs";
 import { rosterText, tagsFor } from "./follow-tags.mjs";
-import { APP_COLUMBUS, APP_LOUISVILLE, ENDED_APP, PPA_CHICAGO, PPA_LAS_VEGAS, PPA_LIVE } from "./slate-events.mjs";
+import { APP_COLUMBUS, APP_LOUISVILLE, ENDED_APP, PPA_CHICAGO, PPA_HONG_KONG, PPA_LAS_VEGAS, PPA_VIRGINIA_BEACH } from "./slate-events.mjs";
 
 const DEN = "https://denlive.pickleballden.com";
 const UA = { "User-Agent": "WPM-LIVE/1.0", Accept: "application/json" };
@@ -35,8 +35,9 @@ const GRAND_RAPIDS_ID = "d31aaa25-050c-4b4b-8537-0c69b7ea674a";
 /**
  * Finished weeks with a verified score source, oldest first.
  * Charlotte Challenger (2006a790-…) still had scheduled rows on 2026-10-02, so it stays off.
- * Columbus 18448, Las Vegas 86926aef, and Chicago Cup 203e1164 are finished
- * (current false). Virginia Beach and Louisville stay on CURRENT_PINS until those weeks end.
+ * Columbus 18448, Las Vegas 86926aef, Chicago Cup 203e1164, Virginia Beach
+ * 429c7980, and Louisville 18454 are finished (current false).
+ * Hong Kong stays on CURRENT_PINS until that week ends.
  */
 export const FINISHED_EVENTS = [
   {
@@ -171,21 +172,17 @@ export const FINISHED_EVENTS = [
     ppaEventId: PPA_CHICAGO.eventId,
     current: false,
   },
-];
-
-/** Live pin. Listed so the client can offer it once the week has actually finished. */
-export const CURRENT_PINS = [
   {
     id: "virginia-beach",
     tour: "ppa",
     label: "Virginia Beach",
-    name: PPA_LIVE.name,
-    venue: PPA_LIVE.venue,
-    tz: PPA_LIVE.tz,
-    start: PPA_LIVE.start,
-    end: PPA_LIVE.end,
-    ppaEventId: PPA_LIVE.eventId,
-    current: true,
+    name: PPA_VIRGINIA_BEACH.name,
+    venue: PPA_VIRGINIA_BEACH.venue,
+    tz: PPA_VIRGINIA_BEACH.tz,
+    start: PPA_VIRGINIA_BEACH.start,
+    end: PPA_VIRGINIA_BEACH.end,
+    ppaEventId: PPA_VIRGINIA_BEACH.eventId,
+    current: false,
   },
   {
     id: "louisville",
@@ -197,6 +194,22 @@ export const CURRENT_PINS = [
     start: APP_LOUISVILLE.start,
     end: APP_LOUISVILLE.end,
     denTournamentId: APP_LOUISVILLE.eventId,
+    current: false,
+  },
+];
+
+/** Live pin. Listed so the client can offer it once the week has actually finished. */
+export const CURRENT_PINS = [
+  {
+    id: "hong-kong",
+    tour: "ppa",
+    label: "Hong Kong",
+    name: PPA_HONG_KONG.name,
+    venue: PPA_HONG_KONG.venue,
+    tz: PPA_HONG_KONG.tz,
+    start: PPA_HONG_KONG.start,
+    end: PPA_HONG_KONG.end,
+    ppaEventId: PPA_HONG_KONG.eventId,
     current: true,
   },
 ];

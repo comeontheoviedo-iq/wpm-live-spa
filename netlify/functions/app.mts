@@ -10,6 +10,7 @@ import {
   ENDED_APP,
   applyAppCalendarCut,
   appBoardPhase,
+  appPinWindowEnded,
   denStatusToken,
   isDenLiveStatus,
   isDenRunningBracket,
@@ -540,6 +541,29 @@ export default async (req: Request, _context?: Context) => {
       idSource: active.source,
       eventKey: "ev:app:" + TOURNAMENT_ID,
     };
+    const windowEnded = appPinWindowEnded({ end: active.endDate, tz: TZ });
+    const running = brackets.some((b) => isDenRunningBracket(b.status));
+    // Finished week with nothing RUNNING. Results stay on /api/archive.
+    // An explicit ?tournamentId= still returns the draw. Do not paint LIVE.
+    if (windowEnded && !running && active.source !== "query") {
+      return Response.json(
+        {
+          updated: new Date().toISOString(),
+          source: "den-live",
+          ended: true,
+          betweenEvents: true,
+          delayed: false,
+          preServe: false,
+          reader: "Event ended",
+          liveCount: 0,
+          matches: [],
+          brackets: {},
+          bracketIndex,
+          event: { ...eventPayload, ended: true },
+        },
+        { headers: { "Cache-Control": "public, max-age=15" } }
+      );
+    }
     if (!brackets.length) {
       const phase = appBoardPhase({
         liveCount: 0,
