@@ -9,12 +9,14 @@ import {
   ENDED_APP,
   PPA_LIVE,
   PPA_LIVE_EVENT_ID,
+  PPA_UPCOMING,
   ENDED_PPA,
   PARKED_PPA,
   GIJON,
   MLP_ASIA_NOTE,
   ARIZONA_APP,
   LOUISVILLE,
+  appPinWindowEnded,
   coverageSeedFor,
   isAppAsiaName,
   matchesSlateName,
@@ -49,13 +51,16 @@ export const WIRED = {
   },
   get app() {
     const pin = selectAppLive();
+    const ended = appPinWindowEnded(pin);
     return {
       tour: "app",
       eventId: pin.eventId,
       name: pin.name,
       venue: pin.venue,
       tz: pin.tz,
-      scorePath: pin.scorePath,
+      end: pin.end,
+      ended,
+      scorePath: ended ? null : pin.scorePath,
     };
   },
   worldcup: {
@@ -215,7 +220,10 @@ async function probeGpa(today) {
         inn.scorePath = false;
         inn.timezone = true;
         inn.status = "fail";
-        note = "Humana APP Louisville Open Den 18454 is not the live pin.";
+        note =
+          "Ended 18 Oct 2026. Den " +
+          LOUISVILLE.denTournamentId +
+          " is archive-only. Next US APP is Arizona Open, no Den id. Between events. Do not fake LIVE.";
       } else if (/arizona open/i.test(name)) {
         board = "results_only";
         tz = ARIZONA_APP.timezone;
@@ -421,7 +429,12 @@ async function probeAppDen() {
   }
 
   const ok = info.ok && brackets.ok;
-  const inn = intake({ name: wired.name, venue: venueName, tz: wired.tz, scoreOk: ok });
+  const ended = appPinWindowEnded({ end: wired.end, tz: wired.tz });
+  const inn = intake({ name: wired.name, venue: venueName, tz: wired.tz, scoreOk: ok && !ended });
+  if (ended) {
+    inn.scorePath = false;
+    inn.status = "fail";
+  }
 
   return {
     ok: info.ok,
@@ -432,14 +445,17 @@ async function probeAppDen() {
       denId: wired.eventId,
       venue: venueName,
       tz: wired.tz,
+      end: wired.end,
       source: "den-live",
       bracketCount,
-      scorePath: wired.scorePath,
+      scorePath: ended ? null : wired.scorePath,
       intake: inn,
-      board: ok ? "on_board" : "blocked_by_intake",
-      note: ok
-        ? `wired ${wired.scorePath} · ${bracketCount} brackets`
-        : `Den info ${info.error || info.status} brackets ${brackets.error || brackets.status}`,
+      board: ended ? "results_only" : ok ? "on_board" : "blocked_by_intake",
+      note: ended
+        ? "Humana APP Louisville Open ended 18 Oct 2026. Archive louisville, current false. Next US APP is APP Arizona Open (12–15 Nov), no Den id. Between events. Do not fake LIVE."
+        : ok
+          ? `wired ${wired.scorePath} · ${bracketCount} brackets`
+          : `Den info ${info.error || info.status} brackets ${brackets.error || brackets.status}`,
       discoveredExtra: discovered,
     },
   };
@@ -546,9 +562,9 @@ async function probeSportsSyncOrganizer() {
   };
 }
 
-/** Upcoming PPA UUIDs that are not the live pin. None prepared after the Virginia Beach flip. */
+/** Upcoming PPA UUIDs that are not the live pin. Empty draws stay results-only. */
 async function probeUpcomingPpa() {
-  const seeds = [];
+  const seeds = (PPA_UPCOMING || []).filter((s) => s && s.ppaEventId);
   const out = [];
   for (const seed of seeds) {
     const scores = await fetchJson(`https://www.ppatour.com/api/scores/?event=${seed.ppaEventId}`);
@@ -680,18 +696,20 @@ export async function buildRadarReport(opts = {}) {
         "Run `node scripts/event-radar.mjs` or GET /api/radar",
         "Escalate P0 actions only (blocked_by_intake on PPA/APP/PPA Europe)",
         "If PPA ticker title ≠ wired EVENT → cut ppa.mts EVENT same day",
-        "Live PPA is Mojo Energy Pouches Virginia Beach Open 429c7980-… Pickleball Virginia Beach, America/New_York",
+        "Live PPA is PPA Asia 1500 Hang Seng Bank Hong Kong Slam 2026 c7e4fd72-… Kai Tak Arena, Asia/Hong_Kong",
+        "Virginia Beach 429c7980 ended 18 Oct 2026 — archive virginia-beach, current false. Do not wire /api/ppa there",
         "Veolia Chicago Cup 203e1164 finished 11 Oct 2026 — archive chicago-cup, current false. Do not wire /api/ppa there",
         "Rate Las Vegas 86926aef ended 4 Oct 2026 — archive only, current false. Do not wire /api/ppa there",
         "Barcelona 1655a7c9 ended 27 Sep 2026 with no scores — unparked; do not cut /api/ppa there",
         "Do not wire the April Las Vegas UUID 92d37566-…",
-        "Ticker rows are stamped with the pin only when the ticker title contains the pin name",
+        "Date TBA (9999-12-31) is not LIVE and is not a clock. Ticker rows are stamped with the pin only when the ticker title contains the pin name",
+        "Ottawa, Nanjing, College Worlds, Lille, and Daytona have verified UUIDs and 0 score rows. Results-only. Opendoor schedule UUID f02fa839 is 2025 finals — do not wire it",
         "Watch Gijón for Den/Tournated — until then scores delayed + draw PDF only",
         "APP Columbus Den 18448 ended 4 Oct. Archive columbus, current false. Overland 18453 ended — disarmed, not onLive.",
         "Chongqing has no Den id and no SportsSync id (hunt 2026-10-02: organizer 1645900 still 89/222; sitemap titles 91–471 have no Chongqing; 390/391 are unresolved Taipei/Bangkok links). Do not invent an id. Do not fake LIVE.",
         "When a Chongqing SportsSync id is real, arm connector type sportssync on /calendar. /api/sportssync stays results-only (FT). LIVE is unsafe until a scores row proves an in-progress status.",
-        "Live APP is Humana APP Louisville Open Den 18454 (15–18 Oct, America/New_York). wired.app follows selectAppLive. Do not mark a match LIVE until Den is RUNNING. A later APP_NEXT flips on its venue-local start date.",
-        "No prepared next PPA pin. Do not invent the week after Virginia Beach.",
+        "APP Louisville Den 18454 ended 18 Oct 2026. Archive louisville, current false. /api/app is between events. Arizona Open has no Den id. Do not fake LIVE.",
+        "Hong Kong Slam is the live PPA pin. Do not cut /api/ppa back to Virginia Beach.",
         "If new APP on GPA → find Den tournamentId → intake checklist → ship /api/app id",
         "MLP Asia ≠ APP Asia Tour — never merge those chips",
         "Never invent scores; shop stays closed; do not regress APP/Web Push",

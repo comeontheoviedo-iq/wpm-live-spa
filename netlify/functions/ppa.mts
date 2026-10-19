@@ -4,6 +4,7 @@ import { discFromDivName } from "./app-rounds.mjs";
 import { PPA_LIVE, PPA_NEXT, isPreparedNextPpaId, ppaTickerTitleAligned } from "./slate-events.mjs";
 import {
   applyPpaTickerRows,
+  isPpaTbaDate,
   keepPpaMatch,
   ppaBoardDate,
   ppaClockLabel,
@@ -19,7 +20,7 @@ import {
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** Default pin is PPA_LIVE (Virginia Beach). ?event=<a different PPA_NEXT> smokes that draw only. */
+/** Default pin is PPA_LIVE (Hong Kong Slam). ?event=<a different PPA_NEXT> smokes that draw only. */
 function resolvePin(req?: Request) {
   let q = "";
   try {
@@ -108,9 +109,10 @@ function toMatch(m: any, pin: { eventId: string; name: string; venue: string; tz
   const roster = rosterText([t0, t1]);
   const st = mapStatus(m);
   const date = ppaBoardDate(m);
+  const tba = isPpaTbaDate(date);
   const lines = linesFrom(m, t0, t1);
-  const clock = ppaClockLabel(m.time);
-  const start = ppaWallInstant(m.plannedStart, pin.tz);
+  const clock = tba ? "" : ppaClockLabel(m.time);
+  const start = tba ? "" : ppaWallInstant(m.plannedStart, pin.tz);
   const court = ppaCourtLabel(m.court);
   const w0 = lines.filter((l: any) => l.winner === a).length;
   const w1 = lines.filter((l: any) => l.winner === b).length;
@@ -140,7 +142,9 @@ function toMatch(m: any, pin: { eventId: string; name: string; venue: string; tz
     games,
     lines,
     court,
-    note: ppaResultNote({ outcome: m.outcome, winnerName, time: m.time || "", liveLine }),
+    note: tba
+      ? "Date TBA"
+      : ppaResultNote({ outcome: m.outcome, winnerName, time: m.time || "", liveLine }),
     watch: "pbtv",
     tz: pin.tz,
     venue: pin.venue,

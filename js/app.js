@@ -96,8 +96,8 @@ if ("Notification" in window && Notification.permission === "granted") {
   setTimeout(() => { syncPushSubscription(); }, 2500);
 }
 
-const SAFE_SW = "/sw.js?v=20261016a";
-const SAFE_SW_MARK = "20261016a";
+const SAFE_SW = "/sw.js?v=20261019a";
+const SAFE_SW_MARK = "20261019a";
 const GIJON_DRAW_URL = "https://toppickleballtour.com/wp-content/uploads/2026/09/TOP-PICKLEBALL-TOUR-GIJON-GRUPOS.pdf";
 /** Application-server VAPID public key (safe to embed). Private stays in Netlify env. */
 const VAPID_PUBLIC_KEY = "BEuWn2rcxKeLXPFa3KJzys7rLOtFX8GUZ9ckfFhsqEVO0Y2PE3WfnOivmFJV3EUVCf1c1g31qSiVoNDbcJQO8GQ";
@@ -125,8 +125,8 @@ function looksLikeStoredEvent(raw){
   const s = String(raw || "").trim();
   if (!s || s.indexOf("tour:") === 0) return false;
   if (s.indexOf("slate:") === 0 || s.indexOf("ev:") === 0 || s.indexOf("gpa:") === 0) return true;
-  if (/^(overland|arizona|gij[oó]n|gijon|columbus|louisville|las vegas|barcelona|mesa|chicago cup|virginia beach)$/i.test(s)) return true;
-  if (/\b(overland park|gij[oó]n|arizona open|las vegas open|columbus open|louisville|barcelona open|chicago cup|veolia chicago|virginia beach)\b/i.test(s)) return true;
+  if (/^(overland|arizona|gij[oó]n|gijon|columbus|louisville|las vegas|barcelona|mesa|chicago cup|virginia beach|hong kong)$/i.test(s)) return true;
+  if (/\b(overland park|gij[oó]n|arizona open|las vegas open|columbus open|louisville|barcelona open|chicago cup|veolia chicago|virginia beach|hong kong|hang seng)\b/i.test(s)) return true;
   if (/^(APP|PPA|TPB|GPA|MLP)\b/.test(s) && /\b(open|tour|asia)\b/i.test(s)) return true;
   if (/\brta2000\b/i.test(s)) return true;
   if (/\brta\b/i.test(s) && /farnham/i.test(s)) return true;
@@ -141,9 +141,10 @@ function tourFromEventBlob(raw){
   if (/\bmlp\b|mlp-asia/.test(blob)) return "tour:mlp-asia";
   if (/gij|tpb|top pickleball/.test(blob)) return "tour:tpb";
   if (/barcelona|ppa-eu|ppa europe/.test(blob)) return "tour:ppa-eu";
+  if (/hong kong|hang seng|c7e4fd72/.test(blob)) return "tour:ppa";
   if (/ppa asia|ppa-asia/.test(blob)) return "tour:asia";
   if (/\bapp\b/.test(blob) && /arizona/.test(blob) && !/\bppa\b/.test(blob)) return "tour:app";
-  if (/arizona|mesa|62c01642|las vegas|86926aef|veolia chicago|chicago cup|203e1164|virginia beach|429c7980|^ev:ppa\b|\bppa\b/.test(blob)) return "tour:ppa";
+  if (/arizona|mesa|62c01642|las vegas|86926aef|veolia chicago|chicago cup|203e1164|virginia beach|429c7980|hong kong|c7e4fd72|^ev:ppa\b|\bppa\b/.test(blob)) return "tour:ppa";
   if (/^ev:wc\b|world cup/.test(blob)) return "tour:wc";
   if (/overland|columbus|louisville|18448|18453|18454|^ev:app\b|\bapp\b/.test(blob)) return "tour:app";
   if (/\bnpl\b/.test(blob)) return "tour:npl";
@@ -415,6 +416,7 @@ function boardToday(){
 }
 function dateChip(iso){
   if (!iso) return "";
+  if (String(iso).indexOf("9999") === 0) return "Date TBA";
   const [Y,M,D] = String(iso).split("-").map(Number);
   if (!Y || !M || !D) return "";
   const d = new Date(Y, M-1, D);
@@ -789,6 +791,7 @@ function shortEventLabel(name, key){
   if (/louisville|18454/i.test(blob)) return "Louisville";
   if (/overland/i.test(blob) || /18453/.test(k)) return "Overland";
   if (/arizona|mesa/i.test(n) || /62c01642/i.test(k)) return "Arizona";
+  if (/hong kong|hang seng|c7e4fd72/i.test(blob)) return "Hong Kong";
   if (/virginia beach|429c7980/i.test(blob)) return "Virginia Beach";
   if (/veolia chicago|chicago cup|203e1164/i.test(blob)) return "Chicago";
   if (/las vegas|darling/i.test(n) || /86926aef/i.test(k)) return "Las Vegas";
@@ -1266,10 +1269,11 @@ const ARCHIVE_FALLBACK = [
   {id:"overland", tour:"app", label:"Overland", name:"APP Dillons Overland Park Open", venue:"AdventHealth Sports Park at Bluhawk, Overland Park, KS", tz:"America/Chicago", start:"2026-09-17", end:"2026-09-20", current:false},
   {id:"arizona", tour:"ppa", label:"Arizona", name:"PPA Veolia Arizona Open", venue:"Mesa, AZ", tz:"America/Phoenix", start:"2026-09-14", end:"2026-09-21", current:false},
   {id:"columbus", tour:"app", label:"Columbus", name:"APP Columbus Open presented by The James", venue:"Pickle & Chill, Columbus, OH", tz:"America/New_York", start:"2026-10-01", end:"2026-10-04", current:false},
-  {id:"louisville", tour:"app", label:"Louisville", name:"Humana APP Louisville Open", venue:"Kentucky International Convention Center, Louisville, KY", tz:"America/New_York", start:"2026-10-15", end:"2026-10-18", current:true},
+  {id:"louisville", tour:"app", label:"Louisville", name:"Humana APP Louisville Open", venue:"Kentucky International Convention Center, Louisville, KY", tz:"America/New_York", start:"2026-10-15", end:"2026-10-18", current:false},
   {id:"las-vegas", tour:"ppa", label:"Las Vegas", name:"PPA Rate Las Vegas Open", venue:"Darling Tennis Center, Las Vegas", tz:"America/Los_Angeles", start:"2026-09-28", end:"2026-10-04", current:false},
   {id:"chicago-cup", tour:"ppa", label:"Chicago", name:"Veolia Chicago Cup", venue:"Life Time North Shore Sport & Racquetball, Chicago, IL", tz:"America/Chicago", start:"2026-10-05", end:"2026-10-11", current:false},
-  {id:"virginia-beach", tour:"ppa", label:"Virginia Beach", name:"Mojo Energy Pouches Virginia Beach Open", venue:"Pickleball Virginia Beach, Virginia Beach, VA", tz:"America/New_York", start:"2026-10-12", end:"2026-10-18", current:true}
+  {id:"virginia-beach", tour:"ppa", label:"Virginia Beach", name:"Mojo Energy Pouches Virginia Beach Open", venue:"Pickleball Virginia Beach, Virginia Beach, VA", tz:"America/New_York", start:"2026-10-12", end:"2026-10-18", current:false},
+  {id:"hong-kong", tour:"ppa", label:"Hong Kong", name:"PPA Asia 1500 Hang Seng Bank Hong Kong Slam 2026", venue:"Kai Tak Arena, Hong Kong", tz:"Asia/Hong_Kong", start:"2026-10-19", end:"2026-10-25", current:true}
 ];
 const DISC_LABEL = {MS:"Men's singles", WS:"Women's singles", XD:"Mixed doubles", MD:"Men's doubles", WD:"Women's doubles"};
 function weekIsFinished(matches, today){
@@ -1299,12 +1303,15 @@ function appPinFinished(){
   return !!(end && today > end);
 }
 function ppaFeedFinished(){
+  const ev = state.ppaEvent || {};
+  const id = String(ev.id || "");
   const rows = (state.matches || []).filter(m => {
     if (!m || m.tour !== "ppa") return false;
+    if (id) return String(m.eventKey || "").indexOf(id) !== -1;
     const blob = `${m.eventKey || ""} ${m.comp || ""} ${m.venue || ""}`;
-    return /429c7980|virginia beach/i.test(blob);
+    return /c7e4fd72|hong kong|hang seng/i.test(blob);
   });
-  const today = ymdInTz(new Date(), (state.ppaEvent && state.ppaEvent.tz) || "America/New_York");
+  const today = ymdInTz(new Date(), ev.tz || "Asia/Hong_Kong");
   return weekIsFinished(rows, today);
 }
 function vegasInPast(){
@@ -1324,7 +1331,7 @@ function archiveReady(e){
   if (!e.current) return true;
   if (e.id === "las-vegas") return vegasInPast();
   if (e.id === "columbus" || e.tour === "app") return appPinFinished();
-  if (e.id === "virginia-beach") return ppaFeedFinished() || pinEnded(e.end, ymdInTz(new Date(), e.tz || "America/New_York"));
+  if (e.tour === "ppa") return ppaFeedFinished() || pinEnded(e.end, ymdInTz(new Date(), e.tz || "UTC"));
   return false;
 }
 function boardWantsPast(filter){
@@ -1345,7 +1352,7 @@ function livePinLabel(filter){
   }
   if (filter === "ppa" && !ppaFeedFinished()) {
     const ev = state.ppaEvent || {};
-    return shortEventLabel(ev.name || "Mojo Energy Pouches Virginia Beach Open", ev.eventKey || "ev:ppa") || "Virginia Beach";
+    return shortEventLabel(ev.name || "PPA Asia 1500 Hang Seng Bank Hong Kong Slam 2026", ev.eventKey || "ev:ppa") || "Hong Kong";
   }
   if (filter === "all" && (!appPinFinished() || !ppaFeedFinished())) return "This week";
   return "";
@@ -1356,12 +1363,10 @@ function ensureFinishedBoard(){
   if (state.filter === "app-pro" && appPinFinished()) {
     const ev = state.appEvent || {};
     const id = String(ev.id || ev.eventKey || "");
-    if (/18448|columbus/i.test(id)) {
-      state.archiveId = "columbus";
-      if (state.boardMode === "live" || state.boardMode === "matches") state.boardMode = "results";
-    }
+    state.archiveId = /18448|columbus/i.test(id) ? "columbus" : "louisville";
+    if (state.boardMode === "live" || state.boardMode === "matches") state.boardMode = "results";
   } else if (state.filter === "ppa" && ppaFeedFinished()) {
-    state.archiveId = "virginia-beach";
+    state.archiveId = "hong-kong";
     if (state.boardMode === "live" || state.boardMode === "matches") state.boardMode = "results";
   }
 }
@@ -1710,10 +1715,10 @@ function preServeModel(tour){
   const ev = state.ppaEvent || {};
   return {
     tour: "ppa",
-    name: armed.name || ev.name || "Mojo Energy Pouches Virginia Beach Open",
-    venue: armed.venue || ev.venue || "Pickleball Virginia Beach, Virginia Beach, VA",
-    start: String(armed.start || "").slice(0, 10),
-    eventKey: ev.eventKey || "ev:ppa"
+    name: armed.name || ev.name || "PPA Asia 1500 Hang Seng Bank Hong Kong Slam 2026",
+    venue: armed.venue || ev.venue || "Kai Tak Arena, Hong Kong",
+    start: String(armed.start || ev.startDate || "2026-10-19").slice(0, 10),
+    eventKey: ev.eventKey || "ev:ppa:c7e4fd72-d159-4211-82a2-21adbb21defe"
   };
 }
 function filterWantsPreServe(filter, tour){
@@ -1728,6 +1733,7 @@ function emptyBoardLine(tour, mode){
   if (tourHasLive(tour)) return "";
   const board = tour === "app" ? state.appBoard : state.ppaBoard;
   if (board && board.delayed && !board.preServe) return "Scores delayed";
+  if (tour === "app" && ((board && board.ended) || appPinFinished())) return "Event ended";
   if (tourPreServe(tour)) {
     if (mode === "results") return "Results will appear when available";
     return "Play starts soon";
@@ -3417,7 +3423,9 @@ async function pull(){
           preServe: !!data.preServe,
           reader: data.reader || "",
           liveCount: data.liveCount || 0,
-          delayed: !!data.delayed
+          delayed: !!data.delayed,
+          ended: !!data.ended,
+          betweenEvents: !!data.betweenEvents
         };
         if (Array.isArray(data.bracketIndex)) state.appBracketIndex = data.bracketIndex;
       }
@@ -3429,7 +3437,7 @@ async function pull(){
           delayed: !!data.delayed
         };
         if (Array.isArray(data.matches)) {
-          data.matches = rebasePpaLocalDates(data.matches, (data.event && data.event.tz) || "America/New_York");
+          data.matches = rebasePpaLocalDates(data.matches, (data.event && data.event.tz) || "Asia/Hong_Kong");
         }
       }
       if (!data || !Array.isArray(data.matches)) return;

@@ -29,13 +29,12 @@ export const PPA_CHICAGO = {
 };
 
 /**
- * Mojo Energy Pouches Virginia Beach Open, 12–18 Oct 2026.
- * UUID is the eventId on https://www.ppatour.com/events/2026/virginia-beach-open/
- * and tournamentId on the scores API. Ticker title matched on 12 Oct 2026
- * (20 upnext rows, clocks 8:00 AM / 11:00 AM / 2:00 PM EDT). That is the week flip.
- * The next PPA week is not seeded. Do not invent a UUID.
+ * Mojo Energy Pouches Virginia Beach Open. Finished 18 Oct 2026.
+ * Scores API: 183 final rows, latest real day 2026-10-18, plus one Men's Singles
+ * Round 64 still Date TBA (not a result — do not invent a score).
+ * Archive id virginia-beach, current false. Never wire /api/ppa back here.
  */
-export const PPA_NEXT = {
+export const PPA_VIRGINIA_BEACH = {
   eventId: "429c7980-e1b9-4800-805f-dfb160781cd9",
   name: "Mojo Energy Pouches Virginia Beach Open",
   venue: "Pickleball Virginia Beach, Virginia Beach, VA",
@@ -43,10 +42,29 @@ export const PPA_NEXT = {
   start: "2026-10-12",
   end: "2026-10-18",
   firstServe: "8:00 AM EDT",
+};
+
+/**
+ * PPA Asia 1500 Hang Seng Bank Hong Kong Slam 2026, 19–25 Oct, Kai Tak Arena.
+ * UUID is tournamentId on https://www.ppatour.com/api/scores/?event=c7e4fd72-d159-4211-82a2-21adbb21defe
+ * (verified 19 Oct 2026: 93 pro main-draw rows, all scheduled, dateLabel Date TBA).
+ * Qualifier rows with a real dateKey stay on the day board. Date TBA is not a day
+ * and is not a clock. No first-serve time until the ticker prints one.
+ * Ticker rows are stamped with this pin only when the title contains this name.
+ */
+export const PPA_HONG_KONG = {
+  eventId: "c7e4fd72-d159-4211-82a2-21adbb21defe",
+  name: "PPA Asia 1500 Hang Seng Bank Hong Kong Slam 2026",
+  venue: "Kai Tak Arena, Hong Kong",
+  tz: "Asia/Hong_Kong",
+  start: "2026-10-19",
+  end: "2026-10-25",
   scorePath: "/api/ppa",
+  officialUrl: "https://www.ppatour-asia.com/tournament/2026/hong-kong-slam/",
 };
 
 /** Live /api/ppa event. Week flip is this binding. */
+export const PPA_NEXT = PPA_HONG_KONG;
 export const PPA_LIVE = PPA_NEXT;
 export const PPA_LIVE_EVENT_ID = PPA_LIVE.eventId;
 
@@ -86,10 +104,10 @@ export const APP_COLUMBUS = {
 };
 
 /**
- * Humana APP Louisville Open. Den 18454, 15–18 Oct 2026.
- * Venue Kentucky International Convention Center. Timezone America/New_York.
- * LIVE still requires a Den RUNNING / IN_PROGRESS / STARTED / PLAYING row.
- * Pending brackets and unscored matches are not a 0–0.
+ * Humana APP Louisville Open. Den 18454, 15–18 Oct 2026. Ended 18 Oct.
+ * Archive id louisville, current false. The next US APP stop is Arizona
+ * (no Den id). /api/app does not paint this week as LIVE after the end date.
+ * ?tournamentId=18454 still smokes the draw. Pending is not a 0–0.
  */
 export const APP_LOUISVILLE = {
   eventId: "18454",
@@ -111,14 +129,21 @@ export const APP_LOUISVILLE = {
 export const APP_PINS = [APP_COLUMBUS, APP_LOUISVILLE];
 
 /**
- * No week after Louisville is seeded. Same object as the live pin, matching
- * the PPA binding (`PPA_LIVE = PPA_NEXT`). A later distinct APP_NEXT is
- * appended by selectAppLive and flips on its venue-local start date.
+ * No week after Louisville has a Den id. Same object as the coded pin.
+ * After the end date the board is between events (Arizona has no Den id).
+ * A later distinct APP_NEXT is appended by selectAppLive and flips on its
+ * venue-local start date. Do not invent a Den id.
  */
 export const APP_NEXT = APP_LOUISVILLE;
 
-/** Coded live pin. Request paths call selectAppLive(now) so a warm worker still flips. */
+/** Coded pin. After its end date, /api/app is between events, not a LIVE board. */
 export const APP_LIVE = APP_LOUISVILLE;
+
+/** True once the pin's venue-local end date is in the past. Not a score. */
+export function appPinWindowEnded(pin, now = new Date()) {
+  if (!pin || !pin.end) return false;
+  return ymdInVenueTz(pin.tz, now) > String(pin.end);
+}
 
 /** Venue-local calendar day. Speculative date helper for the pin flip — not a score. */
 export function ymdInVenueTz(tz, now = new Date()) {
@@ -205,9 +230,14 @@ export function isEndedOverlandRow(row) {
   return /overland park/i.test(String(row.name || ""));
 }
 
-/** Code-armed calendar row for whichever APP pin is live at `now`. */
+/**
+ * Code-armed calendar row for the APP pin at `now`.
+ * After the pin's end date this is an ended row: not onLive, no score path.
+ * Arizona has no Den id, so nothing replaces it with a fake live board.
+ */
 export function appArmedRow(now = new Date()) {
   const pin = selectAppLive(now);
+  const ended = appPinWindowEnded(pin, now);
   return {
     id: pin.calendarId,
     name: pin.shortName,
@@ -218,13 +248,16 @@ export function appArmedRow(now = new Date()) {
     tier: "",
     start: pin.start,
     end: pin.end,
-    connector: {
-      type: "app",
-      denTournamentId: pin.eventId,
-      scorePath: pin.scorePath,
-    },
-    status: "live-path",
-    onLive: true,
+    connector: ended
+      ? { type: "none" }
+      : {
+          type: "app",
+          denTournamentId: pin.eventId,
+          scorePath: pin.scorePath,
+        },
+    status: ended ? "ended" : "live-path",
+    onLive: !ended,
+    ended,
     note: "",
     armedAt: "2026-10-15T00:00:00.000Z",
     gpaName: pin.shortName,
@@ -261,6 +294,7 @@ export function applyAppCalendarCut(events, now = new Date()) {
     const isLive = e?.id === pin.calendarId || den === String(pin.eventId);
     if (isLive) {
       const seed = appArmedRow(now);
+      const ended = appPinWindowEnded(pin, now);
       armed = {
         ...seed,
         ...e,
@@ -271,15 +305,18 @@ export function applyAppCalendarCut(events, now = new Date()) {
         end: pin.end,
         tour: "app",
         host: e.host || "APP",
-        connector: {
-          ...seed.connector,
-          ...(e.connector || {}),
-          type: "app",
-          denTournamentId: pin.eventId,
-          scorePath: pin.scorePath,
-        },
-        status: "live-path",
-        onLive: true,
+        connector: ended
+          ? { type: "none" }
+          : {
+              ...seed.connector,
+              ...(e.connector || {}),
+              type: "app",
+              denTournamentId: pin.eventId,
+              scorePath: pin.scorePath,
+            },
+        status: ended ? "ended" : "live-path",
+        onLive: !ended,
+        ended,
         id: pin.calendarId,
       };
       continue;
@@ -306,7 +343,7 @@ export const ENDED_PPA = {
     ended: true,
     parked: false,
     note:
-      "Window ended 27 Sep 2026 with no scores on the official PPA scores API. Unparked \u2014 do not cut /api/ppa to this UUID. Live board is Mojo Energy Pouches Virginia Beach Open (" +
+      "Window ended 27 Sep 2026 with no scores on the official PPA scores API. Unparked \u2014 do not cut /api/ppa to this UUID. Live board is PPA Asia 1500 Hang Seng Bank Hong Kong Slam 2026 (" +
       PPA_LIVE_EVENT_ID +
       ").",
   },
@@ -358,7 +395,7 @@ export const BARCELONA = {
 export const MLP_ASIA_NOTE =
   "MLP Asia \u2260 APP. MLP Asia is the PPA/MLP franchise. APP Asia Tour (Chongqing / Taipei / Bangkok / HCMC / India) stays on the APP Asia chip \u2014 never chip MLP Asia as APP.";
 
-/** Live APP week. Den 18454. Columbus 18448 is archive-only. */
+/** Humana APP Louisville Open ended 18 Oct 2026. Archive only. Not the live board. */
 export const LOUISVILLE = {
   id: "slate:app-louisville-2026",
   name: APP_LOUISVILLE.name,
@@ -369,13 +406,14 @@ export const LOUISVILLE = {
   tier: "",
   start: APP_LOUISVILLE.start,
   end: APP_LOUISVILLE.end,
-  status: "live-path",
-  onLive: true,
+  status: "ended",
+  onLive: false,
+  ended: true,
   denTournamentId: APP_LOUISVILLE.eventId,
   officialUrl: "https://theapp.global/tour-schedule/2026-app-louisville",
   note:
-    "Live APP pin Den 18454, 15–18 Oct 2026, Kentucky International Convention Center, America/New_York. /api/app with no params uses this id. Columbus Den 18448 is archive-only. Registration external-tournament/3523724 is not the scoring id. Do not mark a match LIVE until Den status is RUNNING / IN_PROGRESS / STARTED / PLAYING. A later APP_NEXT flips on its venue-local start date via selectAppLive.",
-  connector: { type: "app", denTournamentId: APP_LOUISVILLE.eventId, scorePath: "/api/app" },
+    "Ended 18 Oct 2026. Den 18454 is archive louisville, current false. All pro brackets Completed or Pending — not RUNNING. /api/app with no params is between events (reader Event ended, no LIVE rows). ?tournamentId=18454 still smokes the draw. Next US APP is APP Arizona Open, no Den id. Do not fake LIVE.",
+  connector: { type: "none" },
 };
 
 /** Next APP Pro after Louisville. No published Den scoring id. */
@@ -513,8 +551,116 @@ export const MLP_ASIA_SEASON = {
 };
 
 /**
+ * Upcoming PPA stops after Hong Kong. UUIDs were on the 19 Oct 2026
+ * ppatour.com/schedule payload and the scores API echoed the same tournamentId.
+ * Ottawa, Nanjing, College, Lille, and Daytona returned 0 match rows — not a
+ * live score path. Opendoor's schedule UUID is last year's finals; it is not stored.
+ * None of these is /api/ppa. Do not invent a clock.
+ */
+function ppaCalendarSeed(row) {
+  return {
+    tour: "ppa",
+    host: "PPA Tour",
+    tier: row.tier || "",
+    status: "results-only",
+    onLive: false,
+    ppaEventId: row.ppaEventId || null,
+    officialUrl: row.officialUrl || "",
+    note: row.note,
+    connector: row.ppaEventId ? { type: "none", ppaEventId: row.ppaEventId } : { type: "none" },
+    ...row,
+  };
+}
+
+export const PPA_OTTAWA = ppaCalendarSeed({
+  id: "slate:ppa-ottawa-125-2026",
+  name: "PPA Canada Ottawa 125",
+  venue: "The Forge, Ottawa, Canada",
+  timezone: "America/Toronto",
+  tier: "125",
+  start: "2026-10-22",
+  end: "2026-10-25",
+  ppaEventId: "94307fed-6e0f-4390-bf19-bda3bfb80d18",
+  officialUrl: "https://ppatourcanada.ca/tournament/2026/ottawa-125/",
+  note:
+    "Scores API tournamentId 94307fed-6e0f-4390-bf19-bda3bfb80d18 echoed on 19 Oct 2026 with 0 match rows. Not the live pin. Do not cut /api/ppa here.",
+});
+
+export const PPA_NANJING = ppaCalendarSeed({
+  id: "slate:ppa-nanjing-125-2026",
+  name: "PPA Asia 125 Skechers Nanjing Challenger 2026",
+  venue: "Ledongli Jiangning Digital Sports Center, Nanjing",
+  timezone: "Asia/Shanghai",
+  tour: "asia",
+  tier: "125",
+  start: "2026-10-28",
+  end: "2026-10-31",
+  ppaEventId: "49004a6d-fb3b-4a64-81a5-6468df8ec39d",
+  officialUrl: "https://pickleballtournaments.com/tournaments/ppa-asia-125-skechers-nanjing-challenger-2026",
+  note:
+    "Scores API tournamentId 49004a6d-fb3b-4a64-81a5-6468df8ec39d echoed on 19 Oct 2026 with 0 match rows. PPA Asia, not APP Asia, not MLP. Not the live pin. Do not cut /api/ppa here.",
+});
+
+export const PPA_COLLEGE_WORLDS = ppaCalendarSeed({
+  id: "slate:ppa-college-worlds-2026",
+  name: "College World Championship",
+  venue: "Brookhaven Country Club, Farmers Branch, TX",
+  timezone: "America/Chicago",
+  start: "2026-10-30",
+  end: "2026-11-01",
+  ppaEventId: "95602192-b649-420f-a8ff-0887fddfe1e7",
+  officialUrl: "https://www.ppatour.com/events/2026/college-world-championship/",
+  note:
+    "Scores API tournamentId 95602192-b649-420f-a8ff-0887fddfe1e7 echoed on 19 Oct 2026 with 0 match rows. Not the Opendoor Worlds UUID. Not the live pin. Do not cut /api/ppa here.",
+});
+
+export const PPA_OPENDOOR_WORLDS = ppaCalendarSeed({
+  id: "slate:ppa-opendoor-worlds-2026",
+  name: "Opendoor Pickleball World Championships",
+  venue: "Brookhaven Country Club, Farmers Branch, TX",
+  timezone: "America/Chicago",
+  start: "2026-11-02",
+  end: "2026-11-08",
+  ppaEventId: null,
+  officialUrl: "https://www.ppatour.com/events/2026/pickleball-world-championships/",
+  note:
+    "Schedule card slug pickleball-world-championships lists tournamentUuid f02fa839-68e0-46d5-8b93-dc266f201a4e. Scores API for that UUID is 322 final rows dated 4–9 Nov 2025, not the 2026 draw. UUID is not stored as a score path. Not wired. Do not cut /api/ppa to that UUID.",
+});
+
+export const PPA_LILLE = ppaCalendarSeed({
+  id: "slate:ppa-lille-p125-2026",
+  name: "PPA Tour Europe · P125 Lille",
+  venue: "Lille, Villeneuve d'Ascq, France",
+  timezone: "Europe/Paris",
+  tour: "ppa-eu",
+  tier: "P125",
+  start: "2026-11-12",
+  end: "2026-11-15",
+  ppaEventId: "04a30133-11cc-4280-97f7-3027404c05b3",
+  officialUrl: "https://www.ppatour.com/schedule/",
+  note:
+    "Schedule name PPA TOUR EUROPE - P125 LILLE. Scores API tournamentId 04a30133-11cc-4280-97f7-3027404c05b3 echoed on 19 Oct 2026 with 0 match rows. Not Barcelona. Not the live pin. Do not cut /api/ppa here.",
+});
+
+export const PPA_DAYTONA = ppaCalendarSeed({
+  id: "slate:ppa-daytona-2026",
+  name: "Proton Daytona Beach Open",
+  venue: "Pictona at Holly Hill, Holly Hill, FL",
+  timezone: "America/New_York",
+  start: "2026-11-16",
+  end: "2026-11-22",
+  ppaEventId: "12a61e43-1dc7-4d48-a926-10d3aa1a66cb",
+  officialUrl: "https://www.ppatour.com/events/2026/proton-daytona-beach-open/",
+  note:
+    "Scores API tournamentId 12a61e43-1dc7-4d48-a926-10d3aa1a66cb echoed on 19 Oct 2026 with 0 match rows. Not the live pin. Do not cut /api/ppa here.",
+});
+
+/** Radar probes these. A verified UUID with no rows is not a live path. */
+export const PPA_UPCOMING = [PPA_OTTAWA, PPA_NANJING, PPA_COLLEGE_WORLDS, PPA_LILLE, PPA_DAYTONA];
+
+/**
  * RTA2000 Farnham. Tournated 8510. Own tour — not an APP or PPA chip.
- * Live APP is Humana APP Louisville Open Den 18454. Live PPA is Virginia Beach.
+ * APP Louisville ended 18 Oct. Live PPA is Hong Kong Slam.
  */
 export const FARNHAM = {
   id: "slate:rta-farnham-2026",
@@ -531,7 +677,7 @@ export const FARNHAM = {
   officialUrl:
     "https://play.rtapickleballtour.com/tournament/8510/draws?category=34477&segment=MD",
   note:
-    "Tournated tournament 8510 at Hurlands. Window ended 4 Oct 2026. /api/rta reads drawsDetail. Unplayed rows after the window are not NEXT. Not APP and not PPA. Do not cut /api/app off Humana APP Louisville Open Den 18454. Do not cut /api/ppa off Mojo Energy Pouches Virginia Beach Open 429c7980-e1b9-4800-805f-dfb160781cd9.",
+    "Tournated tournament 8510 at Hurlands. Window ended 4 Oct 2026. /api/rta reads drawsDetail. Unplayed rows after the window are not NEXT. Not APP and not PPA. Do not cut /api/app back onto Humana APP Louisville Open Den 18454. Do not cut /api/ppa off PPA Asia 1500 Hang Seng Bank Hong Kong Slam 2026 c7e4fd72-d159-4211-82a2-21adbb21defe.",
   connector: { type: "url", scoreUrl: "/api/rta" },
 };
 
@@ -541,9 +687,15 @@ export const SLATE = [
   BARCELONA,
   CHONGQING_SLATE,
   LOUISVILLE,
+  PPA_OTTAWA,
+  PPA_NANJING,
+  PPA_COLLEGE_WORLDS,
+  PPA_OPENDOOR_WORLDS,
   BANGKOK,
   ARIZONA_APP,
+  PPA_LILLE,
   TAIPEI,
+  PPA_DAYTONA,
   MLP_ASIA_SEASON,
   INDIA_APP,
   HCMC,
@@ -557,7 +709,7 @@ export function coverageSeedFor(name) {
 export const FILTER_COPY = {
   tpb: "TOP Pickleball Tour (powered by APP, not APP Den). Scores delayed \u2014 no live path. Official draw PDF only.",
   "ppa-eu":
-    "PPA Tour Europe. Barcelona window ended 27 Sep 2026 with no scores. Not the live board \u2014 Mojo Energy Pouches Virginia Beach Open is /api/ppa.",
+    "PPA Tour Europe. Barcelona window ended 27 Sep 2026 with no scores. Not the live board \u2014 PPA Asia 1500 Hang Seng Bank Hong Kong Slam 2026 is /api/ppa.",
   "app-asia": "APP Asia Tour \u2014 not MLP Asia. No Den Live id. SportsSync /api/sportssync is results-only once a real tournamentId is listed. Not LIVE.",
   "mlp-asia": MLP_ASIA_NOTE,
   asia: "PPA Asia \u2014 results-only until a working ticker is wired. Not APP Asia, not MLP Asia.",
@@ -760,8 +912,8 @@ export function isLivePpaEventId(id) {
 
 /**
  * Ticker title must contain the pinned event name.
- * "PPA Tour: Mojo Energy Pouches Virginia Beach Open" matches Virginia Beach.
- * "PPA Tour: Veolia Chicago Cup" does not. A bare "Chicago" or "Virginia Beach" does not.
+ * "PPA Tour: PPA Asia 1500 Hang Seng Bank Hong Kong Slam 2026" matches Hong Kong.
+ * "PPA Tour: Mojo Energy Pouches Virginia Beach Open" does not. A bare "Hong Kong" does not.
  * Empty title does not contradict the pin (older feeds omit it).
  */
 export function ppaTickerTitleAligned(title, pin = PPA_LIVE) {
@@ -791,6 +943,13 @@ export function matchesSlateName(rowName, seedName) {
   if (/bangkok/i.test(a) && /bangkok/i.test(b)) return true;
   if (/taipei/i.test(a) && /taipei/i.test(b)) return true;
   if (/virginia beach/i.test(a) && /virginia beach/i.test(b)) return true;
+  if (/hong kong|hang seng/i.test(a) && /hong kong|hang seng/i.test(b)) return true;
+  if (/ottawa/i.test(a) && /ottawa/i.test(b)) return true;
+  if (/nanjing/i.test(a) && /nanjing/i.test(b)) return true;
+  if (/college world/i.test(a) && /college world/i.test(b)) return true;
+  if (/opendoor|world championships/i.test(a) && /opendoor|world championships/i.test(b)) return true;
+  if (/lille/i.test(a) && /lille/i.test(b)) return true;
+  if (/daytona/i.test(a) && /daytona/i.test(b)) return true;
   if (/veolia chicago|chicago cup/i.test(a) && /veolia chicago|chicago cup/i.test(b)) return true;
   if (/\bmlp\b/i.test(a) && /\bmlp\b/i.test(b)) return true;
   if (/india open/i.test(a) && /india open/i.test(b)) return true;
@@ -913,5 +1072,11 @@ export function staticWatchEvents() {
     watchFromSeed(MLP_ASIA_SEASON),
     watchFromSeed(INDIA_APP),
     watchFromSeed(HCMC),
+    watchFromSeed(PPA_OTTAWA),
+    watchFromSeed(PPA_NANJING),
+    watchFromSeed(PPA_COLLEGE_WORLDS),
+    watchFromSeed(PPA_OPENDOOR_WORLDS),
+    watchFromSeed(PPA_LILLE),
+    watchFromSeed(PPA_DAYTONA),
   ];
 }

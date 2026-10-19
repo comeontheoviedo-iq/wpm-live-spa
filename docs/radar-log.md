@@ -109,3 +109,13 @@
 - **APP Louisville** Den **18454** stays `APP_NEXT`. `/api/app` stays Columbus **18448**.
 - Client `wpm-20261012a.js` · SW `wpm-static-20261012a`. Not deployed.
 
+## 2026-10-19 — PPA cut to Hong Kong Slam
+
+- Virginia Beach `429c7980-e1b9-4800-805f-dfb160781cd9` ended 18 Oct 2026. Archive `virginia-beach`, `current: false`. 183 final rows plus one Date TBA Men's Singles row (not invented as FT).
+- Live `/api/ppa` is PPA Asia 1500 Hang Seng Bank Hong Kong Slam 2026 `c7e4fd72-d159-4211-82a2-21adbb21defe`, Kai Tak Arena, Hong Kong, `Asia/Hong_Kong`, 19–25 Oct. `PPA_LIVE = PPA_NEXT`.
+- Smoke 19 Oct 2026: ticker empty (`tournament` null). Main draw 93 rows, all scheduled, `dateLabel` Date TBA, `dateKey` 9999-12-31, off the day board. Default `/api/ppa` parsed 99 board rows, 67 FT with a real score, 0 LIVE. Empty title does not stamp a contradiction. A non-empty title must contain the full pin name. Date TBA is not LIVE and gets no invented clock. Qualifier rows with a real date stay on the board as FT or NEXT. Scores-API `live` without a ticker live flag stays NEXT.
+- Virginia Beach scores API still has 183 final rows. Chicago Cup scores API 233 final. Default `/api/app` is `ended` / `betweenEvents`, reader “Event ended”, 0 matches. `?tournamentId=18454` still returns the Louisville draw (72 FT, 0 LIVE).
+- Humana APP Louisville Open Den **18454** ended 18 Oct. Archive `louisville`, `current: false`. Default `/api/app` is between events. Arizona Open has no Den id.
+- Upcoming results-only UUIDs (scores API echoed, 0 rows): Ottawa `94307fed-…`, Nanjing `49004a6d-…`, College Worlds `95602192-…`, Lille `04a30133-…`, Daytona `12a61e43-…`. Opendoor schedule UUID `f02fa839-…` is 2025 finals and is not stored.
+- Client `wpm-20261019a.js` · SW `wpm-static-20261019a`. Not deployed.
+
