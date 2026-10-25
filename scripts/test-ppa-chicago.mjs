@@ -103,7 +103,7 @@ assert.equal(spill[2].date, "2026-10-07");
 assert.equal(spill[2].score, "");
 assert.equal(rebasePpaLocalDates(spillIn, "Europe/London", spillNow)[1].date, "2026-10-07");
 
-const clientJs = fs.readFileSync("js/wpm-20261019a.js", "utf8");
+const clientJs = fs.readFileSync("js/wpm-20261025a.js", "utf8");
 const clientCtx = {};
 vm.runInNewContext(
   clientJs.slice(clientJs.indexOf("function tzOffsetMinutes"), clientJs.indexOf("function addDaysIso")) +

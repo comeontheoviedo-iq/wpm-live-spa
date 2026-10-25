@@ -42,6 +42,9 @@
 [functions.rta]
   timeout = 26
 
+[functions.scores]
+  timeout = 26
+
 
 [functions."push-live-check"]
   timeout = 26
@@ -116,7 +119,39 @@
   to = "/.netlify/functions/archive"
   status = 200
 
+# Private desk. Before the SPA splat so /desk is not index.html.
+# The editor is the function response, not a file under site/.
+[[redirects]]
+  from = "/desk"
+  to = "/.netlify/functions/desk"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/desk/"
+  to = "/.netlify/functions/desk"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/desk/feed"
+  to = "/.netlify/functions/desk"
+  status = 200
+  force = true
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+
+[[headers]]
+  for = "/desk"
+  [headers.values]
+    Cache-Control = "no-store"
+    X-Robots-Tag = "noindex, nofollow"
+
+[[headers]]
+  for = "/desk/*"
+  [headers.values]
+    Cache-Control = "no-store"
+    X-Robots-Tag = "noindex, nofollow"

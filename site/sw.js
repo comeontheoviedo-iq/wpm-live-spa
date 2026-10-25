@@ -1,9 +1,10 @@
-/* WPM LIVE safe SW (20261019a)
- * Never caches boards, HTML, JS, API, or JSON — those always hit network no-store.
+/* WPM LIVE safe SW (20261025a)
+ * Never caches boards, HTML, JS, API, JSON, or /desk — those always hit network no-store.
+ * /desk is the private editor and must not be precached or listed below.
  * Optional network-first cache only for inert static assets (icon/manifest/css).
  * Handles push + notificationclick for follow LIVE alerts (closed-tab Web Push).
  */
-const STATIC_CACHE = "wpm-static-20261019a";
+const STATIC_CACHE = "wpm-static-20261025a";
 const STATIC_PATHS = new Set(["/icon.svg", "/manifest.json", "/css/app.css"]);
 
 self.addEventListener("install", (e) => {
@@ -22,6 +23,7 @@ self.addEventListener("activate", (e) => {
 function mustNetworkOnly(pathname, mode) {
   if (mode === "navigate") return true;
   if (pathname === "/" || pathname === "/index.html") return true;
+  if (pathname === "/desk" || pathname.startsWith("/desk/")) return true;
   if (pathname.startsWith("/js/")) return true;
   if (pathname.startsWith("/api/")) return true;
   if (pathname.endsWith(".json")) return true;

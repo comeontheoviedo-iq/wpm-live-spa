@@ -40,6 +40,7 @@ const PRODUCTS = [
   {id:"net", cat:"starter", name:"Portable net", price:"$80–160", who:"Driveway and club overflow", why:"Seasonal spike. Heavy but high AOV.", tags:[], store:"https://franklinsports.com/", q:"portable pickleball net"}
 ];
 
+try { localStorage.removeItem("wpm-desk-key"); } catch (e) {}
 const state = {
   date: null,
   filter: "all",
@@ -48,7 +49,6 @@ const state = {
   heroByDate: {},
   updated: null,
   notified: {},
-  deskKey: localStorage.getItem("wpm-desk-key") || "",
   boardMode: "matches",
   more: {},
   magazine: {page:1, pages:1, stories:[]},
@@ -59,7 +59,6 @@ const state = {
   rankCat: "mens_singles",
   resultCat: "all",
   calendar: null,
-  calAddId: "",
   brackets: {},
   wcBrackets: {},
   appBrackets: {},
@@ -96,8 +95,8 @@ if ("Notification" in window && Notification.permission === "granted") {
   setTimeout(() => { syncPushSubscription(); }, 2500);
 }
 
-const SAFE_SW = "/sw.js?v=20261007a";
-const SAFE_SW_MARK = "20261007a";
+const SAFE_SW = "/sw.js?v=20261025a";
+const SAFE_SW_MARK = "20261025a";
 const GIJON_DRAW_URL = "https://toppickleballtour.com/wp-content/uploads/2026/09/TOP-PICKLEBALL-TOUR-GIJON-GRUPOS.pdf";
 /** Application-server VAPID public key (safe to embed). Private stays in Netlify env. */
 const VAPID_PUBLIC_KEY = "BEuWn2rcxKeLXPFa3KJzys7rLOtFX8GUZ9ckfFhsqEVO0Y2PE3WfnOivmFJV3EUVCf1c1g31qSiVoNDbcJQO8GQ";
@@ -125,8 +124,8 @@ function looksLikeStoredEvent(raw){
   const s = String(raw || "").trim();
   if (!s || s.indexOf("tour:") === 0) return false;
   if (s.indexOf("slate:") === 0 || s.indexOf("ev:") === 0 || s.indexOf("gpa:") === 0) return true;
-  if (/^(overland|arizona|gij[oó]n|gijon|columbus|las vegas|barcelona|mesa|chicago cup)$/i.test(s)) return true;
-  if (/\b(overland park|gij[oó]n|arizona open|las vegas open|columbus open|barcelona open|chicago cup|veolia chicago)\b/i.test(s)) return true;
+  if (/^(overland|arizona|gij[oó]n|gijon|columbus|louisville|las vegas|barcelona|mesa|chicago cup|virginia beach|hong kong)$/i.test(s)) return true;
+  if (/\b(overland park|gij[oó]n|arizona open|las vegas open|columbus open|louisville|barcelona open|chicago cup|veolia chicago|virginia beach|hong kong|hang seng)\b/i.test(s)) return true;
   if (/^(APP|PPA|TPB|GPA|MLP)\b/.test(s) && /\b(open|tour|asia)\b/i.test(s)) return true;
   if (/\brta2000\b/i.test(s)) return true;
   if (/\brta\b/i.test(s) && /farnham/i.test(s)) return true;
@@ -141,16 +140,17 @@ function tourFromEventBlob(raw){
   if (/\bmlp\b|mlp-asia/.test(blob)) return "tour:mlp-asia";
   if (/gij|tpb|top pickleball/.test(blob)) return "tour:tpb";
   if (/barcelona|ppa-eu|ppa europe/.test(blob)) return "tour:ppa-eu";
+  if (/hong kong|hang seng|c7e4fd72/.test(blob)) return "tour:ppa";
   if (/ppa asia|ppa-asia/.test(blob)) return "tour:asia";
   if (/\bapp\b/.test(blob) && /arizona/.test(blob) && !/\bppa\b/.test(blob)) return "tour:app";
-  if (/arizona|mesa|62c01642|las vegas|86926aef|veolia chicago|chicago cup|203e1164|^ev:ppa\b|\bppa\b/.test(blob)) return "tour:ppa";
+  if (/arizona|mesa|62c01642|las vegas|86926aef|veolia chicago|chicago cup|203e1164|virginia beach|429c7980|hong kong|c7e4fd72|^ev:ppa\b|\bppa\b/.test(blob)) return "tour:ppa";
   if (/^ev:wc\b|world cup/.test(blob)) return "tour:wc";
-  if (/overland|columbus|18448|18453|^ev:app\b|\bapp\b/.test(blob)) return "tour:app";
+  if (/overland|columbus|louisville|18448|18453|18454|^ev:app\b|\bapp\b/.test(blob)) return "tour:app";
   if (/\bnpl\b/.test(blob)) return "tour:npl";
   if (/\bgpa\b|d-joy|djoy/.test(blob)) return "tour:gpa";
   return "";
 }
-/** Player keys pass through. Event keys (ev:app:18448, Overland, Arizona, Gijón) upgrade to a tour or drop. Mirrors follow-tags.mjs. */
+/** Player keys pass through. Event keys (ev:app:18454, Louisville, Columbus, Overland) upgrade to a tour or drop. Mirrors follow-tags.mjs. */
 function normalizeFollowKey(raw){
   const k = String(raw || "").trim();
   if (!k) return "";
@@ -400,7 +400,7 @@ function addDaysIso(iso, n){
 }
 /** PPA day tabs use the PPA event zone. Other boards prefer the APP event zone. */
 function boardTz(){
-  if (state.filter === "ppa") return (state.ppaEvent && state.ppaEvent.tz) || "America/Chicago";
+  if (state.filter === "ppa") return (state.ppaEvent && state.ppaEvent.tz) || "America/New_York";
   const ev = state.appEvent || {};
   if (ev.tz) return ev.tz;
   const app = (state.matches||[]).find(m => m.tour === "app" && m.tz);
@@ -415,6 +415,7 @@ function boardToday(){
 }
 function dateChip(iso){
   if (!iso) return "";
+  if (String(iso).indexOf("9999") === 0) return "Date TBA";
   const [Y,M,D] = String(iso).split("-").map(Number);
   if (!Y || !M || !D) return "";
   const d = new Date(Y, M-1, D);
@@ -684,7 +685,7 @@ function competition(m){
     const ev = state.appEvent || {};
     const pro = appTier(m) === "pro";
     const name = ev.name || m.comp || "APP";
-    const place = ev.venue || m.venue || "Pickle & Chill, Columbus, OH";
+    const place = ev.venue || m.venue || "Kentucky International Convention Center, Louisville, KY";
     return pro
       ? {id:"app-pro", tour:"app", title:"APP Pro · "+shortEventLabel(name, eventFollowKey(m)), place, rank:1, eventKey: eventFollowKey(m)}
       : {id:"app", tour:"app", title:"APP · "+shortEventLabel(name, eventFollowKey(m)), place, rank:2, eventKey: eventFollowKey(m)};
@@ -789,7 +790,9 @@ function shortEventLabel(name, key){
   if (/louisville|18454/i.test(blob)) return "Louisville";
   if (/overland/i.test(blob) || /18453/.test(k)) return "Overland";
   if (/arizona|mesa/i.test(n) || /62c01642/i.test(k)) return "Arizona";
-  if (/veolia chicago|chicago cup|203e1164/i.test(blob) || k === "ev:ppa") return "Chicago";
+  if (/hong kong|hang seng|c7e4fd72/i.test(blob)) return "Hong Kong";
+  if (/virginia beach|429c7980/i.test(blob)) return "Virginia Beach";
+  if (/veolia chicago|chicago cup|203e1164/i.test(blob)) return "Chicago";
   if (/las vegas|darling/i.test(n) || /86926aef/i.test(k)) return "Las Vegas";
   if (/chongqing/i.test(blob)) return "Chongqing";
   if (/kuala lumpur/i.test(blob)) return "Kuala Lumpur";
@@ -1265,8 +1268,11 @@ const ARCHIVE_FALLBACK = [
   {id:"overland", tour:"app", label:"Overland", name:"APP Dillons Overland Park Open", venue:"AdventHealth Sports Park at Bluhawk, Overland Park, KS", tz:"America/Chicago", start:"2026-09-17", end:"2026-09-20", current:false},
   {id:"arizona", tour:"ppa", label:"Arizona", name:"PPA Veolia Arizona Open", venue:"Mesa, AZ", tz:"America/Phoenix", start:"2026-09-14", end:"2026-09-21", current:false},
   {id:"columbus", tour:"app", label:"Columbus", name:"APP Columbus Open presented by The James", venue:"Pickle & Chill, Columbus, OH", tz:"America/New_York", start:"2026-10-01", end:"2026-10-04", current:false},
+  {id:"louisville", tour:"app", label:"Louisville", name:"Humana APP Louisville Open", venue:"Kentucky International Convention Center, Louisville, KY", tz:"America/New_York", start:"2026-10-15", end:"2026-10-18", current:false},
   {id:"las-vegas", tour:"ppa", label:"Las Vegas", name:"PPA Rate Las Vegas Open", venue:"Darling Tennis Center, Las Vegas", tz:"America/Los_Angeles", start:"2026-09-28", end:"2026-10-04", current:false},
-  {id:"chicago-cup", tour:"ppa", label:"Chicago", name:"Veolia Chicago Cup", venue:"Life Time North Shore Sport & Racquetball, Chicago, IL", tz:"America/Chicago", start:"2026-10-05", end:"2026-10-11", current:true}
+  {id:"chicago-cup", tour:"ppa", label:"Chicago", name:"Veolia Chicago Cup", venue:"Life Time North Shore Sport & Racquetball, Chicago, IL", tz:"America/Chicago", start:"2026-10-05", end:"2026-10-11", current:false},
+  {id:"virginia-beach", tour:"ppa", label:"Virginia Beach", name:"Mojo Energy Pouches Virginia Beach Open", venue:"Pickleball Virginia Beach, Virginia Beach, VA", tz:"America/New_York", start:"2026-10-12", end:"2026-10-18", current:false},
+  {id:"hong-kong", tour:"ppa", label:"Hong Kong", name:"PPA Asia 1500 Hang Seng Bank Hong Kong Slam 2026", venue:"Kai Tak Arena, Hong Kong", tz:"Asia/Hong_Kong", start:"2026-10-19", end:"2026-10-25", current:true}
 ];
 const DISC_LABEL = {MS:"Men's singles", WS:"Women's singles", XD:"Mixed doubles", MD:"Men's doubles", WD:"Women's doubles"};
 function weekIsFinished(matches, today){
@@ -1291,16 +1297,20 @@ function appPinFinished(){
   const ev = state.appEvent || {};
   const id = String(ev.id || ev.eventKey || "");
   const today = ymdInTz(new Date(), ev.tz || "America/New_York");
-  if (id && id.indexOf("18448") === -1) return !!(ev.endDate && today > ev.endDate);
-  return today > (ev.endDate || "2026-10-04");
+  if (/18448|columbus/i.test(id)) return today > (ev.endDate || "2026-10-04");
+  const end = ev.endDate || "2026-10-18";
+  return !!(end && today > end);
 }
 function ppaFeedFinished(){
+  const ev = state.ppaEvent || {};
+  const id = String(ev.id || "");
   const rows = (state.matches || []).filter(m => {
     if (!m || m.tour !== "ppa") return false;
+    if (id) return String(m.eventKey || "").indexOf(id) !== -1;
     const blob = `${m.eventKey || ""} ${m.comp || ""} ${m.venue || ""}`;
-    return /203e1164|chicago cup|veolia chicago/i.test(blob);
+    return /c7e4fd72|hong kong|hang seng/i.test(blob);
   });
-  const today = ymdInTz(new Date(), (state.ppaEvent && state.ppaEvent.tz) || "America/Chicago");
+  const today = ymdInTz(new Date(), ev.tz || "Asia/Hong_Kong");
   return weekIsFinished(rows, today);
 }
 function vegasInPast(){
@@ -1320,6 +1330,7 @@ function archiveReady(e){
   if (!e.current) return true;
   if (e.id === "las-vegas") return vegasInPast();
   if (e.id === "columbus" || e.tour === "app") return appPinFinished();
+  if (e.tour === "ppa") return ppaFeedFinished() || pinEnded(e.end, ymdInTz(new Date(), e.tz || "UTC"));
   return false;
 }
 function boardWantsPast(filter){
@@ -1334,10 +1345,13 @@ function visiblePast(filter){
   });
 }
 function livePinLabel(filter){
-  if (filter === "app-pro" && !appPinFinished()) return "Columbus";
+  if (filter === "app-pro" && !appPinFinished()) {
+    const ev = state.appEvent || {};
+    return shortEventLabel(ev.name || "Humana APP Louisville Open", ev.eventKey || ev.id || "ev:app:18454") || "Louisville";
+  }
   if (filter === "ppa" && !ppaFeedFinished()) {
     const ev = state.ppaEvent || {};
-    return shortEventLabel(ev.name || "Veolia Chicago Cup", ev.eventKey || "ev:ppa") || "Chicago";
+    return shortEventLabel(ev.name || "PPA Asia 1500 Hang Seng Bank Hong Kong Slam 2026", ev.eventKey || "ev:ppa") || "Hong Kong";
   }
   if (filter === "all" && (!appPinFinished() || !ppaFeedFinished())) return "This week";
   return "";
@@ -1346,10 +1360,12 @@ function ensureFinishedBoard(){
   if (state.boardMode === "draw") return;
   if (state.archiveId) return;
   if (state.filter === "app-pro" && appPinFinished()) {
-    state.archiveId = "columbus";
+    const ev = state.appEvent || {};
+    const id = String(ev.id || ev.eventKey || "");
+    state.archiveId = /18448|columbus/i.test(id) ? "columbus" : "louisville";
     if (state.boardMode === "live" || state.boardMode === "matches") state.boardMode = "results";
   } else if (state.filter === "ppa" && ppaFeedFinished()) {
-    state.archiveId = "chicago-cup";
+    state.archiveId = "hong-kong";
     if (state.boardMode === "live" || state.boardMode === "matches") state.boardMode = "results";
   }
 }
@@ -1600,7 +1616,6 @@ function calEventRow(e){
   const end=(e.end||e.end_date||start).toString().slice(0,10);
   const dates=end&&end!==start?`${start} → ${end}`:start;
   const venue=e.venue||e.location||'';
-  const id=e.id||('gpa:'+encodeURIComponent(String(e.name||'').toLowerCase())+':'+start);
   const draw=officialDrawCta(e.drawUrl);
   const official=e.officialUrl?`<a class="chip" href="${esc(e.officialUrl)}" target="_blank" rel="noopener">Official</a>`:"";
   const line=readerStatusLine(e);
@@ -1616,7 +1631,6 @@ function calEventRow(e){
       ${draw}
     </div>
     <em>${esc(tourMark(e))}</em>
-    <a class="chip cal-add" href="/calendar?add=${encodeURIComponent(id)}">Add</a>
   </div>`;
 }
 function slateFilterMeta(filter){
@@ -1689,19 +1703,19 @@ function preServeModel(tour){
     const ev = state.appEvent || {};
     return {
       tour: "app",
-      name: armed.name || ev.name || "APP Columbus Open",
-      venue: armed.venue || ev.venue || "Pickle & Chill, Columbus, OH",
-      start: String(armed.start || ev.startDate || "2026-10-01").slice(0, 10),
-      eventKey: ev.eventKey || "ev:app:18448"
+      name: armed.name || ev.name || "Humana APP Louisville Open",
+      venue: armed.venue || ev.venue || "Kentucky International Convention Center, Louisville, KY",
+      start: String(armed.start || ev.startDate || "2026-10-15").slice(0, 10),
+      eventKey: ev.eventKey || "ev:app:18454"
     };
   }
   const ev = state.ppaEvent || {};
   return {
     tour: "ppa",
-    name: armed.name || ev.name || "Veolia Chicago Cup",
-    venue: armed.venue || ev.venue || "Life Time North Shore Sport & Racquetball, Chicago, IL",
-    start: String(armed.start || "").slice(0, 10),
-    eventKey: ev.eventKey || "ev:ppa"
+    name: armed.name || ev.name || "PPA Asia 1500 Hang Seng Bank Hong Kong Slam 2026",
+    venue: armed.venue || ev.venue || "Kai Tak Arena, Hong Kong",
+    start: String(armed.start || ev.startDate || "2026-10-19").slice(0, 10),
+    eventKey: ev.eventKey || "ev:ppa:c7e4fd72-d159-4211-82a2-21adbb21defe"
   };
 }
 function filterWantsPreServe(filter, tour){
@@ -1716,6 +1730,7 @@ function emptyBoardLine(tour, mode){
   if (tourHasLive(tour)) return "";
   const board = tour === "app" ? state.appBoard : state.ppaBoard;
   if (board && board.delayed && !board.preServe) return "Scores delayed";
+  if (tour === "app" && ((board && board.ended) || appPinFinished())) return "Event ended";
   if (tourPreServe(tour)) {
     if (mode === "results") return "Results will appear when available";
     return "Play starts soon";
@@ -2838,91 +2853,28 @@ function viewSearch(){
   const th=teams.filter(t=>(t.team||"").toLowerCase().includes(n)).map(t=>`<a class="rank-row" href="/team/${encodeURIComponent(t.team)}"><b>${t.rank}</b><div><strong>${t.team}</strong><span>MLP 2026 · ${t.pts} pts</span></div></a>`);
   return `<div class="hero"><h2>SEARCH</h2><p>${q}</p></div><div class="wrap"><div class="panel">${hits.join("")||th.join("")||"<p class='empty'>No profile yet.</p>"}${th.join("")}</div></div>`;
 }
-function deskNoteValue(e){
-  const n = String((e && e.note) || "").trim();
-  if (n === "Event ended" || n === "Scores delayed" || n === "Draw not published yet" || n === "Results will appear when available" || n === "Play starts soon") return n;
-  return "";
-}
 function viewCalendar(){
   const data = state.calendar;
   if (!data) return `<div class="wrap"><p class="empty">Loading calendar…</p></div>`;
   const today = ymd(new Date());
-  const addId = qs("add") || state.calAddId || "";
   const all = data.events || [];
   const upcoming = all.filter(e => (e.end || e.start || "") >= today);
   const past = all.filter(e => (e.end || e.start || "") < today).slice(-8).reverse();
-  const pick = all.find(e => e.id === addId) || null;
   const armed = (data.armed || []).slice().sort((a,b)=>String(a.start).localeCompare(String(b.start)));
-
-  let form = "";
-  if (pick || addId === "new") {
-    const e = pick || { name:"", venue:"", timezone:"", start:"", end:"", host:"", tier:"", tour:"app", connector:{type:"none"}, note:"" };
-    const c = e.connector || {};
-    form = `<div class="panel cal-form">
-      <div class="kicker">Desk · add / arm event</div>
-      <p class="games">Intake gate (see coverage-intake): <b>name · venue · timezone · working score path</b>. Without a score path the event stays <b>results-only</b> or <b>scores delayed</b> — never fake 0–0. Full pass → <b>on WPM LIVE</b> (live-path).</p>
-      <form id="calArmForm" class="stack">
-        <input type="hidden" name="id" value="${esc(e.id||'')}">
-        <label class="games">Display name<br><input class="field" name="name" required value="${esc(e.name||'')}"></label>
-        <label class="games">Venue<br><input class="field" name="venue" value="${esc(e.venue||e.location||'')}" placeholder="City / venue"></label>
-        <label class="games">Timezone (IANA)<br><input class="field" name="timezone" value="${esc(e.timezone||'')}" placeholder="America/New_York"></label>
-        <div class="cal-dates">
-          <label class="games">Start<br><input class="field" name="start" required value="${esc((e.start||'').toString().slice(0,10))}"></label>
-          <label class="games">End<br><input class="field" name="end" value="${esc((e.end||e.start||'').toString().slice(0,10))}"></label>
-        </div>
-        <div class="cal-dates">
-          <label class="games">Host / tour chip<br><input class="field" name="host" value="${esc(e.host||'')}" placeholder="APP"></label>
-          <label class="games">Tour<br>
-            <select class="field" name="tour">
-              ${["app","app-asia","ppa","ppa-eu","tpb","wc","gpa","npl","mlp-asia","other"].map(t=>`<option value="${t}" ${(e.tour||"app")===t?"selected":""}>${t}</option>`).join("")}
-            </select>
-          </label>
-          <label class="games">Tier<br><input class="field" name="tier" value="${esc(e.tier||'')}"></label>
-        </div>
-        <label class="games">Score connector<br>
-          <select class="field" name="connType" id="calConnType">
-            <option value="none" ${(!c.type||c.type==="none")?"selected":""}>none → results-only</option>
-            <option value="app" ${c.type==="app"?"selected":""}>APP / Den tournamentId → /api/app</option>
-            <option value="ppa" ${c.type==="ppa"?"selected":""}>PPA event id → /api/ppa</option>
-            <option value="url" ${c.type==="url"?"selected":""}>URL / path (e.g. /api/worldcup)</option>
-            <option value="djoy" ${c.type==="djoy"?"selected":""}>D-Joy (URL when published)</option>
-            <option value="sportssync" ${c.type==="sportssync"?"selected":""}>SportsSync tournamentId → /api/sportssync (results only)</option>
-          </select>
-        </label>
-        <label class="games">Den tournamentId (APP)<br><input class="field" name="denTournamentId" value="${esc(c.denTournamentId||'')}" placeholder="18448"></label>
-        <label class="games">SportsSync tournamentId (APP Asia results)<br><input class="field" name="sportsSyncTournamentId" value="${esc(c.sportsSyncTournamentId||'')}" placeholder="blank until Chongqing is listed"></label>
-        <label class="games">PPA event id<br><input class="field" name="ppaEventId" value="${esc(c.ppaEventId||'')}" placeholder="uuid"></label>
-        <label class="games">Score URL / path<br><input class="field" name="scoreUrl" value="${esc(c.scoreUrl||c.scorePath||'')}" placeholder="/api/…"></label>
-        <label class="games"><input type="checkbox" name="delayed" ${e.status==="delayed"?"checked":""}> Mark scores delayed (even if path set)</label>
-        <label class="games">Note<br><input class="field" name="note" value="${esc(deskNoteValue(e))}"></label>
-        <label class="games">Desk key<br><input class="field" name="key" id="calDeskKey" type="password" value="${esc(state.deskKey)}"></label>
-        <div class="cal-actions">
-          <button class="btn" type="submit">Arm / save</button>
-          ${e.armed?`<button class="chip" type="button" id="calDisarm" data-id="${esc(e.id||'')}">Disarm</button>`:""}
-          <a class="chip" href="/calendar">Cancel</a>
-        </div>
-        <p class="games" id="calArmMsg"></p>
-      </form>
-    </div>`;
-  }
-
   const list = (rows, title) => `<div class="panel"><div class="kicker">${title}</div>${rows.length?rows.map(calEventRow).join(""):"<p class='empty'>None</p>"}</div>`;
-
   const armedBlock = armed.length
-    ? `<div class="panel"><div class="kicker">Armed on desk</div>${armed.map(a=>`<div class="rank-row"><b></b><div><strong>${esc(a.name)}</strong><span>${a.start} → ${a.end} · ${esc(a.venue)} · ${esc(a.timezone||"—")}</span><span class="cal-meta">${statusChip(a.status,a.onLive)}${a.onLive?' <em class="cal-onlive">on WPM LIVE</em>':''}</span></div><em>${esc(a.tour)}</em><a class="chip" href="/calendar?add=${encodeURIComponent(a.id)}">Edit</a></div>`).join("")}</div>`
-    : `<div class="panel"><div class="kicker">Armed on desk</div><p class="empty">None yet. Pick an event and complete intake to arm.</p></div>`;
-
+    ? `<div class="panel"><div class="kicker">On WPM LIVE</div>${armed.map(a=>`<div class="rank-row"><b></b><div><strong>${esc(a.name)}</strong><span>${a.start} → ${a.end} · ${esc(a.venue)} · ${esc(a.timezone||"—")}</span><span class="cal-meta">${statusChip(a.status,a.onLive)}${a.onLive?' <em class="cal-onlive">on WPM LIVE</em>':''}</span></div><em>${esc(a.tour)}</em></div>`).join("")}</div>`
+    : `<div class="panel"><div class="kicker">On WPM LIVE</div><p class="empty">None yet.</p></div>`;
   return `<div class="hero">
-    <div class="desk">DESK CALENDAR</div>
+    <div class="desk">CALENDAR</div>
     <h2>TOUR SLATE</h2>
-    <p>Upcoming APP, PPA, GPA and MLP Asia. MLP Asia is not APP. Mark <b>on WPM LIVE</b> only when intake passes. No score path → results-only or scores delayed — never invent lines.</p>
+    <p>Upcoming APP, PPA, GPA and MLP Asia. MLP Asia is not APP. <b>On WPM LIVE</b> only when a score path is already armed. No score path means results-only or scores delayed.</p>
   </div>
   <div class="wrap">
-    ${form}
     ${armedBlock}
     ${list(upcoming, "Upcoming")}
     ${list(past, "Recent (results-only)")}
-    <p class="games"><a href="/desk">Score desk</a> · <a href="/rankings">Table</a> · <a href="/history">Archive</a> · intake rule in docs</p>
+    <p class="games"><a href="/rankings">Table</a> · <a href="/history">Archive</a></p>
   </div>`;
 }
 function viewHistory(){
@@ -2931,7 +2883,7 @@ function viewHistory(){
   const armed = (h.armed||[]).map(e => `<div class="rank-row"><b></b><div><strong>${e.name}</strong><span>${e.start} → ${e.end} · ${e.host} · ${e.status}</span></div><em>${e.connector}</em></div>`).join("");
   const npl = (h.npl||[]).slice(0,30).map(m => `<div class="rank-row"><b>${m.score}</b><div><strong>${m.a} vs ${m.b}</strong><span>${m.date} · ${m.games||""}</span></div><em>NPL</em></div>`).join("");
   const medals = (h.gpaMedals||[]).filter(x=>x.place==="winner").slice(0,40).map(m => `<a class="rank-row" href="${playerPath(m.player)}"><b>W</b><div><strong>${m.player}</strong><span>${m.event} · ${m.category}</span></div><em>${m.points||""}</em></a>`).join("");
-  return `<div class="hero"><h2>ARCHIVE</h2><p>Federation results. <a href="/calendar" style="color:#f5c518">Desk calendar</a> for upcoming GPA slate + arm status.</p></div>
+  return `<div class="hero"><h2>ARCHIVE</h2><p>Federation results. <a href="/calendar" style="color:#f5c518">Calendar</a> for the upcoming slate.</p></div>
   <div class="wrap">
     <div class="panel"><div class="kicker">Armed</div>${armed||"<p class='empty'>None</p>"}</div>
     <div class="panel"><div class="kicker">GPA golds</div>${medals||"<p class='empty'>No medals yet</p>"}</div>
@@ -3004,7 +2956,7 @@ function viewRankings(){
       <p class="games" style="margin-top:10px">${note}</p>
       ${list || "<p class='empty'>Board empty for this cut.</p>"}
     </div>
-    <div class="panel"><div class="kicker">Coming up</div>${events||"<p class='empty'>No events.</p>"}<a class="chip" href="/calendar">Open calendar / add-event</a></div>
+    <div class="panel"><div class="kicker">Coming up</div>${events||"<p class='empty'>No events.</p>"}<a class="chip" href="/calendar">Open calendar</a></div>
   </div>`;
 }
 function viewShop(){
@@ -3014,30 +2966,6 @@ function viewShop(){
     <h2 style="font-family:Syne,sans-serif;font-size:28px;margin:8px 0 12px">Affiliate shop is closed for now</h2>
     <p class="games">Amazon and tour-brand deals will land here once tags, inventory and disclosure are signed. Nothing is for sale in the app until then.</p>
   </div></div>`;
-}
-
-function viewDesk(){
-  const rows = state.matches.map(m => `
-    <form class="desk-row" data-desk="${m.id}">
-      <div>${m.date}<br>${m.div}</div>
-      <input name="a" value="${m.a}">
-      <input name="score" value="${m.score||""}" placeholder="vs / 2-1">
-      <select name="status">
-        <option ${m.status==="NEXT"?"selected":""}>NEXT</option>
-        <option ${m.status==="LIVE"?"selected":""}>LIVE</option>
-        <option ${m.status==="FT"?"selected":""}>FT</option>
-      </select>
-      <input name="b" value="${m.b}">
-      <input name="games" value="${m.games||""}" placeholder="11-7, 6-4">
-      <button class="btn" type="submit">Save</button>
-    </form>`).join("");
-  return `<div class="wrap">
-    <h2 style="font-family:Syne,sans-serif;font-size:32px">Desk</h2>
-    <p class="games">Password-gated score writer. This is what makes a match page live. <a href="/calendar">Desk calendar / add-event</a> arms GPA slate events (intake gate).</p>
-    <p class="games">Last feed write: ${state.updated || "seed file only"}</p>
-    <label class="games">Desk key<br><input class="field" id="deskKey" type="password" value="${state.deskKey}"></label>
-    <div class="panel" style="overflow:auto">${rows}</div>
-  </div>`;
 }
 
 function toggleFollow(k){
@@ -3098,7 +3026,6 @@ function render(){
   else if (p === "/rankings") inner = viewRankings();
   else if (p === "/shop") inner = viewShop();
   else if (p === "/draw") { state.boardMode = "draw"; applyDrawQuery(); inner = viewHome(); }
-  else if (p === "/desk") inner = viewDesk();
   else if ((m = p.match(/^\/match\/([^/]+)$/))) inner = viewMatch(m[1]);
   else if ((m = p.match(/^\/player\/([^/]+)$/))) inner = viewPerson("player", m[1]);
   else if ((m = p.match(/^\/team\/([^/]+)$/))) inner = viewPerson("team", m[1]);
@@ -3243,95 +3170,6 @@ function bind(){
     await syncPushSubscription();
     render();
   });
-  const key = document.getElementById("deskKey");
-  if (key) key.addEventListener("change", () => {
-    state.deskKey = key.value;
-    localStorage.setItem("wpm-desk-key", key.value);
-  });
-  document.querySelectorAll("form[data-desk]").forEach(f => {
-    f.addEventListener("submit", async ev => {
-      ev.preventDefault();
-      const id = f.getAttribute("data-desk");
-      const fd = new FormData(f);
-      const body = {
-        key: document.getElementById("deskKey").value,
-        id,
-        a: fd.get("a"),
-        b: fd.get("b"),
-        score: fd.get("score"),
-        status: fd.get("status"),
-        games: fd.get("games")
-      };
-      const res = await fetch("/api/scores", {method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify(body)});
-      const json = await res.json().catch(()=>({}));
-      if (!res.ok) { alert(json.error || "Save failed"); return; }
-      await pull();
-      render();
-    });
-  });
-
-  const calArm = document.getElementById("calArmForm");
-  if (calArm) calArm.addEventListener("submit", async ev => {
-    ev.preventDefault();
-    const fd = new FormData(calArm);
-    const key = fd.get("key") || state.deskKey;
-    state.deskKey = String(key||"");
-    localStorage.setItem("wpm-desk-key", state.deskKey);
-    const connType = String(fd.get("connType")||"none");
-    const body = {
-      key,
-      action: "arm",
-      id: fd.get("id") || undefined,
-      name: fd.get("name"),
-      venue: fd.get("venue"),
-      timezone: fd.get("timezone"),
-      start: fd.get("start"),
-      end: fd.get("end"),
-      host: fd.get("host"),
-      tour: fd.get("tour"),
-      tier: fd.get("tier"),
-      note: fd.get("note"),
-      delayed: fd.get("delayed") === "on",
-      connector: {
-        type: connType,
-        denTournamentId: fd.get("denTournamentId") || "",
-        sportsSyncTournamentId: fd.get("sportsSyncTournamentId") || "",
-        ppaEventId: fd.get("ppaEventId") || "",
-        scoreUrl: fd.get("scoreUrl") || ""
-      }
-    };
-    const msg = document.getElementById("calArmMsg");
-    try {
-      const res = await fetch("/api/calendar", {method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify(body)});
-      const json = await res.json().catch(()=>({}));
-      if (!res.ok) {
-        if (msg) msg.textContent = json.message || json.error || "Save failed";
-        else alert(json.message || json.error || "Save failed");
-        return;
-      }
-      if (msg) msg.textContent = json.event && json.event.onLive
-        ? "Armed · on WPM LIVE ("+json.event.status+")"
-        : "Saved · status "+(json.event&&json.event.status||"ok")+" (not live until intake + score path)";
-      await pullCalendar();
-      state.calAddId = "";
-      history.replaceState({}, "", "/calendar");
-      render();
-    } catch(e) {
-      if (msg) msg.textContent = "Network error";
-    }
-  });
-  const calDisarm = document.getElementById("calDisarm");
-  if (calDisarm) calDisarm.addEventListener("click", async () => {
-    const id = calDisarm.getAttribute("data-id");
-    const key = (document.getElementById("calDeskKey")||{}).value || state.deskKey;
-    const res = await fetch("/api/calendar", {method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify({key, action:"disarm", id})});
-    const json = await res.json().catch(()=>({}));
-    if (!res.ok) { alert(json.error || "Disarm failed"); return; }
-    await pullCalendar();
-    history.replaceState({}, "", "/calendar");
-    render();
-  });
-
 }
 
 
@@ -3405,7 +3243,9 @@ async function pull(){
           preServe: !!data.preServe,
           reader: data.reader || "",
           liveCount: data.liveCount || 0,
-          delayed: !!data.delayed
+          delayed: !!data.delayed,
+          ended: !!data.ended,
+          betweenEvents: !!data.betweenEvents
         };
         if (Array.isArray(data.bracketIndex)) state.appBracketIndex = data.bracketIndex;
       }
@@ -3417,7 +3257,7 @@ async function pull(){
           delayed: !!data.delayed
         };
         if (Array.isArray(data.matches)) {
-          data.matches = rebasePpaLocalDates(data.matches, (data.event && data.event.tz) || "America/Chicago");
+          data.matches = rebasePpaLocalDates(data.matches, (data.event && data.event.tz) || "Asia/Hong_Kong");
         }
       }
       if (!data || !Array.isArray(data.matches)) return;
