@@ -1,5 +1,6 @@
 import type { Config, Context } from "@netlify/functions";
 import { getStore } from "@netlify/blobs";
+import { requestAuthorized } from "./_shared/desk-auth.mjs";
 import {
   SLATE,
   APP_COLUMBUS,
@@ -195,15 +196,6 @@ function eventId(name: string, start: string) {
     .replace(/\s+/g, " ");
   const s = String(start || "").slice(0, 10);
   return `gpa:${encodeURIComponent(n)}:${s}`;
-}
-
-function deskKey() {
-  return (
-    (typeof Netlify !== "undefined" && Netlify.env?.get("DESK_KEY")) ||
-    process.env.DESK_KEY ||
-    process.env.DESK_PASSWORD ||
-    ""
-  );
 }
 
 function hasScorePath(c: Connector | null | undefined): boolean {
@@ -528,14 +520,13 @@ export default async (req: Request, _context: Context) => {
   }
 
   if (req.method === "POST") {
-    const key = deskKey();
     let body: any = {};
     try {
       body = await req.json();
     } catch {
       return Response.json({ error: "invalid json" }, { status: 400 });
     }
-    if (!key || body.key !== key) {
+    if (!(await requestAuthorized(req, body.key))) {
       return Response.json({ error: "unauthorized" }, { status: 401 });
     }
 
