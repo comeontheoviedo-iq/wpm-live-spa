@@ -2,70 +2,39 @@ import type { Config, Context } from "@netlify/functions";
 import { requestAuthorized } from "./_shared/desk-auth.mjs";
 import { loadDeskFeed, saveDeskFeed } from "./_shared/desk-feed.mjs";
 import { composeScores } from "./_shared/scores-compose.mjs";
+import { collectFeedOverlays } from "./_shared/scores-feeds.mjs";
+import worldcup from "./worldcup.mts";
+import ppa from "./ppa.mts";
+import app from "./app.mts";
+import sportssync from "./sportssync.mts";
+import rta from "./rta.mts";
 
 /**
  * GET used to return the desk blob unchanged. That blob is written only by
  * POST (or a one-time seed of site/scores.json). Nothing on a schedule
- * refreshes it, so `updated` stayed on the 4 Sep 2026 seed while /api/ppa,
- * /api/app, /api/worldcup, /api/rta and /api/sportssync kept moving.
- * GET now applies the same overlay the public SPA already does in pull().
+ * refreshes it, so `updated` stayed on the 4 Sep 2026 seed while the tour
+ * feeds kept moving.
+ *
+ * GET applies the same overlay the public SPA already does in pull(), by
+ * calling the worldcup, ppa, app, sportssync and rta handlers in-process.
+ * An HTTP request from this handler back to its own host fails inside the
+ * Cloudflare Worker that serves the custom domain, which left `updated` on
+ * the 4 Sep seed. The internal Request carries no query string, matching a
+ * default public GET of each route.
  */
 
 const FEEDS = [
-  ["wc", "/api/worldcup"],
-  ["ppa", "/api/ppa"],
-  ["app", "/api/app"],
-  ["sportssync", "/api/sportssync"],
-  ["rta", "/api/rta"],
+  { key: "wc", path: "/api/worldcup", handler: worldcup },
+  { key: "ppa", path: "/api/ppa", handler: ppa },
+  { key: "app", path: "/api/app", handler: app },
+  { key: "sportssync", path: "/api/sportssync", handler: sportssync },
+  { key: "rta", path: "/api/rta", handler: rta },
 ];
-
-function siteOrigin(req: Request) {
-  const fallback = (
-    process.env.URL ||
-    process.env.DEPLOY_PRIME_URL ||
-    "https://live.worldpickleballmagazine.com"
-  ).replace(/\/$/, "");
-  try {
-    const u = new URL(req.url);
-    const host = u.hostname;
-    const usable =
-      host === "localhost" ||
-      host === "127.0.0.1" ||
-      host.endsWith(".netlify.app") ||
-      host === "live.worldpickleballmagazine.com" ||
-      host.endsWith(".worldpickleballmagazine.com");
-    if ((u.protocol === "http:" || u.protocol === "https:") && usable) return u.origin;
-  } catch (_) {}
-  return fallback;
-}
-
-async function fetchFeed(origin: string, path: string) {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 20000);
-  try {
-    const res = await fetch(origin + path, {
-      cache: "no-store",
-      headers: { accept: "application/json", "user-agent": "WPM-LIVE-scores/1.0" },
-      signal: ctrl.signal,
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    if (!data || !Array.isArray(data.matches)) return null;
-    return data;
-  } catch (_) {
-    return null;
-  } finally {
-    clearTimeout(timer);
-  }
-}
 
 export default async (req: Request, _context: Context) => {
   if (req.method === "GET") {
     const base = await loadDeskFeed();
-    const origin = siteOrigin(req);
-    const pairs = await Promise.all(FEEDS.map(async ([key, path]) => [key, await fetchFeed(origin, path)] as const));
-    const overlays: Record<string, any> = {};
-    for (const [key, data] of pairs) overlays[key] = data;
+    const overlays = await collectFeedOverlays(FEEDS);
     const feed = composeScores(base, overlays);
     return Response.json(feed, {
       headers: { "Cache-Control": "no-store" },
