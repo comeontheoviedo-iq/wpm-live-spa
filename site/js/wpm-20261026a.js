@@ -3572,7 +3572,7 @@ function fmToggleStar(kind, key){
   if (rk && state.selected[rk] && !state.selected[key]) { toggleFollow(rk); return; }
   toggleFollow(key);
 }
-function fmTourBadge(t){ return `<span class="fm-tour fm-t-${escAttr(t||"x")}">${esc(TOUR_LABELS[t] || String(t||"").toUpperCase())}</span>`; }
+function fmTourBadge(t){ return `<span class="fm-tour fm-t-${escAttr(t||"x")}">${esc(fmTourName(t))}</span>`; }
 const FM_ICONS = {
   matches:'<path d="M4 6h16M4 12h16M4 18h10"/>',
   following:'<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8L3.5 9.7l5.9-.9z"/>',
