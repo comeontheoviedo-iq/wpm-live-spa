@@ -9,7 +9,7 @@ import { matchHasClock, matchBoardDate } from "../netlify/functions/app-dates.mj
 import { GIJON, asCalendarRow } from "../netlify/functions/slate-events.mjs";
 
 const prev19 = fs.readFileSync("js/wpm-20261019a.js", "utf8");
-const js = fs.readFileSync("js/wpm-20261025a.js", "utf8");
+const js = fs.readFileSync("js/wpm-20261026a.js", "utf8");
 const prev16 = fs.readFileSync("js/wpm-20261016a.js", "utf8");
 const prev12 = fs.readFileSync("js/wpm-20261012a.js", "utf8");
 const prev07 = fs.readFileSync("js/wpm-20261007a.js", "utf8");
@@ -31,7 +31,7 @@ const index = fs.readFileSync("index.html", "utf8");
 const sw = fs.readFileSync("sw.js", "utf8");
 const siteIndex = fs.readFileSync("site/index.html", "utf8");
 const siteSw = fs.readFileSync("site/sw.js", "utf8");
-const siteJs = fs.readFileSync("site/js/wpm-20261025a.js", "utf8");
+const siteJs = fs.readFileSync("site/js/wpm-20261026a.js", "utf8");
 const ppa = fs.readFileSync("netlify/functions/ppa.mts", "utf8");
 const appFn = fs.readFileSync("netlify/functions/app.mts", "utf8");
 
@@ -62,7 +62,7 @@ assert.ok(js.includes("Fantasy points are not LIVE/FT match scores."));
 assert.equal(js.includes("photo_url||"), false);
 assert.ok(js.includes("function tourMark"));
 assert.ok(js.includes('e.tour==="mlp-asia"'));
-assert.ok(index.includes("wpm-20261025a.js"));
+assert.ok(index.includes("wpm-20261026a.js"));
 assert.ok(index.includes("sw.js?v=20261025a"));
 assert.ok(index.includes("app.css?v=20261019a"));
 assert.equal(index.includes("wpm-20261019a.js"), false);
@@ -88,7 +88,7 @@ assert.ok(sw.includes("wpm-static-20261025a"));
 assert.ok(sw.includes('pathname === "/desk"'));
 assert.ok(sw.includes('const STATIC_PATHS = new Set(["/icon.svg", "/manifest.json", "/css/app.css"]);'));
 assert.equal(index.includes("20260918f"), false, "index must not pin old SW f");
-assert.ok(siteIndex.includes("wpm-20261025a.js"));
+assert.ok(siteIndex.includes("wpm-20261026a.js"));
 assert.ok(siteSw.includes("wpm-static-20261025a"));
 assert.equal(siteIndex.includes("wpm-20261019a.js"), false);
 assert.equal(siteIndex.includes("wpm-20261016a.js"), false);
