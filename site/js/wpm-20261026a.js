@@ -2949,9 +2949,14 @@ function viewRankings(){
     note = "PPA World · official UPA / PPA category rankings (men / women composite 50/35/15, last 52 weeks). Not WPR and not GPA.";
     catSeg = `<div class="seg" style="margin-top:10px;flex-wrap:wrap">${ppaCats.map(([id,l])=>`<button data-rankcat="${id}" class="${sex===id?"on":""}">${l}</button>`).join("")}</div>`;
   } else if (board === "gpa") {
-    rows = (data.gpa && data.gpa[cat]) || [];
+    // rankCat is shared with PPA World ("men"/"women"), so map it to a GPA category that has rows.
+    const gpaData = data.gpa || {};
+    const gpaHas = id => Array.isArray(gpaData[id]) && gpaData[id].length > 0;
+    let gcat = cat;
+    if (!gpaHas(gcat)) gcat = cat === "women" && gpaHas("womens_singles") ? "womens_singles" : "mens_singles";
+    rows = gpaData[gcat] || [];
     note = "GPA world rankings · rolling 12 months · best 10 · gpapickleball.org — labelled separately from PPA World and WPR.";
-    catSeg = `<div class="seg" style="margin-top:10px;flex-wrap:wrap">${gpaCats.map(([id,l])=>`<button data-rankcat="${id}" class="${cat===id?"on":""}">${l}</button>`).join("")}</div>`;
+    catSeg = `<div class="seg" style="margin-top:10px;flex-wrap:wrap">${gpaCats.filter(([id])=>gpaHas(id)).map(([id,l])=>`<button data-rankcat="${id}" class="${gcat===id?"on":""}">${l}</button>`).join("")}</div>`;
   } else if (board === "elo") {
     rows = ((data.elo||{}).singles||[]).slice();
     note = "WPR · open mixed rating (all players, not MS/WS/MD/WD). Public board. PPA World is the official PPA category ranking. GPA is a separate table.";
