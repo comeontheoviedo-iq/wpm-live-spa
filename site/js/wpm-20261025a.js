@@ -1226,22 +1226,51 @@ function slateSections(c){
   return parts.join("");
 }
 
+const MAG = "https://worldpickleballmagazine.com";
+const MAG_NAV = [["/","Home"],["/live/","Live"],["/watch/","Watch"],["/play/","Play"],["/rankings/","Rankings"],["/gear/","Gear"]];
+function escTick(v){ return String(v==null?"":v).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function tickerHtml(){
+  const all = (state.matches || []).map(presentMatch).filter(Boolean);
+  const live = all.filter(m => effectiveStatus(m) === "LIVE");
+  const ft = all.filter(m => effectiveStatus(m) === "FT" && m.score && m.date && /^(ppa|app|wc|mlp|usap)/.test(m.tour || "")).sort((x, y) => String(y.date + (y.time || "")).localeCompare(String(x.date + (x.time || "")))).slice(0, 12);
+  const items = live.concat(ft).slice(0, 14);
+  const cards = items.map(m => {
+    const st = effectiveStatus(m);
+    return `<a class="tick" href="/match/${encodeURIComponent(m.id)}"><span class="tick-st tick-${st.toLowerCase()}">${st === "LIVE" ? "Live" : "Final"}</span><span class="tick-teams">${escTick(m.a)}</span><span class="tick-games"><b>${escTick(centerScore(m) || "–")}</b></span><span class="tick-teams">${escTick(m.b)}</span><span class="tick-meta">${escTick(m.div || (m.tour||"").toUpperCase())}</span></a>`;
+  }).join("");
+  return `<div class="ticker"><div class="w ticker-row"><a class="ticker-label" href="/">Scores</a><div class="ticker-track">${cards || `<span class="tick-empty">No live scores right now.</span>`}</div><a class="ticker-out" href="${MAG}/">Magazine</a></div></div>`;
+}
+function themeToggle(){
+  return `<button class="theme" type="button" aria-label="Toggle dark mode" onclick="(function(){var r=document.documentElement;var d=r.getAttribute('data-theme')==='dark'||(!r.getAttribute('data-theme')&&matchMedia('(prefers-color-scheme: dark)').matches);var n=d?'light':'dark';r.setAttribute('data-theme',n);try{localStorage.setItem('wpm-theme',n)}catch(e){}})()"><span class="when-light">Dark</span><span class="when-dark">Light</span></button>`;
+}
 function chrome(inner, title){
-  const on = (p) => path()===p || (p==="/" && path()==="/") ? "on" : (path().startsWith(p) && p!=="/" ? "on" : "");
+  const liveOn = path()==="/"||path().startsWith("/match")||path().startsWith("/player")||path().startsWith("/team")||path()==="/draw";
   return `
-  <header class="top">
-    <a class="brand" href="/">
-      <div class="mark">W</div>
-      <div><h1>WPM LIVE</h1><small>WORLD PICKLEBALL MAGAZINE</small></div>
-    </a>
-    <form class="find" action="/search" onsubmit="location.href='/search?q='+encodeURIComponent(this.q.value);return false;">
-      <input name="q" placeholder="Search player or team" value="${(state.q||"").replace(/"/g,"")}">
-    </form>
-    <a class="issue" href="/magazine">LATEST ISSUE</a>
+  ${tickerHtml()}
+  <div class="top"><div class="w top-row"><span>WPM LIVE · The live centre of World Pickleball Magazine</span><span class="lang">${themeToggle()}<a href="${MAG}/">worldpickleballmagazine.com</a></span></div></div>
+  <header class="mast">
+    <div class="w mast-row">
+      <a class="brand" href="${MAG}/" aria-label="World Pickleball Magazine"><img class="logo" src="/img/wpm-logo.avif" alt="World Pickleball Magazine" width="480" height="192"></a>
+      <nav class="tabs" aria-label="Magazine sections">${MAG_NAV.map(([h,l]) => `<a href="${MAG}${h}" class="${h==="/live/"?"on":""}"${h==="/live/"?' aria-current="page"':""}>${l}</a>`).join("")}</nav>
+      <form class="find" action="/search" onsubmit="location.href='/search?q='+encodeURIComponent(this.q.value);return false;">
+        <input name="q" aria-label="Search player or team" placeholder="Search player or team" value="${(state.q||"").replace(/"/g,"")}">
+      </form>
+      <a class="report-link" href="${MAG}/newsletter/">Get the Report</a>
+    </div>
   </header>
+  <nav class="subnav" aria-label="Live centre"><div class="w subnav-row">
+    <a class="${liveOn?"on":""}" href="/">Live</a>
+    <a class="${path()==="/rankings"?"on":""}" href="/rankings">Table</a>
+    <a class="${path()==="/calendar"?"on":""}" href="/calendar">Calendar</a>
+    <a class="${path()==="/history"?"on":""}" href="/history">Archive</a>
+    <a class="${path()==="/following"?"on":""}" href="/following">Following</a>
+    <a class="${path()==="/magazine"?"on":""}" href="/magazine">Magazine</a>
+    <a class="${path()==="/shop"?"on":""}" href="/shop">Shop</a>
+  </div></nav>
   ${inner}
+  <footer class="colophon"><div class="w foot-row"><p class="foot-name">World Pickleball Magazine</p><nav>${MAG_NAV.map(([h,l]) => `<a href="${MAG}${h}">${l}</a>`).join("")}<a href="${MAG}/magazine/">Issues</a><a href="${MAG}/newsletter/">The Report</a></nav></div></footer>
   <nav class="tabbar">
-    <a class="${path()==="/"||path().startsWith("/match")||path().startsWith("/player")||path().startsWith("/team")||path()==="/draw"?"on":""}" href="/">Live</a>
+    <a class="${liveOn?"on":""}" href="/">Live</a>
     <a class="${path()==="/rankings"?"on":""}" href="/rankings">Table</a>
     <a class="${path()==="/calendar"?"on":""}" href="/calendar">Cal</a>
     <a class="${path()==="/following"?"on":""}" href="/following">Follow</a>
@@ -2393,7 +2422,7 @@ function viewFollowing(){
       }).join("")
     : `<p class="empty">None.</p>`;
   return `<div class="wrap">
-    <h2 style="font-family:Syne,sans-serif;font-size:32px">Following</h2>
+    <h2 style="font-family:Inter,sans-serif;font-weight:800;font-size:32px">Following</h2>
     ${quiet?"":alertsCta()}
     <div class="panel"><div class="kicker">Tours</div>${followedTourRows()}</div>
     <div class="panel"><div class="kicker">Players</div>${peopleHtml}</div>
@@ -2495,7 +2524,7 @@ function viewMagazine(){
 function productCard(p){
   const mine = (p.tags||[]).some(t => state.selected[t]);
   return `<div class="product">
-    <div class="ph" style="background:linear-gradient(135deg,#1a1540,#0b1020);color:#f4c430;display:flex;align-items:flex-end;padding:12px;font-family:Syne,sans-serif;font-size:13px">${p.cat.toUpperCase()}</div>
+    <div class="ph" style="background:linear-gradient(135deg,#1a1540,#0b1020);color:#F7EA05;display:flex;align-items:flex-end;padding:12px;font-family:Inter,sans-serif;font-weight:800;font-size:13px">${p.cat.toUpperCase()}</div>
     <div>
       <h3>${p.name}</h3>
       <p class="games">${p.who}${mine?" · On court with someone you follow":""}</p>
@@ -2883,7 +2912,7 @@ function viewHistory(){
   const armed = (h.armed||[]).map(e => `<div class="rank-row"><b></b><div><strong>${e.name}</strong><span>${e.start} → ${e.end} · ${e.host} · ${e.status}</span></div><em>${e.connector}</em></div>`).join("");
   const npl = (h.npl||[]).slice(0,30).map(m => `<div class="rank-row"><b>${m.score}</b><div><strong>${m.a} vs ${m.b}</strong><span>${m.date} · ${m.games||""}</span></div><em>NPL</em></div>`).join("");
   const medals = (h.gpaMedals||[]).filter(x=>x.place==="winner").slice(0,40).map(m => `<a class="rank-row" href="${playerPath(m.player)}"><b>W</b><div><strong>${m.player}</strong><span>${m.event} · ${m.category}</span></div><em>${m.points||""}</em></a>`).join("");
-  return `<div class="hero"><h2>ARCHIVE</h2><p>Federation results. <a href="/calendar" style="color:#f5c518">Calendar</a> for the upcoming slate.</p></div>
+  return `<div class="hero"><h2>ARCHIVE</h2><p>Federation results. <a href="/calendar" class="hero-link">Calendar</a> for the upcoming slate.</p></div>
   <div class="wrap">
     <div class="panel"><div class="kicker">Armed</div>${armed||"<p class='empty'>None</p>"}</div>
     <div class="panel"><div class="kicker">GPA golds</div>${medals||"<p class='empty'>No medals yet</p>"}</div>
@@ -2944,7 +2973,7 @@ function viewRankings(){
   const events = (calEv.length ? calEv : (data.events||[]).slice(0,8).map(e=>({
     name:e.name, start:(e.tournament_date||"").slice(0,10), venue:e.location||e.venue||"", tier:e.tier||"", host:e.host||"", status:"results-only"
   }))).map(calEventRow).join("");
-  return `<div class="hero"><h2>TABLE</h2><p>PPA World, GPA and WPR — labelled separately. WPR is open mixed, not a category table. <a href="/calendar" style="color:#f5c518">Calendar</a> · <a href="/history" style="color:#f5c518">Archive</a>.</p></div>
+  return `<div class="hero"><h2>TABLE</h2><p>PPA World, GPA and WPR — labelled separately. WPR is open mixed, not a category table. <a href="/calendar" class="hero-link">Calendar</a> · <a href="/history" class="hero-link">Archive</a>.</p></div>
   <div class="wrap">
     <div class="panel">
       <div class="seg">
@@ -2963,7 +2992,7 @@ function viewShop(){
   return `<div class="hero"><h2>SHOP</h2><p>Kit, when it is ready to earn without looking cheap.</p></div>
   <div class="wrap"><div class="panel" style="padding:28px">
     <div class="kicker">Coming soon</div>
-    <h2 style="font-family:Syne,sans-serif;font-size:28px;margin:8px 0 12px">Affiliate shop is closed for now</h2>
+    <h2 style="font-family:Inter,sans-serif;font-weight:800;font-size:28px;margin:8px 0 12px">Affiliate shop is closed for now</h2>
     <p class="games">Amazon and tour-brand deals will land here once tags, inventory and disclosure are signed. Nothing is for sale in the app until then.</p>
   </div></div>`;
 }

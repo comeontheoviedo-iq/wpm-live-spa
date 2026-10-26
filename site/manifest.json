@@ -3,7 +3,7 @@
   "short_name": "WPM LIVE",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0c0a2e",
-  "theme_color": "#0c0a2e",
+  "background_color": "#0D0B3F",
+  "theme_color": "#0D0B3F",
   "icons": [{"src":"/icon.svg","sizes":"any","type":"image/svg+xml"}]
 }
