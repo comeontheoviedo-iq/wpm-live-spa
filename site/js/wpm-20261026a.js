@@ -1,4 +1,7 @@
 
+// Heat Check is not public yet. Keep false in the build; flip to true when it launches.
+const HEAT_CHECK_ENABLED = false;
+const HEAT_CHECK_URL = "https://worldpickleballmagazine.com/heat-check/";
 const WATCH = {
   pbtv: {label:"Watch on PBTV", href:"https://www.ppatour.com/watch/"},
   streamed: {label:"PPA Streamed Courts", href:"https://www.youtube.com/@ppastreamedcourts"},
@@ -55,7 +58,7 @@ const state = {
   shopCat: "all",
   rankings: null,
   history: null,
-  rankBoard: "gpa",
+  rankBoard: "elo",
   rankCat: "mens_singles",
   resultCat: "all",
   calendar: null,
@@ -2925,7 +2928,8 @@ function viewHistory(){
 function viewRankings(){
   const data = state.rankings;
   if (!data) return `<div class="wrap"><p class="empty">Loading rankings…</p></div>`;
-  const board = state.rankBoard || "ppa";
+  let board = state.rankBoard || "elo";
+  if (board === "heat" && !HEAT_CHECK_ENABLED) board = "elo";
   const gpaCats = [
     ["mens_singles","Men's S"],
     ["womens_singles","Women's S"],
@@ -2952,6 +2956,14 @@ function viewRankings(){
     rows = ((data.elo||{}).singles||[]).slice();
     note = "WPR · open mixed rating (all players, not MS/WS/MD/WD). Public board. PPA World is the official PPA category ranking. GPA is a separate table.";
     catSeg = `<div class="seg" style="margin-top:10px"><button class="on" type="button">Open mixed</button></div>`;
+  } else if (board === "heat") {
+    // No public Heat Check JSON yet: promo card only, never invented rows.
+    const hc = Array.isArray(data.heatCheck) ? data.heatCheck.slice(0, 25) : [];
+    rows = [];
+    note = "Heat Check · World Pickleball Magazine's form board.";
+    catSeg = hc.length
+      ? `<div class="hc-list">${hc.map((r,i) => `<div class="rank-row"><b>${esc(r.rank||i+1)}</b><div><strong><a href="https://worldpickleballmagazine.com/players/${esc(fmSlug(r.name))}/">${esc(r.name)}</a></strong><span>${esc(r.note||"")}</span></div><em></em></div>`).join("")}</div><a class="chip" href="${HEAT_CHECK_URL}">Full Heat Check</a>`
+      : `<div class="hc-promo" style="margin-top:12px;padding:18px;border-radius:14px;background:linear-gradient(180deg,#0D0B3F,#1A1750);color:#fff"><div class="kicker" style="color:#F7EA05">Heat Check</div><h3 style="margin:6px 0 8px;font-size:20px;color:#fff">Who's hot right now</h3><p style="margin:0 0 14px;color:#c9c6d8;font-size:14px">The top 25 form players, ranked by World Pickleball Magazine.</p><a class="chip" style="background:#F7EA05;color:#0D0B3F;border:0" href="${HEAT_CHECK_URL}">Open Heat Check</a></div>`;
   } else {
     rows = [];
     note = "";
@@ -2973,13 +2985,14 @@ function viewRankings(){
   const events = (calEv.length ? calEv : (data.events||[]).slice(0,8).map(e=>({
     name:e.name, start:(e.tournament_date||"").slice(0,10), venue:e.location||e.venue||"", tier:e.tier||"", host:e.host||"", status:"results-only"
   }))).map(calEventRow).join("");
-  return `<div class="hero"><h2>TABLE</h2><p>PPA World, GPA and WPR — labelled separately. WPR is open mixed, not a category table. <a href="/calendar" class="hero-link">Calendar</a> · <a href="/history" class="hero-link">Archive</a>.</p></div>
+  return `<div class="hero"><h2>TABLE</h2><p>WPR, PPA World and GPA — labelled separately. WPR is open mixed, not a category table. <a href="/calendar" class="hero-link">Calendar</a> · <a href="/history" class="hero-link">Archive</a>.</p></div>
   <div class="wrap">
     <div class="panel">
       <div class="seg">
+        <button data-rankboard="elo" class="${board==="elo"?"on":""}">WPR</button>
         <button data-rankboard="ppa" class="${board==="ppa"?"on":""}">PPA World</button>
         <button data-rankboard="gpa" class="${board==="gpa"?"on":""}">GPA</button>
-        <button data-rankboard="elo" class="${board==="elo"?"on":""}">WPR</button>
+        ${HEAT_CHECK_ENABLED ? `<button data-rankboard="heat" class="${board==="heat"?"on":""}">Heat Check</button>` : ""}
       </div>
       ${catSeg}
       <p class="games" style="margin-top:10px">${note}</p>
@@ -3354,7 +3367,7 @@ window.addEventListener("load", async () => {
   });
   pullHistory().then(()=>{ if(path()==="/history" || path().startsWith("/player/") || path().startsWith("/team/")) render(); });
   pullRankings().then(() => { if (path()==="/rankings" || path().startsWith("/player/") || path()==="/") render(); });
-  pullCalendar().then(() => { if (path()==="/calendar" || path()==="/" || path()==="/rankings") render(); });
+  pullCalendar().then(() => { render(); });
   pullMagazine(1).then(() => { if (path()==="/magazine") render(); });
   render();
   setInterval(() => {
@@ -3692,13 +3705,15 @@ function fmDateLabel(iso){
 function fmDateStrip(sel){
   const days = fmDays();
   const t = fmToday();
+  const schedDays = new Set();
+  fmCalEvents().forEach(e => { if (!e.start) return; for (let d = e.start, k = 0; d <= (e.end||e.start) && k < 40; d = addDaysIso(d, 1), k++) schedDays.add(d); });
   const span = [];
   for (let i = -3; i <= 3; i++) span.push(addDaysIso(sel, i));
   return `<div class="fm-datebar">
     <div class="fm-dates" role="tablist" aria-label="Choose day">${span.map(d => {
       const [Y,M,D] = d.split("-").map(Number); const dt = new Date(Y,M-1,D);
       const top = d===t?"Today":d===addDaysIso(t,-1)?"Yest":d===addDaysIso(t,1)?"Tmrw":["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][dt.getDay()];
-      return `<button type="button" role="tab" class="fm-day${d===sel?" on":""}${days.has(d)?" has":""}" data-fmday="${d}" aria-selected="${d===sel}"><span>${top}</span><b>${D} ${["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][M-1]}</b></button>`;
+      return `<button type="button" role="tab" class="fm-day${d===sel?" on":""}${days.has(d)?" has":schedDays.has(d)?" sched":""}" data-fmday="${d}" aria-selected="${d===sel}"><span>${top}</span><b>${D} ${["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][M-1]}</b></button>`;
     }).join("")}</div>
     <label class="fm-pick" aria-label="Pick a date">${fmIcon("cal", 20)}<input type="date" value="${sel}" data-fmpick></label>
   </div>`;
@@ -3719,6 +3734,8 @@ function fmHome(){
   const fol = list.filter(fmFollowsMatch);
   const groups = fmGroups(list);
   const near = list.length ? "" : fmNearestDay(sel);
+  const boardNames = new Set(list.map(m => fmNorm(fmEventName(m))));
+  const sched = FM.liveOnly ? [] : fmCalEvents().filter(e => e.start <= sel && (e.end||e.start) >= sel && !boardNames.has(fmNorm(e.name)) && !fmEventsIndex().some(b => b.n > 0 && fmNorm(b.name) === fmNorm(e.name)));
   return `<div class="fm-wrap fm-home">
     ${fmDateStrip(sel)}
     <div class="fm-filters">
@@ -3727,7 +3744,8 @@ function fmHome(){
     </div>
     ${fol.length && !FM.liveOnly ? `<section class="fm-group fm-folgroup"><div class="fm-gh"><span class="fm-ghb static">${fmIcon("following",18)}<span class="fm-gt"><b>Following</b><span>Your players and events</span></span><span class="fm-gn">${fol.length}</span></span></div><div class="fm-rows">${fmSortMatches(fol).map(m => fmRow(m, {sub: shortEventLabel(fmEventName(m), fmEventKey(m))+" · "+[fmDivision(m), fmRound(m)].filter(Boolean).join(" · ")})).join("")}</div></section>` : ""}
     ${groups.map(g => fmGroupHtml(g)).join("")}
-    ${list.length ? "" : `<div class="fm-empty"><p>${FM.liveOnly ? "Nothing is live right now." : "No matches on the board for "+esc(fmDateLabel(sel))+"."}</p>${near && !FM.liveOnly ? `<button type="button" class="fm-btn" data-fmday="${near}">Go to ${esc(fmDateLabel(near))}</button>` : ""}${FM.liveOnly?`<button type="button" class="fm-btn" data-fmlive>Show all matches</button>`:""}</div>`}
+    ${sched.length ? `<section class="fm-card fm-sched"><h2 class="fm-h2">Scheduled · no draw yet</h2>${sched.map(fmEvRow).join("")}</section>` : ""}
+    ${list.length || sched.length ? "" : `<div class="fm-empty"><p>${FM.liveOnly ? "Nothing is live right now." : "No matches on the board for "+esc(fmDateLabel(sel))+"."}</p>${near && !FM.liveOnly ? `<button type="button" class="fm-btn" data-fmday="${near}">Go to ${esc(fmDateLabel(near))}</button>` : ""}${FM.liveOnly?`<button type="button" class="fm-btn" data-fmlive>Show all matches</button>`:""}</div>`}
     <p class="fm-foot">Times in your time zone (${esc(Intl.DateTimeFormat().resolvedOptions().timeZone || "local")}). Scores refresh every 12 seconds.${state.updated?` Feed updated ${esc(new Date(state.updated).toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit"}))}.`:""}</p>
   </div>`;
 }
@@ -3868,21 +3886,107 @@ function fmEventsIndex(){
   });
   return Object.values(map).sort((a,b) => (b.live - a.live) || String(b.end).localeCompare(String(a.end)));
 }
+const FM_EXTRA_LABELS = {usap:"USA Pickleball", epf:"EPF", gs:"Grand Slam", "tennis australia":"Tennis Aus", "us open":"US Open", mlp:"MLP"};
+function fmTourName(t){ return TOUR_LABELS[t] || FM_EXTRA_LABELS[t] || String(t||"").toUpperCase(); }
+function fmTourFamily(t){
+  t = String(t||"");
+  if (t === "ppa" || t === "asia" || t === "ppa-eu") return "PPA";
+  if (t === "app" || t === "app-asia") return "APP";
+  if (/^mlp/.test(t)) return "MLP";
+  if (t === "usap" || t === "us open") return "Nationals";
+  if (t === "wc") return "World Cup";
+  return fmTourName(t);
+}
+function fmRegion(e){
+  const t = String(e.tour||""), loc = `${e.venue||""} ${e.location||""} ${e.tz||""}`;
+  if (/^Asia\//.test(e.tz||"") || /Vietnam|India|Thailand|Taiwan|China|Japan|Tokyo|Hong Kong|Singapore|Korea|Malaysia|Philippines|Indonesia/i.test(loc) || t==="asia" || t==="app-asia" || t==="mlp-asia") return "Asia";
+  if (/^Europe\//.test(e.tz||"") || /Europe|France|England|Spain|Italy|Germany|UK\b|Netherlands|Portugal/i.test(loc) || t==="ppa-eu" || t==="epf" || t==="rta") return "Europe";
+  if (/^Australia\//.test(e.tz||"") || /Australia|New Zealand|Melbourne|Sydney/i.test(loc) || t==="npl" || t==="tennis australia") return "Oceania";
+  if (/^America\//.test(e.tz||"") || /\bUSA\b|, [A-Z]{2}\b|Canada|Mexico/.test(loc) || t==="usap" || t==="app" || t==="ppa") return "Americas";
+  return "Other";
+}
+function fmNorm(n){ return String(n||"").toLowerCase().replace(/[^a-z0-9]+/g," ").replace(/\b(the|presented by|open|20\d\d)\b/g," ").replace(/\s+/g," ").trim(); }
+function fmCalEvents(){
+  const cal = state.calendar || {};
+  const seen = new Set(), out = [];
+  [...(cal.events||[]), ...(cal.slate||[])].forEach(c => {
+    if (!c || !c.start || !c.name) return;
+    const id = c.id || (c.tour+":"+c.name+":"+c.start);
+    if (seen.has(id)) return; seen.add(id);
+    const dup = out.find(o => o.start === c.start && (fmNorm(o.name) === fmNorm(c.name) || (o.end === (c.end||c.start) && fmTourFamily(o.tour) === fmTourFamily(c.tour) && fmNorm(o.name).split(" ").some(w => w.length > 4 && !/asia|tour|world|championships?|pickleball/.test(w) && fmNorm(c.name).split(" ").indexOf(w) >= 0))));
+    if (dup) return;
+    out.push({key:"cal:"+id, cal:true, tour:c.tour||"", name:c.name, start:c.start, end:c.end||c.start, venue:c.venue||"", location:c.location||"", tz:c.timezone||"", tier:c.tier||"", prize:c.prize_pool||"", url:c.officialUrl||c.registration_url||"", drawUrl:c.drawUrl||"", n:0, live:0, note:c.statusNote||c.note||""});
+  });
+  return out;
+}
+function fmAllEvents(){
+  const board = fmEventsIndex();
+  const cal = fmCalEvents().filter(c => !board.some(b => (fmNorm(b.name) && fmNorm(b.name) === fmNorm(c.name)) || (b.tour === c.tour && b.start && b.end && c.start <= b.end && c.end >= b.start && b.n > 0 && fmNorm(b.name).split(" ").some(w => w.length > 4 && fmNorm(c.name).includes(w)))));
+  return board.concat(cal);
+}
+function fmDaysBetween(a, b){ const p = x => { const [Y,M,D] = x.split("-").map(Number); return Date.UTC(Y,M-1,D); }; return Math.round((p(b) - p(a)) / 864e5); }
+function fmCountdown(e){
+  const t = fmToday();
+  if (e.live) return `<em class="fm-glive">${e.live} live</em>`;
+  if (!e.start) return "";
+  if (e.start <= t && (e.end||e.start) >= t) { const n = fmDaysBetween(e.start, t) + 1, tot = fmDaysBetween(e.start, e.end||e.start) + 1; return `<span class="fm-cd on">${tot > 1 ? `Day ${n} of ${tot}` : "Today"}</span>`; }
+  if (e.start > t) { const d = fmDaysBetween(t, e.start); return `<span class="fm-cd">${d === 1 ? "Tomorrow" : d < 14 ? `in ${d} days` : d < 60 ? `in ${Math.round(d/7)} weeks` : `in ${Math.round(d/30)} months`}</span>`; }
+  return "";
+}
+function fmEvRow(e){
+  const where = e.venue || e.location || "";
+  const dates = e.start ? (e.end && e.end !== e.start ? `${dateChip(e.start)} – ${dateChip(e.end)}` : dateChip(e.start)) : "";
+  return `<div class="fm-evrow"><a href="/event/${encodeURIComponent(e.key)}">${fmTourBadge(e.tour)}<span class="fm-evn"><b>${esc(e.name)}</b><span>${esc([dates, where].filter(Boolean).join(" · "))}</span></span>${fmCountdown(e)}${e.n?`<span class="fm-gn">${e.n}</span>`:""}</a>${fmStar("ev", e.key, e.name)}</div>`;
+}
 function fmEvents(){
   if (!FM.loaded) return fmSkeleton();
-  const evs = fmEventsIndex();
+  const t = fmToday(), wk = addDaysIso(t, 7);
+  const all = fmAllEvents();
+  const ftour = qs("tour") || "", freg = qs("region") || "";
+  const fams = [...new Set(all.filter(e => (e.end||e.start) >= addDaysIso(t,-30)).map(e => fmTourFamily(e.tour)))].sort();
+  const regs = ["Americas","Europe","Asia","Oceania"].filter(r => all.some(e => fmRegion(e) === r));
+  const ok = e => (!ftour || fmTourFamily(e.tour) === ftour) && (!freg || fmRegion(e) === freg);
+  const evs = all.filter(ok);
+  const end = e => e.end || e.start || "";
+  const live = evs.filter(e => e.live > 0);
+  const week = evs.filter(e => !e.live && e.start && e.start <= wk && end(e) >= t).sort((a,b) => a.start.localeCompare(b.start));
+  const up = evs.filter(e => !e.live && e.start > wk).sort((a,b) => a.start.localeCompare(b.start));
+  const past = evs.filter(e => !e.live && end(e) && end(e) < t && (e.n > 0 || e.archive)).sort((a,b) => end(b).localeCompare(end(a)));
+  const months = {};
+  up.forEach(e => { const k = e.start.slice(0,7); (months[k] = months[k] || []).push(e); });
+  const mName = k => { const [Y,M] = k.split("-").map(Number); return new Date(Y, M-1, 1).toLocaleDateString(undefined, {month:"long", year:"numeric"}); };
+  const link = (o) => { const p = new URLSearchParams(); const tt = o.tour != null ? o.tour : ftour, rr = o.region != null ? o.region : freg; if (tt) p.set("tour", tt); if (rr) p.set("region", rr); const q = String(p); return "/events" + (q ? "?" + q : ""); };
+  const chips = `<div class="fm-chips" aria-label="Tour filter"><a class="fm-chip${!ftour?" on":""}" href="${link({tour:""})}">All tours</a>${fams.map(f => `<a class="fm-chip${ftour===f?" on":""}" href="${link({tour:f})}">${esc(f)}</a>`).join("")}</div>
+    <div class="fm-chips fm-chips2" aria-label="Region filter"><a class="fm-chip sm${!freg?" on":""}" href="${link({region:""})}">All regions</a>${regs.map(r => `<a class="fm-chip sm${freg===r?" on":""}" href="${link({region:r})}">${esc(r)}</a>`).join("")}</div>`;
+  const sec = (title, list) => list.length ? `<section class="fm-card"><h2 class="fm-h2">${title}</h2>${list.map(fmEvRow).join("")}</section>` : "";
+  const any = live.length + week.length + up.length + past.length;
+  return `<div class="fm-wrap fm-events"><h1 class="fm-h1">Events</h1>
+    ${chips}
+    ${sec(`<span class="fm-pulse"></span> Live now`, live)}
+    ${sec("This week", week)}
+    ${Object.keys(months).sort().map(k => sec(esc(mName(k)), months[k])).join("")}
+    ${sec("Past", past.slice(0, 40))}
+    ${any ? "" : `<div class="fm-empty"><p>No events match these filters.</p><a class="fm-btn" href="/events">Clear filters</a></div>`}
+    <p class="fm-foot">Schedule from the WPM tour calendar. Dates are local to each event. <a href="/calendar">Full calendar</a>.</p></div>`;
+}
+
+function fmUpcomingEvent(e){
   const t = fmToday();
-  const row = e => `<div class="fm-evrow"><a href="/event/${encodeURIComponent(e.key)}">${fmTourBadge(e.tour)}<span class="fm-evn"><b>${esc(e.name)}</b><span>${esc([e.start&&e.end?`${dateChip(e.start)} – ${dateChip(e.end)}`:"", e.venue].filter(Boolean).join(" · "))}</span></span>${e.live?`<em class="fm-glive">${e.live} live</em>`:""}${e.n?`<span class="fm-gn">${e.n}</span>`:""}</a>${fmStar("ev", e.key, e.name)}</div>`;
-  const now = evs.filter(e => e.live || (e.end && e.end >= addDaysIso(t,-2)));
-  const past = evs.filter(e => now.indexOf(e) < 0);
-  return `<div class="fm-wrap"><h1 class="fm-h1">Events</h1>
-    ${now.length ? `<section class="fm-card"><h2 class="fm-h2">This week</h2>${now.map(row).join("")}</section>` : ""}
-    <section class="fm-card"><h2 class="fm-h2">Recent</h2>${past.map(row).join("") || `<p class="fm-note">No finished events on file.</p>`}</section>
-    <p class="fm-foot">Upcoming events: <a href="/calendar">calendar</a>.</p></div>`;
+  const dates = e.end && e.end !== e.start ? `${dateChip(e.start)} – ${dateChip(e.end)}` : dateChip(e.start);
+  const where = e.venue || e.location || "";
+  const state_ = e.start > t ? "upcoming" : (e.end||e.start) < t ? "done" : "now";
+  const facts = [["Dates", dates], ["Venue", where], ["Region", fmRegion(e) !== "Other" ? fmRegion(e) : ""], ["Tour", fmTourName(e.tour)], ["Tier", e.tier && !/unranked|results-only/i.test(e.tier) ? e.tier : ""], ["Prize money", e.prize], ["Time zone", e.tz]].filter(f => f[1]);
+  const msg = state_ === "upcoming" ? "Entry list and draw are not out yet" : state_ === "now" ? "In progress. No live score feed for this event yet" : "Finished. Results are not in our feeds yet";
+  return `<div class="fm-wrap fm-eventpage">
+    <section class="fm-evhead">${fmTourBadge(e.tour)}<div><h1>${esc(e.name)}</h1><p>${esc([dates, where].filter(Boolean).join(" · "))} ${fmCountdown(e)}</p></div>${fmStar("ev", e.key, e.name)}</section>
+    <section class="fm-card fm-pending"><div class="fm-pend-ic">${fmIcon("events", 28)}</div><h2>${esc(msg)}</h2><p>${state_ === "upcoming" ? "Divisions, entries and the bracket will appear here once the tour publishes them. Star the event to see it in Following." : "Scores show here automatically if a feed comes online."}</p>${e.url ? `<a class="fm-btn" href="${escAttr(e.url)}" target="_blank" rel="noopener">Official event page</a>` : ""}</section>
+    <section class="fm-card"><h2 class="fm-h2">Event info</h2><dl class="fm-facts">${facts.map(([k,v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl><p class="fm-foot">Divisions: not published in our feeds yet.</p></section>
+  </div>`;
 }
 function fmEvent(key){
-  const evs = fmEventsIndex();
-  const e = evs.find(x => x.key === key);
+  const evs = fmAllEvents();
+  const e = evs.find(x => x.key === key) || fmCalEvents().find(x => x.key === key);
+  if (e && e.cal) return fmUpcomingEvent(e);
   if (e && e.archive) { const c = state.archiveCache[e.archive]; if (!c) pullArchive(e.archive); }
   const rows = fmAll().filter(m => fmEventKey(m) === key);
   if (!e && !FM.loaded) return fmSkeleton();
@@ -3902,11 +4006,11 @@ function fmEvent(key){
   if (loading) body = fmSkeletonRows(6);
   else if (!dRows.length) body = `<p class="fm-note">No matches from this event on the board yet.</p>`;
   else if (tab === "draw" && ko.length) {
-    body = `<div class="fm-bracket" role="region" aria-label="Draw" tabindex="0">${ko.map(r => `<div class="fm-bcol"><h3>${esc(r)}</h3><div class="fm-bcells">${fmSortMatches(byRound[r]).sort((a,b)=>String(a.id).localeCompare(String(b.id))).map(m => fmBox(m)).join("")}</div></div>`).join("")}</div>${rounds.length > ko.length ? `<p class="fm-note">Group and early rounds: <a href="${q({tab:"results"})}">results by round</a>.</p>` : ""}`;
+    body = `<div class="fm-btools"><div class="fm-bjump" role="toolbar" aria-label="Jump to round">${ko.map((r,i) => `<button type="button" class="fm-chip sm" data-fmjump="${i}" aria-label="Jump to ${escAttr(r)}">${esc(fmRoundShort(r))}</button>`).join("")}</div><div class="fm-barrows"><button type="button" class="fm-arrow" data-fmbx="-1" aria-label="Previous rounds">‹</button><button type="button" class="fm-arrow" data-fmbx="1" aria-label="Next rounds">›</button></div></div><div class="fm-bracket" role="region" aria-label="Draw, scroll sideways for later rounds" tabindex="0">${ko.map(r => `<div class="fm-bcol"><h3>${esc(r)}</h3><div class="fm-bcells">${fmSortMatches(byRound[r]).sort((a,b)=>String(a.id).localeCompare(String(b.id))).map(m => fmBox(m)).join("")}</div></div>`).join("")}</div>${rounds.length > ko.length ? `<p class="fm-note">Group and early rounds: <a href="${q({tab:"results"})}">results by round</a>.</p>` : ""}`;
   } else {
     body = rounds.slice().reverse().map(r => `<section class="fm-group"><div class="fm-gh"><span class="fm-ghb static"><span class="fm-gt"><b>${esc(r)}</b></span><span class="fm-gn">${byRound[r].length}</span></span></div><div class="fm-rows">${fmSortMatches(byRound[r]).map(m => fmRow(m, {showDate:true})).join("")}</div></section>`).join("");
   }
-  return `<div class="fm-wrap fm-eventpage">
+  return `<div class="fm-wrap fm-eventpage${tab==="draw"&&ko.length?" fm-wide":""}">
     <section class="fm-evhead">${fmTourBadge(e.tour)}<div><h1>${esc(e.name)}</h1><p>${esc([e.start&&e.end?`${dateChip(e.start)} – ${dateChip(e.end)}`:"", e.venue].filter(Boolean).join(" · "))}${live?` · <b class="fm-live">${live} live</b>`:""}</p></div>${fmStar("ev", key, e.name)}</section>
     ${divs.length > 1 ? `<div class="fm-chips" role="tablist" aria-label="Division">${divs.map(d => `<a role="tab" class="fm-chip${d===div?" on":""}" href="${q({div:d})}" aria-selected="${d===div}">${esc(d)}</a>`).join("")}</div>` : ""}
     <nav class="fm-segs" aria-label="Event sections"><a href="${q({tab:"draw"})}" class="${tab==="draw"?"on":""}">Draw</a><a href="${q({tab:"results"})}" class="${tab==="results"?"on":""}">Results by round</a></nav>
@@ -3919,10 +4023,57 @@ function fmBox(raw){
   const win = fmWinnerSide(m);
   const sides = fmSides(m);
   const sets = String(m.score||"").split("-");
-  return `<a class="fm-box st-${st}${fmFollowsMatch(m)?" fol":""}" href="/match/${encodeURIComponent(m.id)}">
-    ${[0,1].map(i => `<span class="fm-bs${win===i?" win":win===1-i?" lose":""}">${sides[i].team?fmFlag(sides[i].short):""}<span class="fm-nm">${esc(sides[i].short||"TBD")}</span><b>${m.score&&sets.length===2?esc(sets[i]):""}</b></span>`).join("")}
+  const hasSets = !!m.score && sets.length === 2;
+  const games = fmGames(m).slice(0,5);
+  const side = (i) => {
+    const gc = games.map(g => { const v = i ? g.b : g.a, o = i ? g.a : g.b; return `<span class="fm-bg${Number(v)>Number(o)?" fm-w":""}${g.live?" live":""}">${esc(v)}</span>`; }).join("");
+    return `<span class="fm-bs${win===i?" win":win===1-i?" lose":""}">${sides[i].team?fmFlag(sides[i].short):""}<span class="fm-nm">${esc(sides[i].short||"TBD")}</span>${gc?`<span class="fm-bgs">${gc}</span>`:""}<b class="fm-bset">${hasSets?esc(sets[i]):""}</b></span>`;
+  };
+  const aria = `${sides[0].short} vs ${sides[1].short}${hasSets?`, ${m.score}`:""}${games.length?` (${games.map(g=>g.a+"-"+g.b).join(", ")})`:""}`;
+  return `<a class="fm-box st-${st}${fmFollowsMatch(m)?" fol":""}" href="/match/${encodeURIComponent(m.id)}" aria-label="${escAttr(aria)}">
+    ${side(0)}${side(1)}
     ${st==="LIVE"?'<i class="fm-live fm-boxlive">LIVE</i>':""}
   </a>`;
+}
+function fmRoundShort(r){
+  const s = String(r||"");
+  if (/quarter/i.test(s)) return "QF";
+  if (/semi/i.test(s)) return "SF";
+  if (/final/i.test(s)) return "F";
+  const n = s.match(/(\d+)/); if (n) return "R" + n[1];
+  return s.length > 6 ? s.slice(0,6) : s;
+}
+function fmBracketScroll(dir, idx){
+  const b = document.querySelector(".fm-bracket"); if (!b) return;
+  const cols = [...b.querySelectorAll(".fm-bcol")];
+  if (idx == null) {
+    const w = cols[0] ? cols[0].offsetWidth : 260;
+    b.scrollBy({left: dir * w, behavior: "smooth"});
+  } else if (cols[idx]) b.scrollTo({left: cols[idx].offsetLeft - b.offsetLeft - (b.firstElementChild ? b.firstElementChild.offsetLeft - b.offsetLeft : 0), behavior: "smooth"});
+}
+function fmBracketSync(){
+  const b = document.querySelector(".fm-bracket"); if (!b) return;
+  FM.bx = b.scrollLeft;
+  const cols = [...b.querySelectorAll(".fm-bcol")];
+  let cur = 0; cols.forEach((c,i) => { if (c.offsetLeft - b.offsetLeft <= b.scrollLeft + 24) cur = i; });
+  document.querySelectorAll("[data-fmjump]").forEach(ch => ch.classList.toggle("on", Number(ch.getAttribute("data-fmjump")) === cur));
+  const pv = document.querySelector("[data-fmbx='-1']"), nx = document.querySelector("[data-fmbx='1']");
+  if (pv) pv.disabled = b.scrollLeft <= 2;
+  if (nx) nx.disabled = b.scrollLeft + b.clientWidth >= b.scrollWidth - 2;
+}
+function fmBracketInit(){
+  const b = document.querySelector(".fm-bracket"); if (!b) return;
+  const key = location.pathname + location.search;
+  if (FM.bxKey === key && FM.bx) b.scrollLeft = FM.bx; else FM.bx = 0;
+  FM.bxKey = key;
+  b.addEventListener("scroll", fmBracketSync, {passive:true});
+  b.addEventListener("keydown", ev => { if (ev.key === "ArrowRight") { fmBracketScroll(1); ev.preventDefault(); } else if (ev.key === "ArrowLeft") { fmBracketScroll(-1); ev.preventDefault(); } });
+  let drag = null, moved = false;
+  b.addEventListener("pointerdown", ev => { if (ev.pointerType !== "mouse" || ev.button !== 0) return; drag = {x: ev.clientX, l: b.scrollLeft}; moved = false; });
+  window.addEventListener("pointermove", ev => { if (!drag) return; const dx = ev.clientX - drag.x; if (Math.abs(dx) > 5) { moved = true; b.classList.add("drag"); } if (moved) b.scrollLeft = drag.l - dx; });
+  window.addEventListener("pointerup", () => { if (drag) { drag = null; setTimeout(() => b.classList.remove("drag"), 0); } });
+  b.addEventListener("click", ev => { if (moved) { ev.preventDefault(); ev.stopPropagation(); moved = false; } }, true);
+  fmBracketSync();
 }
 /* ---------- Search & More ---------- */
 function fmSearch(){
@@ -3942,10 +4093,27 @@ function fmSearch(){
   return `<div class="fm-wrap"><form class="fm-search" role="search" data-fmsearch><label class="fm-sr" for="fmq">Search</label>${fmIcon("search")}<input id="fmq" name="q" type="search" value="${escAttr(q)}" placeholder="Players, teams, events" autocomplete="off" enterkeyhint="search"></form><div id="fm-results">${res || (n ? "" : `<p class="fm-note">Search players, teams and events on the board.</p>`)}</div></div>`;
 }
 function fmMore(){
-  const links = [["/calendar","Calendar","Upcoming events"],["/history","Archive","Medals and past seasons"],["/magazine","Magazine","Latest stories"],["/shop","Shop","Coming soon"],[MAG+"/","worldpickleballmagazine.com","The magazine"],[MAG+"/newsletter/","The Report","Newsletter"]];
-  return `<div class="fm-wrap"><h1 class="fm-h1">More</h1><section class="fm-card">${links.map(([h,l,s]) => `<div class="fm-evrow"><a href="${h}"><span class="fm-evn"><b>${esc(l)}</b><span>${esc(s)}</span></span></a></div>`).join("")}<div class="fm-evrow"><span class="fm-evn" style="padding:12px 16px"><b>Appearance</b><span>Light or dark</span></span>${themeToggle().replace('class="theme"','class="theme fm-theme solid"')}</div></section></div>`;
+  const ext = h => /^https?:/.test(h) && h.indexOf(location.origin) !== 0;
+  const tile = (h, ic, l, sub) => `<a class="fm-tile" href="${escAttr(h)}"${ext(h)?' target="_blank" rel="noopener"':""}><span class="fm-tic">${ic}</span><span class="fm-evn"><b>${esc(l)}</b><span>${esc(sub)}</span></span><span class="fm-chev" aria-hidden="true">›</span></a>`;
+  const E = c => `<span aria-hidden="true">${c}</span>`;
+  const nPl = Object.keys(state.selected||{}).filter(k => state.selected[k]).length;
+  const nEv = Object.keys(FM.evFollows||{}).filter(k => FM.evFollows[k]).length;
+  const pushOk = "Notification" in window && "serviceWorker" in navigator && "PushManager" in window;
+  const perm = pushOk ? Notification.permission : "unsupported";
+  const pushTxt = perm === "granted" ? "On for followed players" : perm === "denied" ? "Blocked in browser settings" : perm === "default" ? "Off. Tap to allow" : "Not supported on this browser";
+  const sec = (t, body) => `<section class="fm-card fm-hub"><h2 class="fm-h2">${t}</h2><div class="fm-tiles">${body}</div></section>`;
+  return `<div class="fm-wrap fm-more"><h1 class="fm-h1">More</h1>
+    ${sec("Play", tile("https://pickleball-fantasy-league.comeontheoviedo.workers.dev", E("🏆"), "Fantasy", "Pick a squad, score on real results") + tile("https://pickleball-traders.comeontheoviedo.workers.dev", E("📈"), "Traders", "Back players, trade the market"))}
+    ${sec("Watch &amp; listen", tile(MAG+"/watch/", E("▶️"), "Watch", "Video from the magazine") + tile(MAG+"/podcast/", E("🎙️"), "Podcast", "The WPM podcast"))}
+    ${sec("The World Pickleball Report", `<div class="fm-tile fm-news"><span class="fm-tic">${E("✉️")}</span><span class="fm-evn"><b>Get the Report</b><span>The week in pro pickleball, in your inbox</span></span><a class="fm-btn" href="${MAG}/newsletter/" target="_blank" rel="noopener">Sign up</a></div>`)}
+    ${sec("Alerts &amp; following", tile("/following", fmIcon("following", 22), "Following", `${nPl} player${nPl===1?"":"s"} · ${nEv} event${nEv===1?"":"s"}`) + (pushOk ? `<button type="button" class="fm-tile" data-fmpush><span class="fm-tic">${E("🔔")}</span><span class="fm-evn"><b>Match alerts</b><span>${esc(pushTxt)}</span></span></button>` : `<div class="fm-tile"><span class="fm-tic">${E("🔔")}</span><span class="fm-evn"><b>Match alerts</b><span>${esc(pushTxt)}</span></span></div>`))}
+    ${HEAT_CHECK_ENABLED ? sec("Heat Check", tile(HEAT_CHECK_URL, E("🔥"), "Heat Check", "Who is hot right now")) : ""}
+    ${sec("Archive", tile("/history", fmIcon("events", 22), "Archive", "Medals and past seasons"))}
+    ${sec("Magazine", tile(MAG+"/", E("📰"), "Magazine", "Stories, issues and rankings on worldpickleballmagazine.com"))}
+    <section class="fm-card fm-hub"><div class="fm-tile"><span class="fm-tic">${E("🌓")}</span><span class="fm-evn"><b>Appearance</b><span>Light or dark</span></span>${themeToggle().replace('class="theme"','class="theme fm-theme solid"')}</div></section>
+    <p class="fm-foot">From <a href="${MAG}/" target="_blank" rel="noopener">World Pickleball Magazine</a>. Scores and draws from public tour feeds (PPA, APP, MLP, GPA, PPA Asia, PPA Europe, RTA and others); ratings by WPR. Scores are never estimated.</p>
+  </div>`;
 }
-/* ---------- Render + live updates ---------- */
 function fmDetectChanges(){
   const flash = {};
   fmAll().forEach(m => {
@@ -4001,9 +4169,14 @@ function render(){
   const on = document.querySelector(".fm-day.on");
   if (on && sx == null) on.scrollIntoView({block:"nearest", inline:"center"});
   else if (strip && sx != null) { const s2 = document.querySelector(".fm-dates"); if (s2) s2.scrollLeft = sx; }
+  fmBracketInit();
   pruneNotified();
   notifyLiveFollows();
 }
+document.addEventListener("click", function(ev){
+  const bj = ev.target && ev.target.closest ? ev.target.closest("[data-fmjump],[data-fmbx]") : null;
+  if (bj) { ev.preventDefault(); ev.stopPropagation(); if (bj.hasAttribute("data-fmjump")) fmBracketScroll(0, Number(bj.getAttribute("data-fmjump"))); else fmBracketScroll(Number(bj.getAttribute("data-fmbx"))); return; }
+}, true);
 document.addEventListener("click", function(ev){
   const t = ev.target && ev.target.closest ? ev.target.closest("[data-fmstar],[data-fmcol],[data-fmday],[data-fmlive]") : null;
   if (!t) return;
@@ -4033,3 +4206,10 @@ document.addEventListener("visibilitychange", function(){ if (!document.hidden &
   const d = qs("date"); if (/^\d{4}-\d{2}-\d{2}$/.test(d)) state.fmDate = d;
   if (document.getElementById("app")) render();
 })();
+document.addEventListener("click", (ev) => {
+  const b = ev.target.closest && ev.target.closest("[data-fmpush]"); if (!b) return;
+  ev.preventDefault();
+  if (!("Notification" in window)) return;
+  if (Notification.permission === "default") Notification.requestPermission().then(p => { if (p === "granted") { ensureSafeSW(); syncPushSubscription(); } render(); });
+  else if (Notification.permission === "granted") { syncPushSubscription(); }
+}, true);
