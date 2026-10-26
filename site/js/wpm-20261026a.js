@@ -3572,7 +3572,7 @@ function fmToggleStar(kind, key){
   if (rk && state.selected[rk] && !state.selected[key]) { toggleFollow(rk); return; }
   toggleFollow(key);
 }
-function fmTourBadge(t){ return `<span class="fm-tour fm-t-${escAttr(t||"x")}">${esc(TOUR_LABELS[t] || String(t||"").toUpperCase())}</span>`; }
+function fmTourBadge(t){ return `<span class="fm-tour fm-t-${escAttr(t||"x")}">${esc(fmTourName(t))}</span>`; }
 const FM_ICONS = {
   matches:'<path d="M4 6h16M4 12h16M4 18h10"/>',
   following:'<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8L3.5 9.7l5.9-.9z"/>',
@@ -3891,11 +3891,11 @@ function fmEventsIndex(){
   });
   return Object.values(map).sort((a,b) => (b.live - a.live) || String(b.end).localeCompare(String(a.end)));
 }
-const FM_EXTRA_LABELS = {usap:"USA Pickleball", epf:"EPF", gs:"Grand Slam", "tennis australia":"Tennis Aus", "us open":"US Open", mlp:"MLP"};
+const FM_EXTRA_LABELS = {usap:"USA Pickleball", epf:"EPF", gs:"Grand Slam", "tennis australia":"Tennis Aus", "us open":"US Open", mlp:"MLP", "ppa-au":"PPA Australia"};
 function fmTourName(t){ return TOUR_LABELS[t] || FM_EXTRA_LABELS[t] || String(t||"").toUpperCase(); }
 function fmTourFamily(t){
   t = String(t||"");
-  if (t === "ppa" || t === "asia" || t === "ppa-eu") return "PPA";
+  if (t === "ppa" || t === "asia" || t === "ppa-eu" || t === "ppa-au") return "PPA";
   if (t === "app" || t === "app-asia") return "APP";
   if (/^mlp/.test(t)) return "MLP";
   if (t === "usap" || t === "us open") return "Nationals";
