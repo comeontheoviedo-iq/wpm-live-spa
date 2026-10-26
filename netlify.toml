@@ -24,7 +24,8 @@
     "netlify/functions/slate-events.mjs",
     "netlify/functions/ppa-keep.mjs",
     "netlify/functions/sportssync-map.mjs",
-    "netlify/functions/rta-map.mjs"
+    "netlify/functions/rta-map.mjs",
+    "netlify/functions/official-schedule.mjs"
   ]
 
 [functions.rankings]

@@ -27,6 +27,7 @@ import {
   toReaderEvent,
 } from "./slate-events.mjs";
 import { applySportsSyncArm, CHONGQING_DESK_NOTE } from "./sportssync-map.mjs";
+import { OFFICIAL_SCHEDULE } from "./official-schedule.mjs";
 
 const GPA_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBybmVlZGhxaW51ZGFzbmdrcXFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1NDkzMDIsImV4cCI6MjA3NjEyNTMwMn0.U6VPCpYEtyFkVwxQ7yMAbGf_huWORMg_8iyyd-WkADc";
@@ -454,6 +455,16 @@ function mergeCalendar(gpaRows: any[], armed: ArmedEvent[]) {
     );
     if (exists) continue;
     events.push(asCalendarRow(seed, today));
+  }
+
+  // Official tour schedules GPA does not carry (RTA, TOP, US Open, MLP, PPA Australia).
+  const norm = (n: string) => String(n || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  for (const off of OFFICIAL_SCHEDULE) {
+    const exists = events.some(
+      (e: any) => e.id === off.id || (e.start === off.start && norm(e.name) === norm(off.name))
+    );
+    if (exists) continue;
+    events.push({ ...asCalendarRow(off, today), sourceUrl: off.sourceUrl, verifiedOn: off.verifiedOn, endPublished: off.endPublished });
   }
 
   events.sort((a: any, b: any) => String(a.start).localeCompare(String(b.start)));

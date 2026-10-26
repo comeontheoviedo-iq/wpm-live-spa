@@ -3891,11 +3891,11 @@ function fmEventsIndex(){
   });
   return Object.values(map).sort((a,b) => (b.live - a.live) || String(b.end).localeCompare(String(a.end)));
 }
-const FM_EXTRA_LABELS = {usap:"USA Pickleball", epf:"EPF", gs:"Grand Slam", "tennis australia":"Tennis Aus", "us open":"US Open", mlp:"MLP"};
+const FM_EXTRA_LABELS = {usap:"USA Pickleball", epf:"EPF", gs:"Grand Slam", "tennis australia":"Tennis Aus", "us open":"US Open", mlp:"MLP", "ppa-au":"PPA Australia"};
 function fmTourName(t){ return TOUR_LABELS[t] || FM_EXTRA_LABELS[t] || String(t||"").toUpperCase(); }
 function fmTourFamily(t){
   t = String(t||"");
-  if (t === "ppa" || t === "asia" || t === "ppa-eu") return "PPA";
+  if (t === "ppa" || t === "asia" || t === "ppa-eu" || t === "ppa-au") return "PPA";
   if (t === "app" || t === "app-asia") return "APP";
   if (/^mlp/.test(t)) return "MLP";
   if (t === "usap" || t === "us open") return "Nationals";
