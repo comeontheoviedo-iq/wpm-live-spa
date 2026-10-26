@@ -2,7 +2,7 @@
 
 export const WAVE_ORIGIN = "https://www.picklewave.com";
 export const WAVE_UA =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36";
+  "WPMagBot/1.0 (+https://worldpickleballmagazine.com)";
 
 /** Seed follow keys → PickleWave player ids (Bright found on womens-doubles / singles boards). */
 export const WAVE_SEED = {
