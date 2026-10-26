@@ -304,7 +304,7 @@ assert.equal(md.segments.includes("consolation"), false);
 const ws = categories.find((c) => c.id === 34474);
 assert.deepEqual(ws.segments, []);
 
-const js = fs.readFileSync("js/wpm-20261026a.js", "utf8");
+const js = fs.readFileSync("site/js/wpm-20261026a.js", "utf8");
 const siteJs = fs.readFileSync("site/js/wpm-20261026a.js", "utf8");
 assert.equal(siteJs, js);
 assert.ok(js.includes('tour: "rta"') || js.includes('tour:"rta"') || js.includes("tour === \"rta\""));

@@ -3964,6 +3964,13 @@ pull = (function(orig){
     FM.lastPoll = Date.now();
   };
 })(pull);
+function fmPlayerParam(raw){
+  let n = raw; try { n = decodeURIComponent(raw); } catch(e) {}
+  if (resolvePlayerKey(n)) return raw;
+  const spaced = n.replace(/-/g, " ").replace(/\s+/g, " ").trim();
+  const key = resolvePlayerKey(spaced);
+  return key ? encodeURIComponent(key) : raw;
+}
 function render(){
   if (!state.date) state.date = boardToday();
   const p = path();
@@ -3980,8 +3987,8 @@ function render(){
   else if (p === "/history") inner = `<div class="fm-legacy">${viewHistory()}</div>`;
   else if (p === "/rankings") inner = `<div class="fm-legacy">${viewRankings()}</div>`;
   else if (p === "/shop") inner = `<div class="fm-legacy">${viewShop()}</div>`;
-  else if (p === "/draw") { state.boardMode = "draw"; applyDrawQuery(); inner = `<div class="fm-legacy">${viewHome()}</div>`; }
-  else if ((m = p.match(/^\/player\/([^/]+)$/))) inner = `<div class="fm-legacy">${viewPerson("player", m[1])}</div>`;
+  else if (p === "/draw") inner = fmEvents();
+  else if ((m = p.match(/^\/player\/([^/]+)$/))) inner = `<div class="fm-legacy">${viewPerson("player", fmPlayerParam(m[1]))}</div>`;
   else if ((m = p.match(/^\/team\/([^/]+)$/))) inner = `<div class="fm-legacy">${viewPerson("team", m[1])}</div>`;
   else inner = `<div class="fm-wrap"><div class="fm-empty"><p>Not found.</p><a class="fm-btn" href="/">Matches</a></div></div>`;
   const ae = document.activeElement;
