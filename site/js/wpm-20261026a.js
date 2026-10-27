@@ -1249,6 +1249,12 @@ function magBase(){
     const b = String(window.WPM_MAG_BASE).trim();
     if (/^https?:\/\//i.test(b)) return b.replace(/\/$/, "");
   }
+  // QA draft alias: point magazine bar at wpmag-review (not production WP).
+  try {
+    if (typeof location !== "undefined" && /mag-bar-qa/i.test(location.hostname)) {
+      return "https://wpmag-review.comeontheoviedo.workers.dev";
+    }
+  } catch (e) {}
   return MAG_DEFAULT;
 }
 let MAG = MAG_DEFAULT;
