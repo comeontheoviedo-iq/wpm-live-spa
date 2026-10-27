@@ -628,7 +628,16 @@ function path(){
 }
 function go(href, ev){
   if (ev) ev.preventDefault();
-  history.pushState({}, "", href);
+  let next = href;
+  try {
+    const mag = new URLSearchParams(location.search).get("mag");
+    if (mag && /^https?:\/\//i.test(mag)) {
+      const u = new URL(href, location.origin);
+      if (!u.searchParams.has("mag")) u.searchParams.set("mag", mag);
+      next = u.pathname + u.search + u.hash;
+    }
+  } catch (e) {}
+  history.pushState({}, "", next);
   render();
   window.scrollTo(0,0);
 }
@@ -1229,8 +1238,22 @@ function slateSections(c){
   return parts.join("");
 }
 
-const MAG = "https://worldpickleballmagazine.com";
-const MAG_NAV = [["/","Home"],["/live/","Live"],["/watch/","Watch"],["/play/","Play"],["/rankings/","Rankings"],["/gear/","Gear"]];
+const MAG_DEFAULT = "https://worldpickleballmagazine.com";
+/** Magazine origin for cross-links. Override with ?mag=https://… or window.WPM_MAG_BASE (QA). */
+function magBase(){
+  try {
+    const q = new URLSearchParams(location.search).get("mag");
+    if (q && /^https?:\/\//i.test(q.trim())) return q.trim().replace(/\/$/, "");
+  } catch (e) {}
+  if (typeof window !== "undefined" && window.WPM_MAG_BASE) {
+    const b = String(window.WPM_MAG_BASE).trim();
+    if (/^https?:\/\//i.test(b)) return b.replace(/\/$/, "");
+  }
+  return MAG_DEFAULT;
+}
+let MAG = MAG_DEFAULT;
+function syncMagBase(){ MAG = magBase(); }
+const MAG_NAV = [["/","Home"],["/live/","Live"],["/watch/","Watch"],["/play/","Play"],["/heat-check/","Rankings"],["/gear/","Gear"]];
 function escTick(v){ return String(v==null?"":v).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
 function tickerHtml(){
   const all = (state.matches || []).map(presentMatch).filter(Boolean);
@@ -1247,6 +1270,7 @@ function themeToggle(){
   return `<button class="theme" type="button" aria-label="Toggle dark mode" onclick="(function(){var r=document.documentElement;var d=r.getAttribute('data-theme')==='dark'||(!r.getAttribute('data-theme')&&matchMedia('(prefers-color-scheme: dark)').matches);var n=d?'light':'dark';r.setAttribute('data-theme',n);try{localStorage.setItem('wpm-theme',n)}catch(e){}})()"><span class="when-light">Dark</span><span class="when-dark">Light</span></button>`;
 }
 function chrome(inner, title){
+  syncMagBase();
   const liveOn = path()==="/"||path().startsWith("/match")||path().startsWith("/player")||path().startsWith("/team")||path()==="/draw";
   return `
   ${tickerHtml()}
@@ -3595,11 +3619,33 @@ function fmTab(){
   return "matches";
 }
 const FM_TABS = [["matches","/","Matches"],["following","/following","Following"],["events","/events","Events"],["table","/rankings","Table"],["more","/more","More"]];
+function magBarHtml(){
+  syncMagBase();
+  const base = MAG;
+  const links = MAG_NAV.map(([h,l]) => {
+    const on = h === "/live/";
+    return `<a href="${base}${h}" class="${on?"on":""}"${on?' aria-current="page"':""}>${l}</a>`;
+  }).join("");
+  return `<div class="mag-bar"><div class="mag-bar-in">
+    <a class="mag-brand" href="${base}/" aria-label="World Pickleball Magazine home"><img src="/img/wpm-logo.avif" alt="World Pickleball Magazine" width="120" height="48"></a>
+    <nav class="mag-tabs" aria-label="Magazine">${links}</nav>
+    <a class="mag-report" href="${base}/newsletter/">Get the Report</a>
+    <details class="mag-burger">
+      <summary aria-label="Open magazine menu"><span class="mag-burger-ico" aria-hidden="true"></span></summary>
+      <div class="mag-drawer" role="navigation" aria-label="Magazine menu">
+        ${links}
+        <a class="mag-report" href="${base}/newsletter/">Get the Report</a>
+      </div>
+    </details>
+  </div></div>`;
+}
 function fmChrome(inner, opts){
+  syncMagBase();
   const tab = fmTab();
   const liveN = fmAll().filter(m => effectiveStatus(m) === "LIVE").length;
   const back = opts && opts.back;
   return `<a class="fm-skip" href="#fm-main">Skip to content</a>
+  ${magBarHtml()}
   <header class="fm-bar"><div class="fm-bar-in">
     ${back ? `<a class="fm-iconbtn" href="${back}" aria-label="Back">${fmIcon("back")}</a>` : ""}
     <a class="fm-brand" href="/" aria-label="WPM LIVE home"><img src="/img/wpm-logo.avif" alt="World Pickleball Magazine" width="120" height="48"><span>LIVE</span></a>
@@ -4145,6 +4191,7 @@ function fmPlayerParam(raw){
   return key ? encodeURIComponent(key) : raw;
 }
 function render(){
+  syncMagBase();
   if (!state.date) state.date = boardToday();
   const p = path();
   let inner = "", m, back = "";
