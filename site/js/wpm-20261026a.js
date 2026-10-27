@@ -3619,25 +3619,40 @@ function fmTab(){
   return "matches";
 }
 const FM_TABS = [["matches","/","Matches"],["following","/following","Following"],["events","/events","Events"],["table","/rankings","Table"],["more","/more","More"]];
-function magBarHtml(){
+function magBarHtml(opts){
   syncMagBase();
   const base = MAG;
+  const tab = fmTab();
+  const back = opts && opts.back;
   const links = MAG_NAV.map(([h,l]) => {
     const on = h === "/live/";
     return `<a href="${base}${h}" class="${on?"on":""}"${on?' aria-current="page"':""}>${l}</a>`;
   }).join("");
   return `<div class="mag-bar"><div class="mag-bar-in">
+    ${back ? `<a class="fm-iconbtn mag-back" href="${back}" aria-label="Back">${fmIcon("back")}</a>` : ""}
     <a class="mag-brand" href="${base}/" aria-label="World Pickleball Magazine home"><img src="/img/wpm-logo.avif" alt="World Pickleball Magazine" width="120" height="48"></a>
     <nav class="mag-tabs" aria-label="Magazine">${links}</nav>
+    <span class="mag-bar-sp"></span>
     <a class="mag-report" href="${base}/newsletter/">Get the Report</a>
+    <a class="fm-iconbtn mag-search${tab==="search"?" on":""}" href="/search" aria-label="Search">${fmIcon("search")}</a>
+    ${themeToggle().replace('class="theme"','class="theme fm-theme mag-theme"')}
     <details class="mag-burger">
       <summary aria-label="Open magazine menu"><span class="mag-burger-ico" aria-hidden="true"></span></summary>
       <div class="mag-drawer" role="navigation" aria-label="Magazine menu">
         ${links}
         <a class="mag-report" href="${base}/newsletter/">Get the Report</a>
+        <div class="mag-drawer-theme">${themeToggle().replace('class="theme"','class="theme fm-theme solid"')}</div>
       </div>
     </details>
   </div></div>`;
+}
+function fmSubHtml(){
+  const tab = fmTab();
+  const liveN = fmAll().filter(m => effectiveStatus(m) === "LIVE").length;
+  return `<nav class="fm-sub" aria-label="Live sections"><div class="fm-sub-in">
+    <span class="fm-sub-lab">Live</span>
+    ${FM_TABS.map(([k,h,l]) => `<a href="${h}" class="${tab===k?"on":""}"${tab===k?' aria-current="page"':""}>${l}${k==="matches"&&liveN?` <em class="fm-livecount">${liveN}</em>`:""}</a>`).join("")}
+  </div></nav>`;
 }
 function fmChrome(inner, opts){
   syncMagBase();
@@ -3645,15 +3660,10 @@ function fmChrome(inner, opts){
   const liveN = fmAll().filter(m => effectiveStatus(m) === "LIVE").length;
   const back = opts && opts.back;
   return `<a class="fm-skip" href="#fm-main">Skip to content</a>
-  ${magBarHtml()}
-  <header class="fm-bar"><div class="fm-bar-in">
-    ${back ? `<a class="fm-iconbtn" href="${back}" aria-label="Back">${fmIcon("back")}</a>` : ""}
-    <a class="fm-brand" href="/" aria-label="WPM LIVE home"><img src="/img/wpm-logo.avif" alt="World Pickleball Magazine" width="120" height="48"><span>LIVE</span></a>
-    <nav class="fm-topnav" aria-label="Live centre">${FM_TABS.map(([k,h,l]) => `<a href="${h}" class="${tab===k?"on":""}"${tab===k?' aria-current="page"':""}>${l}${k==="matches"&&liveN?` <em class="fm-livecount">${liveN}</em>`:""}</a>`).join("")}</nav>
-    <span class="fm-bar-sp"></span>
-    <a class="fm-iconbtn${tab==="search"?" on":""}" href="/search" aria-label="Search">${fmIcon("search")}</a>
-    ${themeToggle().replace('class="theme"','class="theme fm-theme"')}
-  </div></header>
+  <header class="fm-chrome">
+  ${magBarHtml({back})}
+  ${fmSubHtml()}
+  </header>
   <main id="fm-main" class="fm-main">${inner}</main>
   <nav class="fm-tabbar" aria-label="Sections">${FM_TABS.map(([k,h,l]) => `<a href="${h}" class="${tab===k?"on":""}"${tab===k?' aria-current="page"':""}>${fmIcon(k)}<span>${l}</span>${k==="matches"&&liveN?`<i class="fm-dot" aria-label="${liveN} live"></i>`:""}</a>`).join("")}</nav>`;
 }
