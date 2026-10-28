@@ -3624,7 +3624,7 @@ function fmTab(){
   if (p === "/search") return "search";
   return "matches";
 }
-const FM_TABS = [["matches","/","Matches"],["following","/following","Following"],["events","/events","Events"],["table","/rankings","Table"],["more","/more","More"]];
+const FM_TABS = [["matches","/","Matches"],["following","/following","Following"],["events","/events","Events"],["table","/rankings","Table"],["more","/more","Explore"]];
 function magBarHtml(opts){
   syncMagBase();
   const base = MAG;
@@ -4170,7 +4170,7 @@ function fmMore(){
   const perm = pushOk ? Notification.permission : "unsupported";
   const pushTxt = perm === "granted" ? "On for followed players" : perm === "denied" ? "Blocked in browser settings" : perm === "default" ? "Off. Tap to allow" : "Not supported on this browser";
   const sec = (t, body) => `<section class="fm-card fm-hub"><h2 class="fm-h2">${t}</h2><div class="fm-tiles">${body}</div></section>`;
-  return `<div class="fm-wrap fm-more"><h1 class="fm-h1">More</h1>
+  return `<div class="fm-wrap fm-more"><h1 class="fm-h1">Explore</h1>
     ${sec("Play", tile("https://pickleball-fantasy-league.comeontheoviedo.workers.dev", E("🏆"), "Fantasy", "Pick a squad, score on real results") + tile("https://pickleball-traders.comeontheoviedo.workers.dev", E("📈"), "Traders", "Back players, trade the market"))}
     ${sec("Watch &amp; listen", tile(MAG+"/watch/", E("▶️"), "Watch", "Video from the magazine") + tile(MAG+"/podcast/", E("🎙️"), "Podcast", "The WPM podcast"))}
     ${sec("The World Pickleball Report", `<div class="fm-tile fm-news"><span class="fm-tic">${E("✉️")}</span><span class="fm-evn"><b>Get the Report</b><span>The week in pro pickleball, in your inbox</span></span><a class="fm-btn" href="${MAG}/newsletter/" target="_blank" rel="noopener">Sign up</a></div>`)}
@@ -4207,6 +4207,40 @@ function fmPlayerParam(raw){
   const key = resolvePlayerKey(spaced);
   return key ? encodeURIComponent(key) : raw;
 }
+const FM_META = {
+  "/": ["Live pickleball scores today", "Live pickleball scores, results and draws from the PPA Tour, MLP, APP and tours worldwide, updated through the day by World Pickleball Magazine."],
+  "/following": ["Following", "Your followed pickleball players, teams and events with live match alerts from WPM LIVE."],
+  "/events": ["Pickleball events and draws", "This week's pickleball tournaments, draws and results across the PPA Tour, MLP, APP and international tours."],
+  "/rankings": ["Pickleball rankings table", "Pickleball world rankings tables for men's and women's singles, doubles and mixed doubles."],
+  "/more": ["Explore WPM LIVE", "Search players and events, browse the calendar, history, magazine and shop on WPM LIVE."],
+  "/search": ["Search players and events", "Search pickleball players, teams and events on WPM LIVE."],
+  "/magazine": ["Pickleball news from the magazine", "The latest pickleball news and analysis from World Pickleball Magazine."],
+  "/calendar": ["Pickleball tournament calendar", "Upcoming pickleball tournaments and tour dates worldwide: PPA, MLP, APP and more."],
+  "/history": ["Pickleball results history", "Past pickleball results and champions archive from WPM LIVE."],
+  "/shop": ["Pickleball shop", "Pickleball paddles, balls and gear picked by World Pickleball Magazine."],
+  "/draw": ["Pickleball draws", "Pickleball tournament draws and brackets."]
+};
+function fmSetMeta(p, m){
+  let t, d;
+  const tidy = (x) => String(x || "").replace(/[-_]+/g, " ").replace(/\b\w/g, c => c.toUpperCase()).replace(/\b(Ppa|Mlp|App|Upa|Us|Uk|Gpa|Rta|Wpf|Ifp)\b/g, w => w.toUpperCase()).trim();
+  if (FM_META[p]) { [t, d] = FM_META[p]; }
+  else if (/^\/event\//.test(p)) { const n = tidy(decodeURIComponent(p.slice(7))); t = `${n}: live scores and draw`; d = `${n} live scores, results and draw on WPM LIVE from World Pickleball Magazine.`; }
+  else if (/^\/match\//.test(p)) { t = "Match centre"; d = "Live pickleball match score, games and details on WPM LIVE."; }
+  else if (/^\/player\//.test(p)) { const n = tidy(decodeURIComponent(p.slice(8))); t = `${n}: results and ranking`; d = `${n} pickleball results, upcoming matches and ranking on WPM LIVE.`; }
+  else if (/^\/team\//.test(p)) { const n = tidy(decodeURIComponent(p.slice(6))); t = `${n}: MLP team results`; d = `${n} results and fixtures on WPM LIVE.`; }
+  else { t = "Not found"; d = "Page not found on WPM LIVE."; }
+  const h1 = document.querySelector("#app h1");
+  if (/^\/(event|player|team|match)\//.test(p) && h1 && h1.textContent.trim()) t = h1.textContent.trim().slice(0, 70) + (p.startsWith("/match/") ? "" : (p.startsWith("/event/") ? ": live scores and draw" : ""));
+  const title = `${t} | WPM LIVE`;
+  if (document.title !== title) document.title = title;
+  let el = document.querySelector('meta[name="description"]');
+  if (!el) { el = document.createElement("meta"); el.name = "description"; document.head.appendChild(el); }
+  if (el.content !== d) el.content = d;
+  let c = document.querySelector('link[rel="canonical"]');
+  if (!c) { c = document.createElement("link"); c.rel = "canonical"; document.head.appendChild(c); }
+  const href = location.origin + (p === "/" ? "/" : p);
+  if (c.href !== href) c.href = href;
+}
 function render(){
   syncMagBase();
   if (!state.date) state.date = boardToday();
@@ -4234,6 +4268,7 @@ function render(){
   const sx = strip ? strip.scrollLeft : null;
   document.getElementById("app").innerHTML = fmChrome(inner, {back});
   bind();
+  try { fmSetMeta(p); } catch (e) {}
   if (keep) { const i = document.getElementById("fmq"); if (i) { i.focus(); i.value = keep.v; try { i.setSelectionRange(keep.s, keep.s); } catch(e) {} } }
   const on = document.querySelector(".fm-day.on");
   if (on && sx == null) on.scrollIntoView({block:"nearest", inline:"center"});
