@@ -1,0 +1,7 @@
+# WPM LIVE — live.worldpickleballmagazine.com
+User-agent: *
+Allow: /
+Disallow: /desk
+Disallow: /api/
+Disallow: /.netlify/
+Disallow: /search
