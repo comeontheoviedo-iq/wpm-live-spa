@@ -13,7 +13,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/app.css?v=20261019a">
   <link rel="stylesheet" href="/css/magazine.css?v=20261026a">
-  <link rel="stylesheet" href="/css/live-20261026a.css">
+  <link rel="stylesheet" href="/css/live-20261026a.css?v=mag-bar-v3">
 </head>
 <body>
   <div id="app"></div>
@@ -36,6 +36,16 @@
   }).catch(function () {});
 })();
 </script>
-<script src="/js/wpm-20261026a.js"></script>
+  <script>
+  // QA draft only: magazine bar → wpmag-review. Production live uses default MAG.
+  (function () {
+    try {
+      if (/mag-bar-qa/i.test(location.hostname)) {
+        window.WPM_MAG_BASE = "https://wpmag-review.comeontheoviedo.workers.dev";
+      }
+    } catch (e) {}
+  })();
+  </script>
+<script src="/js/wpm-20261026a.js?v=mag-bar-v3"></script>
 </body>
 </html>
