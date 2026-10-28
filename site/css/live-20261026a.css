@@ -33,6 +33,7 @@ a{color:inherit;text-decoration:none}
 .mag-drawer a{display:flex;align-items:center;min-height:40px;padding:0 12px;border-radius:8px;font-weight:700;font-size:14px;color:#fff}
 .mag-drawer a:hover{background:rgba(255,255,255,.08)}
 .mag-drawer a.on{background:rgba(255,255,255,.07);color:#F7EA05;box-shadow:inset 3px 0 0 #F7EA05}
+.mag-drawer a.mag-report{color:#0D0B3F;background:#F7EA05}
 .mag-drawer .mag-report{display:inline-flex;margin:6px 4px 2px;justify-content:center;width:auto}
 .mag-drawer-theme{padding:6px 8px 4px;border-top:1px solid rgba(255,255,255,.1);margin-top:4px}
 .mag-drawer-theme .theme{width:100%;justify-content:center}
