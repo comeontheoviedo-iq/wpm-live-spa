@@ -1259,7 +1259,7 @@ function magBase(){
 }
 let MAG = MAG_DEFAULT;
 function syncMagBase(){ MAG = magBase(); }
-const MAG_NAV = [["/","Home"],["/live/","Live"],["/watch/","Watch"],["/play/","Play"],["/heat-check/","Rankings"],["/gear/","Gear"]];
+const MAG_NAV = [["/","Home"],["/live/","Live"],["/watch/","Watch"],["/play/","Play"],["/heat-check/","Rankings"]]; // Gear hidden until the gear desk opens (matches magazine site);
 function escTick(v){ return String(v==null?"":v).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
 function tickerHtml(){
   const all = (state.matches || []).map(presentMatch).filter(Boolean);
