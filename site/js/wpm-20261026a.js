@@ -1283,7 +1283,7 @@ function chrome(inner, title){
   <div class="top"><div class="w top-row"><span>WPM LIVE · The live centre of World Pickleball Magazine</span><span class="lang">${themeToggle()}<a href="${MAG}/">worldpickleballmagazine.com</a></span></div></div>
   <header class="mast">
     <div class="w mast-row">
-      <a class="brand" href="${MAG}/" aria-label="World Pickleball Magazine"><img class="logo" src="/img/wpm-logo.avif" alt="World Pickleball Magazine" width="480" height="192"></a>
+      <a class="brand" href="${MAG}/" aria-label="World Pickleball Magazine"><img class="logo" src="/img/wpm-wordmark-424.png" alt="World Pickleball Magazine" width="424" height="112"></a>
       <nav class="tabs" aria-label="Magazine sections">${MAG_NAV.map(([h,l]) => `<a href="${MAG}${h}" class="${h==="/live/"?"on":""}"${h==="/live/"?' aria-current="page"':""}>${l}</a>`).join("")}</nav>
       <form class="find" action="/search" onsubmit="location.href='/search?q='+encodeURIComponent(this.q.value);return false;">
         <input name="q" aria-label="Search player or team" placeholder="Search player or team" value="${(state.q||"").replace(/"/g,"")}">
@@ -3636,7 +3636,7 @@ function magBarHtml(opts){
   }).join("");
   return `<div class="mag-bar"><div class="mag-bar-in">
     ${back ? `<a class="fm-iconbtn mag-back" href="${back}" aria-label="Back">${fmIcon("back")}</a>` : ""}
-    <a class="mag-brand" href="${base}/" aria-label="World Pickleball Magazine home"><img src="/img/wpm-logo.avif" alt="World Pickleball Magazine" width="120" height="48"></a>
+    <a class="mag-brand" href="${base}/" aria-label="World Pickleball Magazine home"><img src="/img/wpm-wordmark-424.png" alt="World Pickleball Magazine" width="120" height="32"></a>
     <nav class="mag-tabs" aria-label="Magazine">${links}</nav>
     <span class="mag-bar-sp"></span>
     <a class="mag-report" href="${base}/newsletter/">Get the Report</a>
