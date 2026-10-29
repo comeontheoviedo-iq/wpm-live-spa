@@ -4,7 +4,7 @@
  * Optional network-first cache only for inert static assets (icon/manifest/css).
  * Handles push + notificationclick for follow LIVE alerts (closed-tab Web Push).
  */
-const STATIC_CACHE = "wpm-static-20261025a";
+const STATIC_CACHE = "wpm-static-20261029a";
 const STATIC_PATHS = new Set(["/icon.svg", "/manifest.json", "/css/app.css"]);
 
 self.addEventListener("install", (e) => {
