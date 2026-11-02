@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 /**
  * Seeded slate honesty: Gijón delayed + draw PDF, Barcelona ended/unparked,
- * Hong Kong Slam is the live PPA EVENT, Virginia Beach and Chicago are archive,
+ * Opendoor Worlds is the live PPA EVENT, Hong Kong, Virginia Beach and Chicago are archive,
  * Louisville is an ended APP week, MLP Asia is not APP.
  */
 import assert from "node:assert/strict";
 import {
   PPA_CHICAGO,
   PPA_HONG_KONG,
+  PPA_OPENDOOR_2025_EVENT_ID,
   PPA_VIRGINIA_BEACH,
   PPA_LIVE,
   PPA_LIVE_EVENT_ID,
@@ -56,22 +57,34 @@ import {
 } from "../netlify/functions/slate-events.mjs";
 
 const CHI = "203e1164-b4f9-47e9-bacf-ff81f8748025";
+const WORLDS = "ad262b1f-ea62-4dcc-af59-69732a97107c";
 const HK = "c7e4fd72-d159-4211-82a2-21adbb21defe";
+const Y2025 = "f02fa839-68e0-46d5-8b93-dc266f201a4e";
 const VB = "429c7980-e1b9-4800-805f-dfb160781cd9";
 const LV = "86926aef-0566-4fbb-87cf-a48068a9f1c6";
 const BCN = "1655a7c9-904a-44c9-aa29-b279fca900e8";
 const MESA = "62c01642-1bb2-4f9a-9998-599f8fdefe5c";
 
-assert.equal(PPA_LIVE_EVENT_ID, HK);
-assert.equal(PPA_LIVE, PPA_HONG_KONG);
-assert.equal(PPA_LIVE.eventId, HK);
-assert.equal(PPA_LIVE.name, "PPA Asia 1500 Hang Seng Bank Hong Kong Slam 2026");
-assert.equal(PPA_LIVE.venue, "Kai Tak Arena, Hong Kong");
-assert.equal(PPA_LIVE.tz, "Asia/Hong_Kong");
-assert.equal(PPA_LIVE.start, "2026-10-19");
-assert.equal(PPA_LIVE.end, "2026-10-25");
+assert.equal(PPA_LIVE_EVENT_ID, WORLDS);
+assert.equal(PPA_LIVE, PPA_OPENDOOR_WORLDS);
+assert.equal(PPA_LIVE.eventId, WORLDS);
+assert.equal(PPA_LIVE.name, "2026 Opendoor Pickleball World Championships");
+assert.equal(PPA_LIVE.venue, "Brookhaven Country Club, Farmers Branch, TX");
+assert.equal(PPA_LIVE.tz, "America/Chicago");
+assert.equal(PPA_LIVE.start, "2026-11-02");
+assert.equal(PPA_LIVE.end, "2026-11-08");
 assert.equal(PPA_LIVE.scorePath, "/api/ppa");
 assert.equal(PPA_LIVE.firstServe, undefined);
+assert.equal(PPA_HONG_KONG.eventId, HK);
+assert.equal(PPA_HONG_KONG.name, "PPA Asia 1500 Hang Seng Bank Hong Kong Slam 2026");
+assert.equal(PPA_HONG_KONG.venue, "Kai Tak Arena, Hong Kong");
+assert.equal(PPA_HONG_KONG.tz, "Asia/Hong_Kong");
+assert.equal(PPA_HONG_KONG.start, "2026-10-19");
+assert.equal(PPA_HONG_KONG.end, "2026-10-25");
+assert.equal(PPA_HONG_KONG.scorePath, undefined);
+assert.notEqual(PPA_LIVE.eventId, HK);
+assert.equal(PPA_OPENDOOR_2025_EVENT_ID, Y2025);
+assert.notEqual(PPA_LIVE.eventId, Y2025);
 assert.equal(PPA_VIRGINIA_BEACH.eventId, VB);
 assert.equal(PPA_VIRGINIA_BEACH.name, "Mojo Energy Pouches Virginia Beach Open");
 assert.equal(PPA_VIRGINIA_BEACH.venue, "Pickleball Virginia Beach, Virginia Beach, VA");
@@ -106,18 +119,28 @@ assert.equal(isParkedPpaEventId(BCN), false);
 assert.equal(isEndedPpaEventId(BCN), true);
 assert.equal(isBlockedPpaEventId(BCN), true);
 assert.equal(isBlockedPpaEventId(PPA_APRIL_LAS_VEGAS_PREFIX + "-0000-0000-0000-000000000000"), true);
+assert.equal(isBlockedPpaEventId(Y2025), true);
 assert.equal(isBlockedPpaEventId(LV), false);
 assert.equal(isBlockedPpaEventId(CHI), false);
-assert.equal(isLivePpaEventId(HK), true);
+assert.equal(isBlockedPpaEventId(HK), false);
+assert.equal(isLivePpaEventId(WORLDS), true);
+assert.equal(isLivePpaEventId(HK), false);
+assert.equal(isLivePpaEventId(Y2025), false);
 assert.equal(isLivePpaEventId(VB), false);
 assert.equal(isLivePpaEventId(CHI), false);
 assert.equal(isLivePpaEventId(LV), false);
 assert.equal(isLivePpaEventId(BCN), false);
 
+assert.equal(ppaTickerTitleAligned("2026 Opendoor Pickleball World Championships"), true);
 assert.equal(
   ppaTickerTitleAligned("PPA Tour: PPA Asia 1500 Hang Seng Bank Hong Kong Slam 2026"),
+  false
+);
+assert.equal(
+  ppaTickerTitleAligned("PPA Tour: PPA Asia 1500 Hang Seng Bank Hong Kong Slam 2026", PPA_HONG_KONG),
   true
 );
+assert.equal(ppaTickerTitleAligned("Opendoor"), false);
 assert.equal(ppaTickerTitleAligned("PPA Tour: Mojo Energy Pouches Virginia Beach Open"), false);
 assert.equal(
   ppaTickerTitleAligned("PPA Tour: Mojo Energy Pouches Virginia Beach Open", PPA_VIRGINIA_BEACH),
@@ -209,16 +232,16 @@ assert.equal(watch.some((e) => /chicago cup/i.test(e.name)), false);
 assert.equal(watch.some((e) => /virginia beach/i.test(e.name)), false);
 assert.equal(SLATE.some((s) => /virginia beach/i.test(s.name) && s.nextPin), false);
 assert.equal(SLATE.some((s) => /virginia beach/i.test(s.name)), false);
-assert.equal(PPA_NEXT.eventId, HK);
-assert.equal(PPA_NEXT.name, "PPA Asia 1500 Hang Seng Bank Hong Kong Slam 2026");
-assert.equal(PPA_NEXT.venue, "Kai Tak Arena, Hong Kong");
-assert.equal(PPA_NEXT.tz, "Asia/Hong_Kong");
-assert.equal(PPA_NEXT.start, "2026-10-19");
-assert.equal(PPA_NEXT.end, "2026-10-25");
+assert.equal(PPA_NEXT.eventId, WORLDS);
+assert.equal(PPA_NEXT.name, "2026 Opendoor Pickleball World Championships");
+assert.equal(PPA_NEXT.venue, "Brookhaven Country Club, Farmers Branch, TX");
+assert.equal(PPA_NEXT.tz, "America/Chicago");
+assert.equal(PPA_NEXT.start, "2026-11-02");
+assert.equal(PPA_NEXT.end, "2026-11-08");
 assert.equal(PPA_NEXT.scorePath, "/api/ppa");
 assert.equal(PPA_LIVE, PPA_NEXT);
 assert.equal(SLATE.some((s) => s.id === PPA_OTTAWA.id), true);
-assert.equal(SLATE.some((s) => s.id === PPA_OPENDOOR_WORLDS.id), true);
+assert.equal(SLATE.some((s) => /opendoor/i.test(s.name)), false);
 assert.deepEqual(
   PPA_UPCOMING.map((s) => s.ppaEventId),
   [
@@ -231,9 +254,8 @@ assert.deepEqual(
 );
 assert.ok(PPA_UPCOMING.every((s) => s.onLive === false && s.status === "results-only"));
 assert.ok(PPA_UPCOMING.every((s) => s.connector.scorePath == null));
-assert.equal(PPA_OPENDOOR_WORLDS.ppaEventId, null);
-assert.match(PPA_OPENDOOR_WORLDS.note, /f02fa839/);
-assert.match(PPA_OPENDOOR_WORLDS.note, /2025/);
+assert.equal(PPA_OPENDOOR_WORLDS.eventId, WORLDS);
+assert.equal(watch.some((e) => /opendoor/i.test(e.name)), false);
 assert.equal(PPA_NANJING.tour, "asia");
 assert.equal(PPA_LILLE.tour, "ppa-eu");
 const ottawaWatch = watch.find((e) => e.ppaEventId === PPA_OTTAWA.ppaEventId);
@@ -253,10 +275,10 @@ assert.equal(isAppAsiaName("APP Arizona Open"), false);
 assert.equal(isAppAsiaName("MLP Asia 2026"), false);
 
 import { WIRED } from "../netlify/functions/radar-lib.mjs";
-assert.equal(WIRED.ppa.eventId, HK);
+assert.equal(WIRED.ppa.eventId, WORLDS);
 assert.equal(WIRED.ppa.name, PPA_LIVE.name);
 assert.equal(WIRED.ppa.venue, PPA_LIVE.venue);
-assert.equal(WIRED.ppa.tz, "Asia/Hong_Kong");
+assert.equal(WIRED.ppa.tz, "America/Chicago");
 assert.equal(WIRED.ppa.scorePath, "/api/ppa");
 assert.notEqual(WIRED.ppa.eventId, BCN);
 assert.equal(String(WIRED.ppa.eventId).startsWith(PPA_APRIL_LAS_VEGAS_PREFIX), false);
@@ -379,4 +401,4 @@ assert.notEqual(cq.connector?.denTournamentId, "18448");
 assert.equal(isAppAsiaName("APP Asia Chongqing Open"), true);
 assert.equal(isAppAsiaName("APP Columbus Open"), false);
 
-console.log("ok slate-events · Gijón delayed · Barcelona ended · Hong Kong live · Virginia Beach archived · Louisville ended · Columbus archived · MLP ≠ APP");
+console.log("ok slate-events · Gijón delayed · Barcelona ended · Opendoor Worlds live · Hong Kong archived · Virginia Beach archived · Louisville ended · Columbus archived · MLP ≠ APP");

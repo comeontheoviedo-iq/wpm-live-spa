@@ -1,6 +1,6 @@
 /**
  * Finished-tournament results for the reader archive.
- * Live PPA pin is PPA Asia 1500 Hang Seng Bank Hong Kong Slam 2026 (c7e4fd72).
+ * Live PPA pin is the 2026 Opendoor Pickleball World Championships (ad262b1f).
  * APP Louisville Den 18454 ended 18 Oct 2026 and is archive-only.
  * /api/app is between events until a later Den id exists. Arizona has none.
  * This module only serves FT rows. It never marks LIVE and never invents a score.
@@ -8,7 +8,7 @@
 import { discFromAppBracket, discFromDivName, isKnockoutBracket, polishAppRound } from "./app-rounds.mjs";
 import { matchBoardDate } from "./app-dates.mjs";
 import { rosterText, tagsFor } from "./follow-tags.mjs";
-import { APP_COLUMBUS, APP_LOUISVILLE, ENDED_APP, PPA_CHICAGO, PPA_HONG_KONG, PPA_LAS_VEGAS, PPA_VIRGINIA_BEACH } from "./slate-events.mjs";
+import { APP_COLUMBUS, APP_LOUISVILLE, ENDED_APP, PPA_CHICAGO, PPA_HONG_KONG, PPA_LAS_VEGAS, PPA_OPENDOOR_WORLDS, PPA_VIRGINIA_BEACH } from "./slate-events.mjs";
 
 const DEN = "https://denlive.pickleballden.com";
 const UA = { "User-Agent": "WPM-LIVE/1.0", Accept: "application/json" };
@@ -36,8 +36,8 @@ const GRAND_RAPIDS_ID = "d31aaa25-050c-4b4b-8537-0c69b7ea674a";
  * Finished weeks with a verified score source, oldest first.
  * Charlotte Challenger (2006a790-…) still had scheduled rows on 2026-10-02, so it stays off.
  * Columbus 18448, Las Vegas 86926aef, Chicago Cup 203e1164, Virginia Beach
- * 429c7980, and Louisville 18454 are finished (current false).
- * Hong Kong stays on CURRENT_PINS until that week ends.
+ * 429c7980, Louisville 18454, and Hong Kong c7e4fd72 are finished (current false).
+ * Opendoor Worlds stays on CURRENT_PINS until that week ends.
  */
 export const FINISHED_EVENTS = [
   {
@@ -196,10 +196,6 @@ export const FINISHED_EVENTS = [
     denTournamentId: APP_LOUISVILLE.eventId,
     current: false,
   },
-];
-
-/** Live pin. Listed so the client can offer it once the week has actually finished. */
-export const CURRENT_PINS = [
   {
     id: "hong-kong",
     tour: "ppa",
@@ -210,6 +206,22 @@ export const CURRENT_PINS = [
     start: PPA_HONG_KONG.start,
     end: PPA_HONG_KONG.end,
     ppaEventId: PPA_HONG_KONG.eventId,
+    current: false,
+  },
+];
+
+/** Live pin. Listed so the client can offer it once the week has actually finished. */
+export const CURRENT_PINS = [
+  {
+    id: "opendoor",
+    tour: "ppa",
+    label: "Worlds",
+    name: PPA_OPENDOOR_WORLDS.name,
+    venue: PPA_OPENDOOR_WORLDS.venue,
+    tz: PPA_OPENDOOR_WORLDS.tz,
+    start: PPA_OPENDOOR_WORLDS.start,
+    end: PPA_OPENDOOR_WORLDS.end,
+    ppaEventId: PPA_OPENDOOR_WORLDS.eventId,
     current: true,
   },
 ];

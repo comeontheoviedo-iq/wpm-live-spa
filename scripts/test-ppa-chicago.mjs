@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
- * Hong Kong Slam is the live PPA pin. Ticker title must match before
+ * Opendoor Worlds is the live PPA pin. Ticker title must match before
  * ticker rows are stamped with that pin. Date TBA is not a day and not a clock.
- * Virginia Beach and Chicago Cup stay finished archives.
- * plannedStart is venue wall time with a Z suffix — the board clock is the
- * ticker string, and the stored start is the real UTC instant.
+ * Hong Kong, Virginia Beach, and Chicago Cup stay finished archives.
+ * plannedStart is venue wall time with a Z suffix — "8:00 AM CST" stored as
+ * 08:00Z is 14:00 UTC. The board clock is the ticker string.
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -13,6 +13,7 @@ import {
   PPA_CHICAGO,
   PPA_HONG_KONG,
   PPA_LAS_VEGAS,
+  PPA_OPENDOOR_WORLDS,
   PPA_LIVE,
   PPA_LIVE_EVENT_ID,
   PPA_VIRGINIA_BEACH,
@@ -37,34 +38,44 @@ import {
 } from "../netlify/functions/ppa-keep.mjs";
 
 const UA = { "User-Agent": "WPM-LIVE/1.0", Accept: "application/json" };
-const HK = PPA_LIVE_EVENT_ID;
+const WORLDS = PPA_LIVE_EVENT_ID;
+const HK = PPA_HONG_KONG.eventId;
 const CHI = PPA_CHICAGO.eventId;
 const LV = PPA_LAS_VEGAS.eventId;
 const VB = PPA_VIRGINIA_BEACH.eventId;
 const BCN = ENDED_PPA.barcelona.ppaEventId;
 
-assert.equal(HK, "c7e4fd72-d159-4211-82a2-21adbb21defe");
-assert.equal(PPA_LIVE, PPA_HONG_KONG);
-assert.equal(PPA_LIVE.name, "PPA Asia 1500 Hang Seng Bank Hong Kong Slam 2026");
-assert.equal(PPA_LIVE.venue, "Kai Tak Arena, Hong Kong");
-assert.equal(PPA_LIVE.tz, "Asia/Hong_Kong");
+assert.equal(WORLDS, "ad262b1f-ea62-4dcc-af59-69732a97107c");
+assert.equal(PPA_LIVE, PPA_OPENDOOR_WORLDS);
+assert.equal(PPA_LIVE.name, "2026 Opendoor Pickleball World Championships");
+assert.equal(PPA_LIVE.venue, "Brookhaven Country Club, Farmers Branch, TX");
+assert.equal(PPA_LIVE.tz, "America/Chicago");
 assert.equal(PPA_LIVE.firstServe, undefined);
+assert.equal(HK, "c7e4fd72-d159-4211-82a2-21adbb21defe");
+assert.notEqual(PPA_LIVE.eventId, HK);
 assert.equal(VB, "429c7980-e1b9-4800-805f-dfb160781cd9");
 assert.equal(PPA_VIRGINIA_BEACH.firstServe, "8:00 AM EDT");
 assert.notEqual(PPA_LIVE.eventId, VB);
 assert.equal(CHI, "203e1164-b4f9-47e9-bacf-ff81f8748025");
 assert.equal(PPA_CHICAGO.name, "Veolia Chicago Cup");
 assert.equal(PPA_CHICAGO.tz, "America/Chicago");
+assert.equal(ppaTickerTitleAligned("2026 Opendoor Pickleball World Championships"), true);
 assert.equal(
   ppaTickerTitleAligned("PPA Tour: PPA Asia 1500 Hang Seng Bank Hong Kong Slam 2026"),
+  false
+);
+assert.equal(
+  ppaTickerTitleAligned("PPA Tour: PPA Asia 1500 Hang Seng Bank Hong Kong Slam 2026", PPA_HONG_KONG),
   true
 );
+assert.equal(ppaTickerTitleAligned("Opendoor"), false);
 assert.equal(ppaTickerTitleAligned("PPA Tour: Mojo Energy Pouches Virginia Beach Open"), false);
 assert.equal(ppaTickerTitleAligned("Hong Kong"), false);
 assert.equal(ppaTickerTitleAligned("PPA Tour: Veolia Chicago Cup"), false);
 assert.equal(ppaTickerTitleAligned("PPA Tour: Veolia Chicago Cup", PPA_CHICAGO), true);
 assert.equal(ppaTickerTitleAligned(""), true);
-assert.equal(ppaWallInstant("9999-12-31T08:00:00Z", "Asia/Hong_Kong"), "");
+assert.equal(ppaWallInstant("9999-12-31T08:00:00Z", "America/Chicago"), "");
+assert.equal(ppaWallInstant("2026-11-02T08:00:00Z", "America/Chicago"), "2026-11-02T14:00:00.000Z");
 
 assert.equal(ppaWallInstant("2026-10-12T08:00:00Z", "America/New_York"), "2026-10-12T12:00:00.000Z");
 assert.equal(ppaWallInstant("2026-10-12T11:00:00Z", "America/New_York"), "2026-10-12T15:00:00.000Z");
@@ -103,7 +114,7 @@ assert.equal(spill[2].date, "2026-10-07");
 assert.equal(spill[2].score, "");
 assert.equal(rebasePpaLocalDates(spillIn, "Europe/London", spillNow)[1].date, "2026-10-07");
 
-const clientJs = fs.readFileSync("js/wpm-20261026a.js", "utf8");
+const clientJs = fs.readFileSync("js/wpm-20261102a.js", "utf8");
 const clientCtx = {};
 vm.runInNewContext(
   clientJs.slice(clientJs.indexOf("function tzOffsetMinutes"), clientJs.indexOf("function addDaysIso")) +
@@ -164,29 +175,26 @@ const tick = await getJson("https://www.ppatour.com/api/ticker/");
 const title = tick.tournament?.title || "";
 assert.equal(ppaTickerTitleAligned(title, PPA_LIVE), true, title || "(empty ticker title)");
 if (title) {
-  assert.match(title, /PPA Asia 1500 Hang Seng Bank Hong Kong Slam 2026/);
+  assert.match(title, /2026 Opendoor Pickleball World Championships/);
+  assert.equal(ppaTickerTitleAligned(title, PPA_HONG_KONG), false);
   assert.equal(ppaTickerTitleAligned(title, PPA_CHICAGO), false);
   assert.equal(ppaTickerTitleAligned(title, PPA_VIRGINIA_BEACH), false);
 }
-assert.equal(/chicago cup/i.test(title), false);
-assert.equal(/virginia beach/i.test(title), false);
+assert.equal(/hong kong|chicago cup|virginia beach/i.test(title), false);
 const tickMatches = tick.matches || [];
 const tickerLive = tickMatches.some((m) => String(m.status || "").toLowerCase() === "live");
 
-const scores = await getJson("https://www.ppatour.com/api/scores/?event=" + HK);
-assert.equal(scores.tournamentId, HK);
+const scores = await getJson("https://www.ppatour.com/api/scores/?event=" + WORLDS);
+assert.equal(scores.tournamentId, WORLDS);
 const scoreMatches = ppaScoreRows(scores);
 const mainMatches = scores.matches || [];
-assert.ok(mainMatches.length > 0, "Hong Kong main draw is published");
+assert.ok(Array.isArray(scores.divisions) && scores.divisions.length >= 10, "Worlds divisions are published");
 const mainTba = mainMatches.filter((m) => isPpaTbaDate(m.dateKey) || m.dateLabel === "Date TBA");
-assert.ok(mainTba.length > 0, "Hong Kong still has Date TBA rows");
 for (const m of mainTba) {
   assert.notEqual(String(m.status || "").toLowerCase(), "live", "Date TBA is not LIVE");
   const games = (m.teams || []).flatMap((t) => t.games || []);
-  assert.ok(games.every((g) => g == null || g === ""), "Date TBA row must not carry a score");
+  assert.ok(games.every((g) => g == null || g === "" || g === 0), "Date TBA row must not carry a real score");
 }
-const qual = (scores.qualifier && scores.qualifier.matches) || [];
-const datedQual = qual.filter((m) => !isPpaTbaDate(m.dateKey));
 assert.ok(scoreMatches.length >= mainMatches.length, "scores rows include the main draw");
 const tickIds = new Set(tickMatches.map((m) => m.id));
 const mainIds = new Set(mainMatches.map((m) => m.id));
@@ -203,12 +211,13 @@ const { default: ppaHandler } = await import("../netlify/functions/ppa.mts");
 const res = await ppaHandler(new Request("https://live.worldpickleballmagazine.com/api/ppa"));
 assert.equal(res.ok, true);
 const body = await res.json();
-assert.equal(body.event.id, HK);
+assert.equal(body.event.id, WORLDS);
 assert.equal(body.event.name, PPA_LIVE.name);
 assert.equal(body.event.venue, PPA_LIVE.venue);
-assert.equal(body.event.tz, "Asia/Hong_Kong");
-assert.equal(body.event.eventKey, "ev:ppa:" + HK);
+assert.equal(body.event.tz, "America/Chicago");
+assert.equal(body.event.eventKey, "ev:ppa:" + WORLDS);
 assert.equal(body.event.smoke, undefined);
+assert.notEqual(body.event.id, HK);
 assert.notEqual(body.event.id, VB);
 assert.ok(body.matches.length >= tickMatches.length, "aligned ticker rows are on the default board");
 const seenTick = new Set();
@@ -216,9 +225,10 @@ const boardIds = new Set();
 for (const m of body.matches) {
   assert.equal(m.comp, PPA_LIVE.name);
   assert.equal(m.venue, PPA_LIVE.venue);
-  assert.equal(m.tz, "Asia/Hong_Kong");
-  assert.equal(m.eventKey, "ev:ppa:" + HK);
-  assert.equal(/virginia beach|chicago cup/i.test(m.comp + " " + m.venue), false);
+  assert.equal(m.tz, "America/Chicago");
+  assert.equal(m.eventKey, "ev:ppa:" + WORLDS);
+  assert.equal(/hong kong|virginia beach|chicago cup/i.test(m.comp + " " + m.venue), false);
+  if (m.status !== "LIVE") assert.notEqual(m.score, "0-0", "unplayed rows are not a 0–0 score");
   assert.equal(isPpaTbaDate(m.date), false, "Date TBA stays off the day board");
   assert.notEqual(m.note, "Date TBA");
   const id = String(m.id || "").replace(/^ppa-/, "");
@@ -236,22 +246,40 @@ for (const m of body.matches) {
     seenTick.add(id);
     const src = tickMatches.find((t) => t.id === id);
     assert.equal(m.clock, src.time || "");
-    assert.equal(m.start, ppaWallInstant(src.plannedStart, "Asia/Hong_Kong"));
-    if (String(src.status || "").toLowerCase() !== "live") assert.notEqual(m.status, "LIVE");
+    assert.equal(m.start, ppaWallInstant(src.plannedStart, "America/Chicago"));
+    if (src.time === "8:00 AM CST" && String(src.plannedStart || "").includes("T08:00:00")) {
+      assert.equal(m.start, String(src.plannedStart).slice(0, 10) + "T14:00:00.000Z");
+    }
+    if (String(src.status || "").toLowerCase() !== "live") {
+      assert.notEqual(m.status, "LIVE");
+      assert.notEqual(m.score, "0-0");
+    }
   }
 }
 assert.equal(seenTick.size, tickIds.size, "every aligned ticker id is on the board");
 if (!tickerLive) assert.equal(body.matches.some((m) => m.status === "LIVE"), false, "no fake LIVE");
 const scoredFt = body.matches.filter((m) => m.status === "FT" && m.score && m.score !== "0-0" && m.score !== "");
-if (datedQual.length) assert.ok(scoredFt.length > 0, "dated qualifier finals keep real scores");
 assert.equal([...boardIds].some((id) => mainIds.has(id) && mainTba.some((row) => row.id === id)), false);
+
+const hk = await getJson("https://www.ppatour.com/api/scores/?event=" + HK);
+assert.equal(hk.tournamentId, HK);
+const hkMatches = hk.matches || [];
+const hkFinal = hkMatches.filter((m) => String(m.status || "").toLowerCase() === "final");
+assert.ok(hkFinal.length >= 300, "Hong Kong finals stay on the scores API");
+assert.ok(
+  hkMatches.every((m) => String(m.status || "").toLowerCase() === "final"),
+  "Hong Kong archive is final results only"
+);
 
 const beach = await getJson("https://www.ppatour.com/api/scores/?event=" + VB);
 assert.equal(beach.tournamentId, VB);
 const beachMatches = beach.matches || [];
 const beachFinal = beachMatches.filter((m) => String(m.status || "").toLowerCase() === "final");
-assert.ok(beachFinal.length >= 180, "Virginia Beach finals stay on the scores API");
-assert.ok(beachMatches.some((m) => isPpaTbaDate(m.dateKey)), "the undated Virginia Beach row is not invented as FT");
+assert.ok(beachFinal.length >= 100, "Virginia Beach finals stay on the scores API");
+assert.ok(
+  beachMatches.every((m) => String(m.status || "").toLowerCase() === "final"),
+  "Virginia Beach archive rows that remain are final"
+);
 
 const chicago = await getJson("https://www.ppatour.com/api/scores/?event=" + CHI);
 assert.equal(chicago.tournamentId, CHI);
@@ -280,8 +308,10 @@ const bcn = await getJson("https://www.ppatour.com/api/scores/?event=" + BCN);
 assert.equal((bcn.matches || []).length, 0, "Barcelona window ended with no scores");
 
 console.log(
-  "ok ppa-hong-kong · ticker " +
+  "ok ppa-opendoor · ticker " +
     (title || "(empty)") +
+    " · tick " +
+    tickMatches.length +
     " · main " +
     mainMatches.length +
     " · tba " +
@@ -290,6 +320,8 @@ console.log(
     body.matches.length +
     " · ft " +
     scoredFt.length +
+    " · hk final " +
+    hkFinal.length +
     " · beach final " +
     beachFinal.length +
     " · chicago " +

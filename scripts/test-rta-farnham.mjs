@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * RTA2000 Farnham is its own tour. Game strings only — never seeds, ranks, or DUPR.
- * LIVE with no points is blank, not 0–0. Louisville 18454 ended 18 Oct. Hong Kong is the PPA pin. Las Vegas stays archived.
+ * LIVE with no points is blank, not 0–0. Louisville 18454 ended 18 Oct. Opendoor Worlds is the PPA pin. Las Vegas stays archived.
  */
 import fs from "node:fs";
 import assert from "node:assert/strict";
@@ -18,9 +18,9 @@ import {
 
 assert.equal(APP_LIVE.eventId, "18454");
 assert.equal(APP_LIVE.name, "Humana APP Louisville Open");
-assert.equal(PPA_LIVE.eventId, "c7e4fd72-d159-4211-82a2-21adbb21defe");
-assert.equal(PPA_LIVE.name, "PPA Asia 1500 Hang Seng Bank Hong Kong Slam 2026");
-assert.equal(PPA_LIVE.tz, "Asia/Hong_Kong");
+assert.equal(PPA_LIVE.eventId, "ad262b1f-ea62-4dcc-af59-69732a97107c");
+assert.equal(PPA_LIVE.name, "2026 Opendoor Pickleball World Championships");
+assert.equal(PPA_LIVE.tz, "America/Chicago");
 assert.equal(FARNHAM.tour, "rta");
 assert.equal(FARNHAM.tz, "Europe/London");
 assert.match(FARNHAM.venue, /Hurlands/);
@@ -304,17 +304,17 @@ assert.equal(md.segments.includes("consolation"), false);
 const ws = categories.find((c) => c.id === 34474);
 assert.deepEqual(ws.segments, []);
 
-const js = fs.readFileSync("site/js/wpm-20261026a.js", "utf8");
-const siteJs = fs.readFileSync("site/js/wpm-20261026a.js", "utf8");
+const js = fs.readFileSync("js/wpm-20261102a.js", "utf8");
+const siteJs = fs.readFileSync("site/js/wpm-20261102a.js", "utf8");
 assert.equal(siteJs, js);
 assert.ok(js.includes('tour: "rta"') || js.includes('tour:"rta"') || js.includes("tour === \"rta\""));
 assert.ok(js.includes("/api/rta"));
 assert.ok(js.includes('m.tour !== "rta"'));
 assert.ok(js.includes("RTA2000"));
 assert.equal(js.includes("PickleLive"), false);
-assert.ok(fs.readFileSync("site/index.html", "utf8").includes("wpm-20261026a.js"));
+assert.ok(fs.readFileSync("site/index.html", "utf8").includes("wpm-20261102a.js"));
 assert.ok(fs.readFileSync("netlify/functions/app.mts", "utf8").includes("18448"));
 assert.ok(fs.readFileSync("netlify/functions/ppa.mts", "utf8").includes("PPA_LIVE"));
 assert.equal(fs.readFileSync("netlify/functions/slate-events.mjs", "utf8").includes("86926aef-0566-4fbb-87cf-a48068a9f1c6"), true);
 
-console.log("ok rta farnham · own tour · game scores only · unplayed after end not NEXT · Hong Kong live");
+console.log("ok rta farnham · own tour · game scores only · unplayed after end not NEXT · Opendoor Worlds live");
