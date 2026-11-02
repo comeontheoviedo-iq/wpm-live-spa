@@ -45,12 +45,9 @@ export const PPA_VIRGINIA_BEACH = {
 };
 
 /**
- * PPA Asia 1500 Hang Seng Bank Hong Kong Slam 2026, 19–25 Oct, Kai Tak Arena.
- * UUID is tournamentId on https://www.ppatour.com/api/scores/?event=c7e4fd72-d159-4211-82a2-21adbb21defe
- * (verified 19 Oct 2026: 93 pro main-draw rows, all scheduled, dateLabel Date TBA).
- * Qualifier rows with a real dateKey stay on the day board. Date TBA is not a day
- * and is not a clock. No first-serve time until the ticker prints one.
- * Ticker rows are stamped with this pin only when the title contains this name.
+ * PPA Asia 1500 Hang Seng Bank Hong Kong Slam 2026. Finished 25 Oct 2026.
+ * Scores API: 376 final rows (verified 2 Nov 2026). Archive id hong-kong,
+ * current false. Never wire /api/ppa back to this UUID.
  */
 export const PPA_HONG_KONG = {
   eventId: "c7e4fd72-d159-4211-82a2-21adbb21defe",
@@ -59,12 +56,36 @@ export const PPA_HONG_KONG = {
   tz: "Asia/Hong_Kong",
   start: "2026-10-19",
   end: "2026-10-25",
-  scorePath: "/api/ppa",
   officialUrl: "https://www.ppatour-asia.com/tournament/2026/hong-kong-slam/",
 };
 
+/**
+ * 2026 Opendoor Pickleball World Championships. PPA Major, 2–8 Nov,
+ * Brookhaven Country Club, Farmers Branch, TX.
+ * eventId on https://www.ppatour.com/events/2026/pickleball-world-championships/
+ * and tournamentId on the scores API (verified 2 Nov 2026).
+ * Ticker title is this name. plannedStart is Central wall time with a Z suffix
+ * ("8:00 AM CST" stored as 2026-11-02T08:00:00Z, which is 14:00 UTC).
+ * Date TBA is not a day and is not a clock. A scheduled row with no points
+ * is NEXT, never a 0–0 LIVE score.
+ * The schedule-card UUID f02fa839-… is 2025 finals. It is blocked, not stored
+ * as a score path.
+ */
+export const PPA_OPENDOOR_2025_EVENT_ID = "f02fa839-68e0-46d5-8b93-dc266f201a4e";
+
+export const PPA_OPENDOOR_WORLDS = {
+  eventId: "ad262b1f-ea62-4dcc-af59-69732a97107c",
+  name: "2026 Opendoor Pickleball World Championships",
+  venue: "Brookhaven Country Club, Farmers Branch, TX",
+  tz: "America/Chicago",
+  start: "2026-11-02",
+  end: "2026-11-08",
+  scorePath: "/api/ppa",
+  officialUrl: "https://www.ppatour.com/events/2026/pickleball-world-championships/",
+};
+
 /** Live /api/ppa event. Week flip is this binding. */
-export const PPA_NEXT = PPA_HONG_KONG;
+export const PPA_NEXT = PPA_OPENDOOR_WORLDS;
 export const PPA_LIVE = PPA_NEXT;
 export const PPA_LIVE_EVENT_ID = PPA_LIVE.eventId;
 
@@ -343,7 +364,7 @@ export const ENDED_PPA = {
     ended: true,
     parked: false,
     note:
-      "Window ended 27 Sep 2026 with no scores on the official PPA scores API. Unparked \u2014 do not cut /api/ppa to this UUID. Live board is PPA Asia 1500 Hang Seng Bank Hong Kong Slam 2026 (" +
+      "Window ended 27 Sep 2026 with no scores on the official PPA scores API. Unparked \u2014 do not cut /api/ppa to this UUID. Live board is 2026 Opendoor Pickleball World Championships (" +
       PPA_LIVE_EVENT_ID +
       ").",
   },
@@ -551,11 +572,11 @@ export const MLP_ASIA_SEASON = {
 };
 
 /**
- * Upcoming PPA stops after Hong Kong. UUIDs were on the 19 Oct 2026
- * ppatour.com/schedule payload and the scores API echoed the same tournamentId.
- * Ottawa, Nanjing, College, Lille, and Daytona returned 0 match rows — not a
- * live score path. Opendoor's schedule UUID is last year's finals; it is not stored.
- * None of these is /api/ppa. Do not invent a clock.
+ * Upcoming PPA stops that are not the live Worlds pin. UUIDs were on the
+ * 19 Oct 2026 ppatour.com/schedule payload and the scores API echoed the same
+ * tournamentId. Ottawa, Nanjing, College, Lille, and Daytona returned 0 match
+ * rows — not a live score path. The 2025 Opendoor finals UUID f02fa839 is
+ * blocked. None of these is /api/ppa. Do not invent a clock.
  */
 function ppaCalendarSeed(row) {
   return {
@@ -614,19 +635,6 @@ export const PPA_COLLEGE_WORLDS = ppaCalendarSeed({
     "Scores API tournamentId 95602192-b649-420f-a8ff-0887fddfe1e7 echoed on 19 Oct 2026 with 0 match rows. Not the Opendoor Worlds UUID. Not the live pin. Do not cut /api/ppa here.",
 });
 
-export const PPA_OPENDOOR_WORLDS = ppaCalendarSeed({
-  id: "slate:ppa-opendoor-worlds-2026",
-  name: "Opendoor Pickleball World Championships",
-  venue: "Brookhaven Country Club, Farmers Branch, TX",
-  timezone: "America/Chicago",
-  start: "2026-11-02",
-  end: "2026-11-08",
-  ppaEventId: null,
-  officialUrl: "https://www.ppatour.com/events/2026/pickleball-world-championships/",
-  note:
-    "Schedule card slug pickleball-world-championships lists tournamentUuid f02fa839-68e0-46d5-8b93-dc266f201a4e. Scores API for that UUID is 322 final rows dated 4–9 Nov 2025, not the 2026 draw. UUID is not stored as a score path. Not wired. Do not cut /api/ppa to that UUID.",
-});
-
 export const PPA_LILLE = ppaCalendarSeed({
   id: "slate:ppa-lille-p125-2026",
   name: "PPA Tour Europe · P125 Lille",
@@ -660,7 +668,7 @@ export const PPA_UPCOMING = [PPA_OTTAWA, PPA_NANJING, PPA_COLLEGE_WORLDS, PPA_LI
 
 /**
  * RTA2000 Farnham. Tournated 8510. Own tour — not an APP or PPA chip.
- * APP Louisville ended 18 Oct. Live PPA is Hong Kong Slam.
+ * APP Louisville ended 18 Oct. Live PPA is the 2026 Opendoor Worlds.
  */
 export const FARNHAM = {
   id: "slate:rta-farnham-2026",
@@ -677,7 +685,7 @@ export const FARNHAM = {
   officialUrl:
     "https://play.rtapickleballtour.com/tournament/8510/draws?category=34477&segment=MD",
   note:
-    "Tournated tournament 8510 at Hurlands. Window ended 4 Oct 2026. /api/rta reads drawsDetail. Unplayed rows after the window are not NEXT. Not APP and not PPA. Do not cut /api/app back onto Humana APP Louisville Open Den 18454. Do not cut /api/ppa off PPA Asia 1500 Hang Seng Bank Hong Kong Slam 2026 c7e4fd72-d159-4211-82a2-21adbb21defe.",
+    "Tournated tournament 8510 at Hurlands. Window ended 4 Oct 2026. /api/rta reads drawsDetail. Unplayed rows after the window are not NEXT. Not APP and not PPA. Do not cut /api/app back onto Humana APP Louisville Open Den 18454. Do not cut /api/ppa off 2026 Opendoor Pickleball World Championships ad262b1f-ea62-4dcc-af59-69732a97107c. Do not cut /api/ppa back to Hong Kong Slam c7e4fd72-d159-4211-82a2-21adbb21defe. Do not wire the 2025 finals UUID f02fa839-68e0-46d5-8b93-dc266f201a4e.",
   connector: { type: "url", scoreUrl: "/api/rta" },
 };
 
@@ -690,7 +698,6 @@ export const SLATE = [
   PPA_OTTAWA,
   PPA_NANJING,
   PPA_COLLEGE_WORLDS,
-  PPA_OPENDOOR_WORLDS,
   BANGKOK,
   ARIZONA_APP,
   PPA_LILLE,
@@ -709,7 +716,7 @@ export function coverageSeedFor(name) {
 export const FILTER_COPY = {
   tpb: "TOP Pickleball Tour (powered by APP, not APP Den). Scores delayed \u2014 no live path. Official draw PDF only.",
   "ppa-eu":
-    "PPA Tour Europe. Barcelona window ended 27 Sep 2026 with no scores. Not the live board \u2014 PPA Asia 1500 Hang Seng Bank Hong Kong Slam 2026 is /api/ppa.",
+    "PPA Tour Europe. Barcelona window ended 27 Sep 2026 with no scores. Not the live board \u2014 2026 Opendoor Pickleball World Championships is /api/ppa.",
   "app-asia": "APP Asia Tour \u2014 not MLP Asia. No Den Live id. SportsSync /api/sportssync is results-only once a real tournamentId is listed. Not LIVE.",
   "mlp-asia": MLP_ASIA_NOTE,
   asia: "PPA Asia \u2014 results-only until a working ticker is wired. Not APP Asia, not MLP Asia.",
@@ -898,11 +905,12 @@ export function isEndedPpaEventId(id) {
   return s === ENDED_PPA.barcelona.ppaEventId;
 }
 
-/** April Las Vegas prefix, or any ended Europe UUID. Not a working /api/ppa path. */
+/** April Las Vegas prefix, the 2025 Opendoor finals UUID, or any ended Europe UUID. Not a working /api/ppa path. */
 export function isBlockedPpaEventId(id) {
   const s = String(id || "").trim().toLowerCase();
   if (!s) return false;
   if (isEndedPpaEventId(s)) return true;
+  if (s === PPA_OPENDOOR_2025_EVENT_ID) return true;
   return s.startsWith(PPA_APRIL_LAS_VEGAS_PREFIX);
 }
 
@@ -912,8 +920,9 @@ export function isLivePpaEventId(id) {
 
 /**
  * Ticker title must contain the pinned event name.
- * "PPA Tour: PPA Asia 1500 Hang Seng Bank Hong Kong Slam 2026" matches Hong Kong.
- * "PPA Tour: Mojo Energy Pouches Virginia Beach Open" does not. A bare "Hong Kong" does not.
+ * "2026 Opendoor Pickleball World Championships" matches the Worlds pin.
+ * "PPA Tour: PPA Asia 1500 Hang Seng Bank Hong Kong Slam 2026" does not.
+ * A bare "Opendoor" or "Hong Kong" does not.
  * Empty title does not contradict the pin (older feeds omit it).
  */
 export function ppaTickerTitleAligned(title, pin = PPA_LIVE) {
@@ -1075,7 +1084,6 @@ export function staticWatchEvents() {
     watchFromSeed(PPA_OTTAWA),
     watchFromSeed(PPA_NANJING),
     watchFromSeed(PPA_COLLEGE_WORLDS),
-    watchFromSeed(PPA_OPENDOOR_WORLDS),
     watchFromSeed(PPA_LILLE),
     watchFromSeed(PPA_DAYTONA),
   ];

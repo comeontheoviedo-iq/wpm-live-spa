@@ -10,6 +10,7 @@ import {
   PARKED_PPA,
   PPA_CHICAGO,
   PPA_HONG_KONG,
+  PPA_OPENDOOR_WORLDS,
   PPA_LAS_VEGAS,
   PPA_LIVE,
   PPA_LIVE_EVENT_ID,
@@ -73,13 +74,24 @@ const KNOWN = {
     live: false,
     ended: true,
   },
+  /** Finished 25 Oct 2026. Archive only — not the live /api/ppa path. */
   ppaHongKong: {
     type: "ppa",
     ppaEventId: PPA_HONG_KONG.eventId,
-    scorePath: "/api/ppa",
+    scorePath: null,
     timezone: PPA_HONG_KONG.tz,
     name: PPA_HONG_KONG.name,
     venue: PPA_HONG_KONG.venue,
+    live: false,
+    ended: true,
+  },
+  ppaOpendoorWorlds: {
+    type: "ppa",
+    ppaEventId: PPA_OPENDOOR_WORLDS.eventId,
+    scorePath: "/api/ppa",
+    timezone: PPA_OPENDOOR_WORLDS.tz,
+    name: PPA_OPENDOOR_WORLDS.name,
+    venue: PPA_OPENDOOR_WORLDS.venue,
     live: true,
   },
   /** Finished 18 Oct 2026. Archive only — not the live /api/ppa path. */

@@ -119,3 +119,11 @@
 - Upcoming results-only UUIDs (scores API echoed, 0 rows): Ottawa `94307fed-…`, Nanjing `49004a6d-…`, College Worlds `95602192-…`, Lille `04a30133-…`, Daytona `12a61e43-…`. Opendoor schedule UUID `f02fa839-…` is 2025 finals and is not stored.
 - Client `wpm-20261019a.js` · SW `wpm-static-20261019a`. Not deployed.
 
+## 2026-11-02 — PPA cut to Opendoor Worlds
+
+- Hong Kong Slam `c7e4fd72-d159-4211-82a2-21adbb21defe` ended 25 Oct 2026. Archive `hong-kong`, `current: false`. Scores API 376 final rows. Results stay on `/api/archive`.
+- Live `/api/ppa` is 2026 Opendoor Pickleball World Championships `ad262b1f-ea62-4dcc-af59-69732a97107c`, Brookhaven Country Club, Farmers Branch, TX, `America/Chicago`, 2–8 Nov. `PPA_LIVE = PPA_NEXT`.
+- Smoke 2 Nov 2026: ticker title `2026 Opendoor Pickleball World Championships`, 20 `upnext` rows, all `8:00 AM CST`. `plannedStart` `2026-11-02T08:00:00Z` is Central wall time (14:00 UTC), same Z-suffix rule as the PDT/CDT pins. Scores API: 10 divisions, 170 `scheduled` rows (40 dated 2 Nov, 130 Date TBA), games null. Date TBA stays off the day board. Ticker rows are NEXT with that clock. No LIVE and no 0–0.
+- 2025 finals UUID `f02fa839-68e0-46d5-8b93-dc266f201a4e` is blocked. Do not wire it.
+- Client `wpm-20261102a.js`. Service worker cache name is unchanged (`site/sw.js` is `wpm-static-20261029a`). Not deployed. Redeploy Cloudflare Worker `wpm-live-spa-static` from this commit or prod `/api/ppa` stays on Hong Kong.
+

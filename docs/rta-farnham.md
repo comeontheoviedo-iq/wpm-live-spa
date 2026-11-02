@@ -1,6 +1,6 @@
 # RTA2000 Farnham
 
-Own tour chip **RTA2000** (`rta`). Not APP. Not PPA. Window ended 4 Oct 2026. Unplayed matches the source still marks `upcoming` (loser-bracket rows dated 2 Oct) are dropped from `/api/rta` after that end date. They are not NEXT and they are not given a score. Do not cut `/api/app` back onto Humana APP Louisville Open Den **18454**. Do not cut `/api/ppa` off PPA Asia 1500 Hang Seng Bank Hong Kong Slam 2026 **c7e4fd72-d159-4211-82a2-21adbb21defe**.
+Own tour chip **RTA2000** (`rta`). Not APP. Not PPA. Window ended 4 Oct 2026. Unplayed matches the source still marks `upcoming` (loser-bracket rows dated 2 Oct) are dropped from `/api/rta` after that end date. They are not NEXT and they are not given a score. Do not cut `/api/app` back onto Humana APP Louisville Open Den **18454**. Do not cut `/api/ppa` off the 2026 Opendoor Pickleball World Championships **ad262b1f-ea62-4dcc-af59-69732a97107c**. Do not cut `/api/ppa` back to Hong Kong Slam **c7e4fd72-d159-4211-82a2-21adbb21defe**.
 
 | | |
 |--|--|

@@ -25,17 +25,17 @@ Optional later: MLP, PPA Asia, club opens — **results_only** until intake pass
 | Event | Dates | Status | What radar watches |
 |-------|-------|--------|--------------------|
 | **TPB Gijón 2026** | 18–20 Sep · Europe/Madrid | scores delayed / results_only | Official page for Den/Tournated; draw PDF is the only published groups |
-| **PPA P250 Barcelona Open** | 23–27 Sep · Europe/Madrid | **ended** · UUID `1655a7c9-904a-44c9-aa29-b279fca900e8` unparked · 0 scores | Do **not** cut `ppa.mts` EVENT here. Live board is Hong Kong Slam |
+| **PPA P250 Barcelona Open** | 23–27 Sep · Europe/Madrid | **ended** · UUID `1655a7c9-904a-44c9-aa29-b279fca900e8` unparked · 0 scores | Do **not** cut `ppa.mts` EVENT here. Live board is Opendoor Worlds |
 | **PPA Rate Las Vegas Open** | 28 Sep–4 Oct · America/Los_Angeles | **finished** · UUID `86926aef-0566-4fbb-87cf-a48068a9f1c6` · archive `las-vegas` current false | Scores API all final through 4 Oct. Not the live board. Not April `92d37566-…` |
 | **APP Asia Chongqing Open** | 2–6 Oct · Asia/Shanghai | **unarmed** · results-only · no Den id · no SportsSync id | Hunt 2026-10-02. Organizer [1645900](https://www.sportssync.asia/organizers/1645900) still KL 89 / Penang 222. See [`sportssync-asia.md`](./sportssync-asia.md) |
 | **PPA Veolia Chicago Cup** | 5–11 Oct · America/Chicago | **finished** · UUID `203e1164-b4f9-47e9-bacf-ff81f8748025` · archive `chicago-cup` current false | Finals FT on 11 Oct. Not the live board |
 | **PPA Mojo Energy Pouches Virginia Beach Open** | 12–18 Oct · America/New_York | **finished** · UUID `429c7980-e1b9-4800-805f-dfb160781cd9` · archive `virginia-beach` current false | Finals 18 Oct. One Men's Singles row is still Date TBA — do not invent a score. Not the live board |
-| **PPA Asia 1500 Hang Seng Bank Hong Kong Slam 2026** | 19–25 Oct · Asia/Hong_Kong | **on board** · UUID `c7e4fd72-d159-4211-82a2-21adbb21defe` | Kai Tak Arena. Ticker title must contain this full name. Date TBA is not LIVE and has no invented clock |
+| **PPA Asia 1500 Hang Seng Bank Hong Kong Slam 2026** | 19–25 Oct · Asia/Hong_Kong | **finished** · UUID `c7e4fd72-d159-4211-82a2-21adbb21defe` · archive `hong-kong` current false | Kai Tak Arena. Finals stay on `/api/archive`. Not the live board |
 | **Humana APP Louisville Open** | 15–18 Oct · America/New_York | **ended** · Den **18454** · archive `louisville` current false | `/api/app` is between events. Next US APP is Arizona, no Den id. Do not fake LIVE |
 | **PPA Canada Ottawa 125** | 22–25 Oct · America/Toronto | **results-only** · UUID `94307fed-6e0f-4390-bf19-bda3bfb80d18` · 0 rows | Not the live pin |
 | **PPA Asia 125 Skechers Nanjing Challenger 2026** | 28–31 Oct · Asia/Shanghai | **results-only** · UUID `49004a6d-fb3b-4a64-81a5-6468df8ec39d` · 0 rows | Not the live pin. Not APP Asia |
 | **College World Championship** | 30 Oct–1 Nov · America/Chicago | **results-only** · UUID `95602192-b649-420f-a8ff-0887fddfe1e7` · 0 rows | Brookhaven Country Club. Not the Opendoor UUID |
-| **Opendoor Pickleball World Championships** | 2–8 Nov · America/Chicago | **calendar only** · no 2026 UUID | Schedule UUID `f02fa839-…` is 2025 finals. Do not wire it |
+| **2026 Opendoor Pickleball World Championships** | 2–8 Nov · America/Chicago | **on board** · UUID `ad262b1f-ea62-4dcc-af59-69732a97107c` | Brookhaven Country Club, Farmers Branch, TX. Ticker title must contain this full name. `8:00 AM CST` stored as `08:00Z` is 14:00 UTC. Date TBA is not LIVE. Do not wire 2025 finals `f02fa839-…` |
 | **PPA Tour Europe · P125 Lille** | 12–15 Nov · Europe/Paris | **results-only** · UUID `04a30133-11cc-4280-97f7-3027404c05b3` · 0 rows | Not Barcelona. Not the live pin |
 | **Proton Daytona Beach Open** | 16–22 Nov · America/New_York | **results-only** · UUID `12a61e43-1dc7-4d48-a926-10d3aa1a66cb` · 0 rows | Not the live pin |
 | **APP Asia Bangkok Open** | 2–7 Nov · Asia/Bangkok | **results-only** · SportsSync 391 does not resolve | Official page dates. GPA had 26 Oct. Not Chongqing. Not MLP |
@@ -68,14 +68,15 @@ Desk tick boxes before shipping a tour chip:
 2. Read `summary` + `actions` only — ignore quiet `results_only` rows unless owner asks.
 3. **P0** (`blocked_by_intake` on PPA/APP/PPA Europe):
    - PPA ticker title ≠ wired EVENT → cut `EVENT` in `ppa.mts` same day (see radar-log).
-   - Live PPA is **PPA Asia 1500 Hang Seng Bank Hong Kong Slam 2026** `c7e4fd72-d159-4211-82a2-21adbb21defe` (Kai Tak Arena, Hong Kong, `Asia/Hong_Kong`, 19–25 Oct). Not Virginia Beach `429c7980-…`. Not April `92d37566-…`. Not Rate Las Vegas `86926aef-…`. Not Veolia Chicago Cup `203e1164-…`.
+   - Live PPA is **2026 Opendoor Pickleball World Championships** `ad262b1f-ea62-4dcc-af59-69732a97107c` (Brookhaven Country Club, Farmers Branch, TX, `America/Chicago`, 2–8 Nov). Not Hong Kong `c7e4fd72-…`. Not Virginia Beach `429c7980-…`. Not April `92d37566-…`. Not Rate Las Vegas `86926aef-…`. Not Veolia Chicago Cup `203e1164-…`. Not the 2025 finals UUID `f02fa839-…`.
    - **Rate Las Vegas Open** ended 4 Oct 2026. Archive id `las-vegas`, `current: false`. Real finals stay on `/api/archive`. Do **not** point `/api/ppa` there.
    - Barcelona `1655a7c9-…` ended 27 Sep 2026 with no scores. Unparked. Do **not** cut EVENT there.
    - **Columbus Open** Den `18448` ended 4 Oct. Archive `current: false`. Overland `18453` ended — disarmed, not onLive.
    - **Chongqing** (APP Asia) has **no Den id** and **no SportsSync id** after the 2026-10-02 hunt. Watch organizer `1645900`. KL 89 and Penang 222 are not Chongqing. 390 and 391 are not Chongqing. `/api/sportssync` is results-only. Do not fake LIVE. See `docs/sportssync-asia.md`.
    - **Louisville** Den **18454** ended 18 Oct. Archive `louisville`, `current: false`. `/api/app` is between events (reader “Event ended”, no LIVE rows). Arizona Open has no Den id. Do not fake LIVE. `?tournamentId=18454` still smokes the draw.
+   - **Hong Kong Slam** `c7e4fd72-…` ended 25 Oct. Archive `hong-kong`, `current: false`. Do not cut `/api/ppa` back there.
    - **Virginia Beach** `429c7980-…` ended 18 Oct. Archive `virginia-beach`, `current: false`. Do not cut `/api/ppa` back there. Date TBA rows are not LIVE and do not get an invented clock.
-   - Ottawa, Nanjing, College Worlds, Lille, and Daytona have verified scores-API UUIDs and 0 rows. Results-only. Opendoor schedule UUID `f02fa839-…` is 2025 finals — do not store it as the 2026 id.
+   - Ottawa, Nanjing, College Worlds, Lille, and Daytona have verified scores-API UUIDs and 0 rows. Results-only. Opendoor schedule UUID `f02fa839-…` is 2025 finals and is blocked. The 2026 Worlds id is `ad262b1f-…`.
    - New APP on GPA without Den id → find `tournamentId` on Den Live → fill intake → ship `/api/app` id. Do not invent one.
 4. **P1** (`missing`, or a new SportsSync id on organizer 1645900): connector/feed down, or a new `/tournament/{id}` to name-check. Do not invent lines and do not assume the new id is Chongqing.
 5. Quiet **results_only**: Gijón (scores delayed + draw PDF), Barcelona ended (no scores, do not cut), Chongqing until a real SportsSync id, MLP Asia label guard. Watch; do not invent LIVE.
