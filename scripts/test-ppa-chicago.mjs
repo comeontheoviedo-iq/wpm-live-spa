@@ -30,7 +30,9 @@ import {
   ppaListedScore,
   ppaLocalDayPrefix,
   ppaPublicStatus,
+  mergePpaScorePayloads,
   ppaScoreRows,
+  ppaScoresTerminal,
   ppaStatus,
   ppaTickerLive,
   ppaWallInstant,
@@ -86,6 +88,11 @@ assert.equal(ppaBoardDate({ dateKey: "9999-12-31", plannedStart: "2026-10-12T20:
 assert.equal(ppaLocalDayPrefix("2026-10-12T08:00:00Z"), "2026-10-12");
 assert.equal(ppaBoardDate({ dateKey: "2026-10-07", plannedStart: "2026-10-06T22:00:00Z" }), "2026-10-06");
 assert.equal(ppaBoardDate({ dateKey: "9999-12-31", plannedStart: "" }), "9999-12-31");
+assert.equal(
+  ppaBoardDate({ status: "final", dateKey: "2026-11-02", plannedStart: "2026-11-03T08:00:00Z" }),
+  "2026-11-02",
+  "a finished scores dateKey stays on the venue day"
+);
 
 const keptStart = ppaWallInstant("2026-10-10T08:00:00Z", "America/New_York");
 const keepNow = new Date("2026-10-12T11:30:00Z");
@@ -99,6 +106,95 @@ const foreign = applyPpaTickerRows(
 );
 assert.equal(foreign["vb-1"], undefined);
 assert.equal(foreign["chi-1"].status, "final");
+
+const finishedScores = {
+  id: "wd-qf",
+  status: "final",
+  dateKey: "2026-11-02",
+  division: "Women's Doubles",
+  roundLabel: "Quarter Finals",
+  teams: [
+    { players: ["Allie Reichert", "Madalina Grigoriu"], games: [11, 11, 0], winner: true },
+    { players: ["Brie Aldridge", "Maria Ford"], games: [8, 8, 0], winner: false },
+  ],
+};
+const downgraded = applyPpaTickerRows(
+  { "wd-qf": finishedScores },
+  [
+    {
+      id: "wd-qf",
+      status: "upnext",
+      round: "Round 64",
+      division: "Women's Doubles",
+      plannedStart: "2026-11-03T08:00:00Z",
+      time: "8:00 AM CST",
+      teams: [
+        { players: [{ name: "A. Reichert" }], games: [null, null, null] },
+        { players: [{ name: "B. Aldridge" }], games: [null, null, null] },
+      ],
+    },
+  ],
+  { aligned: true }
+);
+assert.equal(ppaScoresTerminal(finishedScores), true);
+assert.equal(downgraded["wd-qf"].status, "final");
+assert.equal(downgraded["wd-qf"].dateKey, "2026-11-02");
+assert.equal(downgraded["wd-qf"].roundLabel, "Quarter Finals");
+assert.equal(downgraded["wd-qf"].plannedStart, undefined);
+assert.deepEqual(downgraded["wd-qf"].teams[0].games, [11, 11, 0]);
+assert.equal(downgraded["wd-qf"].teams[0].winner, true);
+assert.equal(downgraded["wd-qf"].tickerLive, false);
+assert.equal(ppaBoardDate(downgraded["wd-qf"]), "2026-11-02");
+assert.equal(ppaPublicStatus(downgraded["wd-qf"].status, downgraded["wd-qf"].tickerLive), "FT");
+
+const shelled = ppaScoreRows({
+  matches: [
+    {
+      id: "wd-qf",
+      status: "scheduled",
+      dateKey: "2026-11-03",
+      division: "Women's Doubles",
+      roundLabel: "Round 64",
+      teams: [{ players: ["Allie Reichert", "Madalina Grigoriu"] }, { players: ["Brie Aldridge", "Maria Ford"] }],
+    },
+  ],
+  qualifier: [
+    {
+      id: "wd-qf",
+      status: "final",
+      dateKey: "2026-11-02",
+      division: "Women's Doubles",
+      roundLabel: "Quarter Finals",
+      teams: [
+        { players: ["Allie Reichert", "Madalina Grigoriu"], games: [11, 11, 0], winner: true },
+        { players: ["Brie Aldridge", "Maria Ford"], games: [8, 8, 0], winner: false },
+      ],
+    },
+  ],
+});
+assert.equal(shelled.length, 1);
+assert.equal(shelled[0].status, "final");
+assert.equal(shelled[0].dateKey, "2026-11-02");
+assert.equal(shelled[0].roundLabel, "Quarter Finals");
+assert.deepEqual(shelled[0].teams[0].games, [11, 11, 0]);
+
+const sliced = ppaScoreRows(
+  mergePpaScorePayloads(
+    [
+      {
+        tournamentId: WORLDS,
+        matches: [{ id: "ms-1", status: "final", dateKey: "2026-11-02", division: "Men's Singles", roundLabel: "Round 128", teams: [{ players: ["A"], games: [11, 11, 0], winner: true }, { players: ["B"], games: [3, 5, 0], winner: false }] }],
+      },
+      {
+        tournamentId: WORLDS,
+        matches: [{ id: "wd-1", status: "final", dateKey: "2026-11-02", division: "Women's Doubles", roundLabel: "Quarter Finals", teams: [{ players: ["C", "D"], games: [11, 11, 0], winner: true }, { players: ["E", "F"], games: [8, 8, 0], winner: false }] }],
+      },
+      { tournamentId: "other-event", matches: [{ id: "nope", status: "final", dateKey: "2026-11-02" }] },
+    ],
+    WORLDS
+  )
+);
+assert.deepEqual(sliced.map((m) => m.id).sort(), ["ms-1", "wd-1"]);
 
 const spillNow = new Date("2026-10-07T12:00:00Z");
 const spillIn = [
@@ -245,14 +341,20 @@ for (const m of body.matches) {
   if (tickIds.has(id)) {
     seenTick.add(id);
     const src = tickMatches.find((t) => t.id === id);
-    assert.equal(m.clock, src.time || "");
-    assert.equal(m.start, ppaWallInstant(src.plannedStart, "America/Chicago"));
-    if (src.time === "8:00 AM CST" && String(src.plannedStart || "").includes("T08:00:00")) {
-      assert.equal(m.start, String(src.plannedStart).slice(0, 10) + "T14:00:00.000Z");
-    }
-    if (String(src.status || "").toLowerCase() !== "live") {
-      assert.notEqual(m.status, "LIVE");
+    const scoreRow = scoreMatches.find((s) => s.id === id);
+    if (scoreRow && ppaScoresTerminal(scoreRow)) {
+      assert.equal(m.status, "FT", "ticker upnext must not clear a scores final");
       assert.notEqual(m.score, "0-0");
+    } else {
+      assert.equal(m.clock, src.time || "");
+      assert.equal(m.start, ppaWallInstant(src.plannedStart, "America/Chicago"));
+      if (src.time === "8:00 AM CST" && String(src.plannedStart || "").includes("T08:00:00")) {
+        assert.equal(m.start, String(src.plannedStart).slice(0, 10) + "T14:00:00.000Z");
+      }
+      if (String(src.status || "").toLowerCase() !== "live") {
+        assert.notEqual(m.status, "LIVE");
+        assert.notEqual(m.score, "0-0");
+      }
     }
   }
 }
@@ -260,6 +362,67 @@ assert.equal(seenTick.size, tickIds.size, "every aligned ticker id is on the boa
 if (!tickerLive) assert.equal(body.matches.some((m) => m.status === "LIVE"), false, "no fake LIVE");
 const scoredFt = body.matches.filter((m) => m.status === "FT" && m.score && m.score !== "0-0" && m.score !== "");
 assert.equal([...boardIds].some((id) => mainIds.has(id) && mainTba.some((row) => row.id === id)), false);
+
+function sideLabel(team) {
+  const names = (team?.players || [])
+    .map((p) => (typeof p === "string" ? p : p?.name || ""))
+    .filter(Boolean);
+  if (!names.length) return "TBD";
+  if (names.length === 1) return names[0];
+  return names.map((n) => n.split(" ").slice(-1)[0]).join(" / ");
+}
+function gamesWonPair(t0, t1) {
+  const g0 = t0?.games || [];
+  const g1 = t1?.games || [];
+  let w0 = 0;
+  let w1 = 0;
+  const n = Math.max(g0.length, g1.length);
+  for (let i = 0; i < n; i++) {
+    const a = g0[i];
+    const b = g1[i];
+    if (a == null || b == null || a === "" || b === "") continue;
+    if (Number(a) === 0 && Number(b) === 0) continue;
+    const hi = Math.max(Number(a), Number(b));
+    const lo = Math.min(Number(a), Number(b));
+    if (hi >= 11 && hi - lo >= 2) {
+      if (Number(a) > Number(b)) w0++;
+      else if (Number(b) > Number(a)) w1++;
+    }
+  }
+  return [w0, w1];
+}
+const upstreamFinal = scoreMatches.filter((m) => String(m.status || "").toLowerCase() === "final");
+const boardById = new Map(body.matches.map((m) => [String(m.id).replace(/^ppa-/, ""), m]));
+const nov2Final = upstreamFinal.filter((m) => m.dateKey === "2026-11-02");
+assert.ok(nov2Final.length > 0, "scores API published day-1 finals");
+for (const src of upstreamFinal) {
+  const row = boardById.get(src.id);
+  assert.ok(row, "finished scores row missing from /api/ppa " + src.id);
+  assert.equal(row.status, "FT", src.division + " " + (src.roundLabel || ""));
+  const day = String(src.dateKey || "").slice(0, 10);
+  if (!isPpaTbaDate(day)) assert.equal(row.date, day, "Chicago date for " + src.id);
+  assert.notEqual(row.score, "0-0");
+  assert.equal(/0–0|0-0/.test(row.games || ""), false, row.games);
+  const [w0, w1] = gamesWonPair(src.teams?.[0], src.teams?.[1]);
+  const exp = w0 || w1 ? `${w0}-${w1}` : "";
+  assert.equal(row.score || "", exp, src.id);
+  if (exp) {
+    const winner = (src.teams || []).find((t) => t && t.winner);
+    const winnerName = winner ? sideLabel(winner) : "";
+    const shown = w0 > w1 ? row.a : row.b;
+    assert.equal(shown, winnerName, src.id);
+  }
+  const div = (row.div || "").split(" · ")[0];
+  const slot = ((body.brackets?.[div] || {})[row.round] || []).find((x) => x.id === row.id);
+  assert.ok(slot, "bracket missing " + row.id);
+  assert.equal(slot.status, row.status);
+  assert.equal(slot.score, row.score);
+  assert.equal(slot.date, row.date);
+  assert.equal(slot.games, row.games);
+}
+const ftNov2 = body.matches.filter((m) => m.status === "FT" && m.date === "2026-11-02");
+assert.ok(ftNov2.length >= nov2Final.length, "board FT on 2026-11-02");
+assert.equal(new Set(body.matches.map((m) => m.id)).size, body.matches.length, "no duplicate rows");
 
 const hk = await getJson("https://www.ppatour.com/api/scores/?event=" + HK);
 assert.equal(hk.tournamentId, HK);
@@ -319,6 +482,8 @@ console.log(
     " · board " +
     body.matches.length +
     " · ft " +
+    ftNov2.length +
+    " · scored " +
     scoredFt.length +
     " · hk final " +
     hkFinal.length +

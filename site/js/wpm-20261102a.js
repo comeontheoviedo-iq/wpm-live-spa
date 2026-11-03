@@ -3581,6 +3581,10 @@ function fmTime(m){
   return d.toLocaleTimeString(undefined, {hour:"2-digit", minute:"2-digit"});
 }
 function fmDate(m){
+  // PPA board day is already the event zone (America/Chicago). Do not rebucket
+  // it into the viewer's zone — a London evening was landing Chicago results
+  // on the wrong chip, so day-1 finals disappeared from the board.
+  if (m && m.tour === "ppa" && m.date && String(m.date).indexOf("9999") !== 0) return String(m.date).slice(0, 10);
   if (m.start && (m.hasClock === true || m.tour === "wc")) { const d = parseUtc(m.start); if (d && !isNaN(d)) return fmLocalYmd(d); }
   return m.date || "";
 }
@@ -3794,6 +3798,23 @@ function fmNearestDay(sel){
   days.forEach(d => { const diff = Math.abs(new Date(d) - new Date(sel)); if (diff < bd || (diff === bd && d < best)) { bd = diff; best = d; } });
   return best;
 }
+function fmPriorResultsHtml(all, sel){
+  if (FM.liveOnly || sel !== fmToday()) return "";
+  // Live PPA feed only. Archive rows already have their own past events.
+  const rows = all.filter(m => {
+    if (!m || m._archive || m.tour !== "ppa") return false;
+    if (effectiveStatus(m) !== "FT") return false;
+    const d = fmDate(m);
+    return d && d < sel && d.indexOf("9999") !== 0;
+  });
+  if (!rows.length) return "";
+  const byDay = {};
+  rows.forEach(m => { (byDay[fmDate(m)] = byDay[fmDate(m)] || []).push(m); });
+  return Object.keys(byDay).sort().reverse().map(d => {
+    const label = fmDateLabel(d) === "Yesterday" ? "Yesterday" : dateChip(d);
+    return `<section class="fm-card"><h2 class="fm-h2">Results · ${esc(label)}</h2>${fmGroups(byDay[d]).map(g => fmGroupHtml(g)).join("")}</section>`;
+  }).join("");
+}
 function fmHome(){
   if (!FM.loaded) return fmSkeleton();
   const sel = state.fmDate || fmToday();
@@ -3813,6 +3834,7 @@ function fmHome(){
       <span class="fm-daylabel">${esc(FM.liveOnly ? "Live now" : fmDateLabel(sel))} · ${list.length} ${list.length===1?"match":"matches"}</span>
     </div>
     ${fol.length && !FM.liveOnly ? `<section class="fm-group fm-folgroup"><div class="fm-gh"><span class="fm-ghb static">${fmIcon("following",18)}<span class="fm-gt"><b>Following</b><span>Your players and events</span></span><span class="fm-gn">${fol.length}</span></span></div><div class="fm-rows">${fmSortMatches(fol).map(m => fmRow(m, {sub: shortEventLabel(fmEventName(m), fmEventKey(m))+" · "+[fmDivision(m), fmRound(m)].filter(Boolean).join(" · ")})).join("")}</div></section>` : ""}
+    ${fmPriorResultsHtml(all, sel)}
     ${groups.map(g => fmGroupHtml(g)).join("")}
     ${sched.length ? `<section class="fm-card fm-sched"><h2 class="fm-h2">Scheduled · no draw yet</h2>${sched.map(fmEvRow).join("")}</section>` : ""}
     ${list.length || sched.length ? "" : `<div class="fm-empty"><p>${FM.liveOnly ? "Nothing is live right now." : "No matches on the board for "+esc(fmDateLabel(sel))+"."}</p>${near && !FM.liveOnly ? `<button type="button" class="fm-btn" data-fmday="${near}">Go to ${esc(fmDateLabel(near))}</button>` : ""}${FM.liveOnly?`<button type="button" class="fm-btn" data-fmlive>Show all matches</button>`:""}</div>`}
