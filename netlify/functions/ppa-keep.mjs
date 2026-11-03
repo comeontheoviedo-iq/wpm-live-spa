@@ -104,14 +104,17 @@ export function ppaWallInstant(plannedStart, tz) {
 
 /**
  * Board day for one row.
- * A ticker plannedStart wins: its date prefix is the venue day.
- * Otherwise the scores dateKey. On finished rows that key is often the UTC
- * filing date — rebasePpaLocalDates pulls the late-evening spill back.
+ * A finished scores row keeps dateKey. That is the venue day on this feed
+ * (America/Chicago for Worlds). A ticker plannedStart must not move it.
+ * Otherwise a ticker plannedStart wins: its date prefix is the venue day.
+ * On finished rows that key is often the UTC filing date — rebasePpaLocalDates
+ * pulls the late-evening spill back.
  */
 export function ppaBoardDate(m, now = new Date()) {
+  const dk = String(m?.dateKey || "").trim();
+  if (ppaScoresTerminal(m) && dk && !isPpaTbaDate(dk)) return dk;
   const fromStart = ppaLocalDayPrefix(m?.plannedStart);
   if (fromStart) return fromStart;
-  const dk = String(m?.dateKey || "").trim();
   if (dk && !isPpaTbaDate(dk)) return dk;
   if (isPpaTbaDate(dk)) return "9999-12-31";
   return now.toISOString().slice(0, 10);
@@ -168,21 +171,58 @@ export function mergePpaDateKey(prev, incoming) {
   return fromStart || fromPrev || "";
 }
 
-/** Main draw plus qualifier rows. Same id keeps the row that has a real day. */
+/**
+ * The scores API can answer two requests with different slices (one had
+ * only Men's Singles finals, another only Women's Doubles). Union by id.
+ * ppaScoreRows then keeps the finished row when a shell duplicates it.
+ */
+export function mergePpaScorePayloads(payloads, eventId = "") {
+  const matches = [];
+  const qualifier = [];
+  let tournamentId = "";
+  let divisions = [];
+  const want = String(eventId || "").trim().toLowerCase();
+  for (const p of payloads || []) {
+    if (!p || typeof p !== "object") continue;
+    const id = String(p.tournamentId || "").trim().toLowerCase();
+    if (want && id && id !== want) continue;
+    if (!tournamentId && p.tournamentId) tournamentId = p.tournamentId;
+    if (Array.isArray(p.divisions) && p.divisions.length > divisions.length) divisions = p.divisions;
+    if (Array.isArray(p.matches)) matches.push(...p.matches);
+    const q = p.qualifier;
+    if (Array.isArray(q)) qualifier.push(...q);
+    else if (Array.isArray(q?.matches)) qualifier.push(...q.matches);
+  }
+  return { tournamentId, divisions, matches, qualifier };
+}
+
+function qualifierRows(scores) {
+  const q = scores?.qualifier;
+  if (Array.isArray(q)) return q;
+  if (Array.isArray(q?.matches)) return q.matches;
+  return [];
+}
+
+/**
+ * Main draw plus qualifier rows.
+ * The same id can show up as a scheduled shell and as a finished result.
+ * Keep the finished row (real games and winner). Otherwise keep the row
+ * that has a real day rather than Date TBA.
+ */
 export function ppaScoreRows(scores) {
   const main = Array.isArray(scores?.matches) ? scores.matches : [];
-  const qual = Array.isArray(scores?.qualifier?.matches) ? scores.qualifier.matches : [];
   const byId = new Map();
-  for (const m of [...main, ...qual]) {
+  for (const m of [...main, ...qualifierRows(scores)]) {
     if (!m || m.id == null || m.id === "") continue;
     const prev = byId.get(m.id);
     if (!prev) {
       byId.set(m.id, m);
       continue;
     }
-    const prevTba = isPpaTbaDate(prev.dateKey);
-    const nextTba = isPpaTbaDate(m.dateKey);
-    if (prevTba && !nextTba) byId.set(m.id, m);
+    const prevTerm = ppaScoresTerminal(prev);
+    const nextTerm = ppaScoresTerminal(m);
+    if (nextTerm && !prevTerm) byId.set(m.id, m);
+    else if (!prevTerm && !nextTerm && isPpaTbaDate(prev.dateKey) && !isPpaTbaDate(m.dateKey)) byId.set(m.id, m);
   }
   return [...byId.values()];
 }
@@ -196,11 +236,25 @@ function namedScoreTeams(prev) {
 }
 
 /**
+ * Scores status final / completed. A ticker "upnext" must not clear it.
+ * tickerLive on the row means the ticker is the authority for LIVE, so that
+ * row is not treated as a finished scores result.
+ */
+export function ppaScoresTerminal(m) {
+  if (!m || m.tickerLive === true) return false;
+  return ppaStatus(m.status) === "FT";
+}
+
+/**
  * Ticker rows belong to the ticker tournament.
  * When the title does not match the pin, leave the scores draw alone —
  * never stamp those rows with the pinned event.
  * Smoke of a different event still ignores ticker ids missing from that draw.
  * Scores player names win over ticker abbreviations when both exist.
+ * A scores row that is already final keeps that status, its games, its winner,
+ * its round, and its dateKey. The ticker can still say "upnext" for an id
+ * whose result is already on the scores feed; copying that status would
+ * take the row off the FT board and onto the ticker's day.
  */
 export function applyPpaTickerRows(byId, tickerMatches, { aligned = false, smoke = false } = {}) {
   const out = byId && typeof byId === "object" ? byId : {};
@@ -210,6 +264,16 @@ export function applyPpaTickerRows(byId, tickerMatches, { aligned = false, smoke
     if (smoke && !out[m.id]) continue;
     const prev = out[m.id] || {};
     const teams = namedScoreTeams(prev) || m.teams;
+    if (ppaScoresTerminal(prev)) {
+      out[m.id] = {
+        ...prev,
+        teams,
+        court: prev.court || m.court || "",
+        dateKey: mergePpaDateKey(prev, m),
+        tickerLive: false,
+      };
+      continue;
+    }
     out[m.id] = {
       ...prev,
       ...m,

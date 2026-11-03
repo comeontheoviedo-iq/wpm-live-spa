@@ -11,6 +11,7 @@ import {
   ppaCourtLabel,
   ppaGameLineScore,
   ppaListedScore,
+  mergePpaScorePayloads,
   ppaPublicStatus,
   ppaResultNote,
   ppaScoreRows,
@@ -152,21 +153,36 @@ function toMatch(m: any, pin: { eventId: string; name: string; venue: string; tz
   };
 }
 
+const PPA_HEADERS = { "User-Agent": "WPM-LIVE/1.0", Accept: "application/json", "Cache-Control": "no-cache" };
+
+async function readJson(url: string) {
+  try {
+    const res = await fetch(url, { headers: PPA_HEADERS });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
 export default async (req: Request) => {
   const { pin, smoke } = resolvePin(req);
-  const [tickRes, scoreRes] = await Promise.all([
-    fetch("https://www.ppatour.com/api/ticker/", { headers: { "User-Agent": "WPM-LIVE/1.0" } }),
-    fetch("https://www.ppatour.com/api/scores/?event=" + pin.eventId, { headers: { "User-Agent": "WPM-LIVE/1.0" } }),
+  const scoresUrl = "https://www.ppatour.com/api/scores/?event=" + pin.eventId;
+  // Two reads: the cached document and a fresh one. Either slice can omit a
+  // division's finals. merge keeps every finished row.
+  const [tick, plain, fresh] = await Promise.all([
+    readJson("https://www.ppatour.com/api/ticker/"),
+    readJson(scoresUrl),
+    readJson(scoresUrl + "&fresh=" + Date.now()),
   ]);
-  const tick = tickRes.ok ? await tickRes.json() : { matches: [] };
-  const scores = scoreRes.ok ? await scoreRes.json() : { matches: [] };
+  const scores = mergePpaScorePayloads([plain, fresh].filter(Boolean), pin.eventId);
   const byId: Record<string, any> = {};
   for (const m of ppaScoreRows(scores)) byId[m.id] = { ...m, tickerLive: false };
   const title = tick?.tournament?.title || tick?.tournament?.name || "";
   // Ticker rows are that tournament's matches. A mismatched title must not
   // stamp them with this pin (the Chicago week-flip mislabel).
   const aligned = ppaTickerTitleAligned(title, pin);
-  applyPpaTickerRows(byId, tick.matches || [], { aligned, smoke });
+  applyPpaTickerRows(byId, tick?.matches || [], { aligned, smoke });
   const now = new Date();
   const all = rebasePpaLocalDates(Object.values(byId).map((m) => toMatch(m, pin)), pin.tz, now);
   const matches = all
