@@ -34,6 +34,7 @@ import {
 
 const UA = { "User-Agent": "WPM-LIVE-radar/1.0", Accept: "application/json" };
 
+import { suppressionFor } from "./_shared/event-guard.mjs";
 const GPA_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBybmVlZGhxaW51ZGFzbmdrcXFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1NDkzMDIsImV4cCI6MjA3NjEyNTMwMn0.U6VPCpYEtyFkVwxQ7yMAbGf_huWORMg_8iyyd-WkADc";
 const GPA = "https://prneedhqinudasngkqqi.supabase.co/rest/v1";
@@ -138,6 +139,7 @@ async function probeGpa(today) {
   for (const row of r.body) {
     const gpaStart = row.tournament_date || "";
     const gpaEnd = row.end_date || gpaStart;
+    if (suppressionFor(row)) continue;
     if (!gpaStart || gpaEnd < from || gpaStart > to) continue;
     const host = String(row.host || "");
     const name = row.name || "";

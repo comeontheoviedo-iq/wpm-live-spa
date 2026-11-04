@@ -48,3 +48,9 @@ npm install
 # link once: netlify link --id 6b6104d9-eea8-44bf-8c47-59018c3ff4c6
 netlify dev
 ```
+
+## Production deploy (Cloudflare) — canonical
+
+Since 2026-11-04 production is the Cloudflare Worker `wpm-live-spa-static`, and **this repo's `main` is the only source of truth**.
+Deploy with `scripts/deploy-cloudflare.sh` (wrapper lives in `cloudflare/`). Do not deploy from `/workspace/wpm-live-build` (retired; it clobbered PR #38). Never touch `wpmag-preview`.
+Crons: `*/5 * * * *` (push live check) and `0 6 * * *` (wave snap + official-URL verification, see `netlify/functions/_shared/event-guard.mjs`). Tests: `npm test`.

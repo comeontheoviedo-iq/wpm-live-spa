@@ -414,7 +414,7 @@ export const BARCELONA = {
 
 /** MLP Asia is the PPA/MLP franchise. APP Asia Tour is APP. Never merge the chips. */
 export const MLP_ASIA_NOTE =
-  "MLP Asia \u2260 APP. MLP Asia is the PPA/MLP franchise. APP Asia Tour (Chongqing / Taipei / Bangkok / HCMC / India) stays on the APP Asia chip \u2014 never chip MLP Asia as APP.";
+  "MLP Asia \u2260 APP. MLP Asia is the PPA/MLP franchise. APP Asia Tour (Chongqing / Taipei / HCMC / India) stays on the APP Asia chip \u2014 never chip MLP Asia as APP.";
 
 /** Humana APP Louisville Open ended 18 Oct 2026. Archive only. Not the live board. */
 export const LOUISVILLE = {
@@ -476,26 +476,7 @@ export const CHONGQING_SLATE = {
   connector: { type: "none" },
 };
 
-/** Official APP page window. GPA still says 2026-10-26 — do not treat that as the event dates. */
-export const BANGKOK = {
-  id: "slate:app-asia-bangkok-2026",
-  name: "APP Asia Bangkok Open",
-  venue: "Bangkok, Thailand",
-  timezone: "Asia/Bangkok",
-  tour: "app-asia",
-  host: "APP",
-  tier: "",
-  start: "2026-11-02",
-  end: "2026-11-07",
-  status: "results-only",
-  onLive: false,
-  dateAuthority: "official",
-  sportsSyncTournamentId: null,
-  officialUrl: "https://theapp.global/tour-schedule/2026-app-bangkok-open",
-  note:
-    "Official APP page data-event-start 2026-11-02 through 2026-11-07. GPA listed 2026-10-26. SportsSync register link 391 redirects to /tournament/index (2026-10-02) and is not armed. Not Chongqing. Not MLP. Results-only. Do not fake LIVE.",
-  connector: { type: "none" },
-};
+/* APP Asia Bangkok Open removed 2026-11-04: official page 404, not scheduled. See api/_shared/event-guard.mjs SUPPRESSED. */
 
 export const TAIPEI = {
   id: "slate:app-asia-taipei-2026",
@@ -541,13 +522,13 @@ export const HCMC = {
   tour: "app-asia",
   host: "APP",
   tier: "",
-  start: "2026-12-02",
-  end: "2026-12-02",
+  start: "2026-12-10",
+  end: "2026-12-13",
   status: "results-only",
   onLive: false,
   officialUrl: "https://theapp.global/tour-schedule/2026-app-ho-chi-minh-city-open",
   note:
-    "APP Ho Chi Minh City Open dated 2026-12-02 on the official APP page and GPA. No Den id and no SportsSync id. APP Asia, not MLP. Results-only. Do not fake LIVE.",
+    "APP Asia Ho Chi Minh City Open dated 2026-12-10 to 2026-12-13 on the official APP page (data-event-start/end, checked 2026-11-04; previously listed 2026-12-02). No Den id and no SportsSync id. APP Asia, not MLP. Results-only. Do not fake LIVE.",
   connector: { type: "none" },
 };
 
@@ -698,7 +679,6 @@ export const SLATE = [
   PPA_OTTAWA,
   PPA_NANJING,
   PPA_COLLEGE_WORLDS,
-  BANGKOK,
   ARIZONA_APP,
   PPA_LILLE,
   TAIPEI,
@@ -1075,7 +1055,6 @@ export function staticWatchEvents() {
       note: BARCELONA.note,
     },
     watchFromSeed(CHONGQING_SLATE),
-    watchFromSeed(BANGKOK),
     watchFromSeed(ARIZONA_APP),
     watchFromSeed(TAIPEI),
     watchFromSeed(MLP_ASIA_SEASON),

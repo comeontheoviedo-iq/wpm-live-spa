@@ -10,6 +10,7 @@ import {
   WAVE_SEED,
 } from "./wave-parse.mjs";
 
+import { suppressionFor } from "./_shared/event-guard.mjs";
 const GPA_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBybmVlZGhxaW51ZGFzbmdrcXFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1NDkzMDIsImV4cCI6MjA3NjEyNTMwMn0.U6VPCpYEtyFkVwxQ7yMAbGf_huWORMg_8iyyd-WkADc";
 /** Last-resort static snapshot only — prefer live /api/rankings + Blobs. */
@@ -170,7 +171,8 @@ async function gpaEvents() {
     { headers: { apikey: GPA_KEY, Authorization: "Bearer " + GPA_KEY } }
   );
   if (!res.ok) return [];
-  return await res.json();
+  const rows = await res.json();
+  return Array.isArray(rows) ? rows.filter((r: any) => !suppressionFor(r)) : [];
 }
 
 async function waveBoard(path: string) {

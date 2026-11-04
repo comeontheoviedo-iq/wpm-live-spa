@@ -1,0 +1,25 @@
+name = "wpm-live-spa-static"
+main = "src/index.js"
+compatibility_date = "2026-09-29"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+routes = [{ pattern = "live.worldpickleballmagazine.com", custom_domain = true }]
+[alias]
+"@netlify/blobs" = "./shims/netlify-blobs.js"
+[assets]
+directory = "./site"
+binding = "ASSETS"
+html_handling = "auto-trailing-slash"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api", "/api/*", "/desk", "/desk/*"]
+[vars]
+URL = "https://wpm-live-spa-static.comeontheoviedo.workers.dev"
+DEPLOY_PRIME_URL = "https://wpm-live-spa-static.comeontheoviedo.workers.dev"
+[[kv_namespaces]]
+binding = "WPM_STORE"
+id = "b34f6947ba694070b866b9fa83afb0d0"
+[triggers]
+crons = ["*/5 * * * *", "0 6 * * *"]
+[observability]
+enabled = true
+head_sampling_rate = 1
