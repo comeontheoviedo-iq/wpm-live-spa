@@ -86,12 +86,21 @@ assert.equal(ppaWallInstant("2026-10-07T14:00:00Z", "America/Chicago"), "2026-10
 assert.equal(ppaWallInstant("2026-10-12T20:00:00Z", "America/New_York"), "2026-10-13T00:00:00.000Z");
 assert.equal(ppaBoardDate({ dateKey: "9999-12-31", plannedStart: "2026-10-12T20:00:00Z" }), "2026-10-12");
 assert.equal(ppaLocalDayPrefix("2026-10-12T08:00:00Z"), "2026-10-12");
-assert.equal(ppaBoardDate({ dateKey: "2026-10-07", plannedStart: "2026-10-06T22:00:00Z" }), "2026-10-06");
+assert.equal(
+  ppaBoardDate({ status: "scheduled", dateKey: "2026-10-07", plannedStart: "2026-10-06T22:00:00Z" }),
+  "2026-10-07",
+  "a scheduled scores dateKey stays on the venue day"
+);
 assert.equal(ppaBoardDate({ dateKey: "9999-12-31", plannedStart: "" }), "9999-12-31");
 assert.equal(
   ppaBoardDate({ status: "final", dateKey: "2026-11-02", plannedStart: "2026-11-03T08:00:00Z" }),
   "2026-11-02",
   "a finished scores dateKey stays on the venue day"
+);
+assert.equal(
+  ppaBoardDate({ status: "scheduled", dateKey: "2026-11-04", plannedStart: "2026-11-02T08:00:00Z" }),
+  "2026-11-04",
+  "ticker plannedStart must not move a scheduled dateKey"
 );
 
 const keptStart = ppaWallInstant("2026-10-10T08:00:00Z", "America/New_York");
@@ -196,19 +205,63 @@ const sliced = ppaScoreRows(
 );
 assert.deepEqual(sliced.map((m) => m.id).sort(), ["ms-1", "wd-1"]);
 
-const spillNow = new Date("2026-10-07T12:00:00Z");
-const spillIn = [
-  { round: "Round 64", status: "FT", date: "2026-10-06", score: "2-0" },
-  { round: "Round 64", status: "FT", date: "2026-10-07", score: "0-2" },
-  { round: "Round 32", status: "NEXT", date: "2026-10-07", score: "" },
+const worldsNow = new Date("2026-11-04T08:22:00Z");
+const worldsDays = [
+  { id: "ms-r64", round: "Round 64", div: "Men's Singles · Round 64", status: "FT", date: "2026-11-02", score: "2-0" },
+  { id: "xd-r64", round: "Round 64", div: "Mixed Doubles · Round 64", status: "FT", date: "2026-11-03", score: "2-1" },
+  { id: "ws-r64", round: "Round 64", div: "Women's Singles · Round 64", status: "FT", date: "2026-11-03", score: "2-0" },
+  { id: "md-r64-tue", round: "Round 64", div: "Men's Doubles · Round 64", status: "FT", date: "2026-11-03", score: "2-0" },
+  { id: "md-r64-wed", round: "Round 64", div: "Men's Doubles · Round 64", status: "FT", date: "2026-11-04", score: "2-1" },
+  { id: "ms-r32-ft", round: "Round 32", div: "Men's Singles · Round 32", status: "FT", date: "2026-11-02", score: "2-0" },
+  { id: "ms-r32-next", round: "Round 32", div: "Men's Singles · Round 32", status: "NEXT", date: "2026-11-04", score: "" },
 ];
-const spill = rebasePpaLocalDates(spillIn, "America/Chicago", spillNow);
-assert.equal(spill[0].date, "2026-10-06");
-assert.equal(spill[1].date, "2026-10-06");
-assert.equal(spill[1].score, "0-2");
-assert.equal(spill[2].date, "2026-10-07");
-assert.equal(spill[2].score, "");
-assert.equal(rebasePpaLocalDates(spillIn, "Europe/London", spillNow)[1].date, "2026-10-07");
+const keptDays = rebasePpaLocalDates(worldsDays, "America/Chicago", worldsNow);
+assert.deepEqual(
+  keptDays.map((m) => [m.id, m.date, m.score, m.status]),
+  worldsDays.map((m) => [m.id, m.date, m.score, m.status]),
+  "round labels must not collapse a later dateKey"
+);
+assert.equal(new Set(keptDays.map((m) => m.id)).size, keptDays.length);
+assert.equal(rebasePpaLocalDates(worldsDays, "Europe/London", worldsNow)[1].date, "2026-11-03");
+
+const scheduledKept = applyPpaTickerRows(
+  {
+    "ws-r32": {
+      id: "ws-r32",
+      status: "scheduled",
+      dateKey: "2026-11-04",
+      division: "Women's Singles",
+      roundLabel: "Round 32",
+      teams: [{ players: ["A"] }, { players: ["B"] }],
+    },
+  },
+  [
+    {
+      id: "ws-r32",
+      status: "upnext",
+      round: "Round 32",
+      division: "Women's Singles",
+      plannedStart: "2026-11-02T08:00:00Z",
+      time: "8:00 AM CST",
+      teams: [{ players: [{ name: "A" }] }, { players: [{ name: "B" }] }],
+    },
+    {
+      id: "ms-r32-next",
+      status: "upnext",
+      round: "Round 32",
+      division: "Men's Singles",
+      plannedStart: "2026-11-04T11:00:00Z",
+      time: "11:00 AM CST",
+      teams: [{ players: [{ name: "B. Johns" }] }, { players: [{ name: "N. Khlif" }] }],
+    },
+  ],
+  { aligned: true }
+);
+assert.equal(scheduledKept["ws-r32"].dateKey, "2026-11-04");
+assert.equal(ppaBoardDate(scheduledKept["ws-r32"]), "2026-11-04");
+assert.equal(scheduledKept["ws-r32"].plannedStart, "2026-11-02T08:00:00Z");
+assert.equal(scheduledKept["ms-r32-next"].dateKey, "2026-11-04");
+assert.notEqual(scheduledKept["ws-r32"].id, scheduledKept["ms-r32-next"].id);
 
 const clientJs = fs.readFileSync("js/wpm-20261102a.js", "utf8");
 const clientCtx = {};
@@ -220,8 +273,8 @@ vm.runInNewContext(
   clientCtx
 );
 assert.deepEqual(
-  clientCtx.rebasePpaLocalDates(spillIn, "America/Chicago").map((m) => m.date),
-  spill.map((m) => m.date)
+  clientCtx.rebasePpaLocalDates(worldsDays, "America/Chicago").map((m) => m.date),
+  worldsDays.map((m) => m.date)
 );
 assert.equal(LV, "86926aef-0566-4fbb-87cf-a48068a9f1c6");
 assert.equal(PPA_LAS_VEGAS.end, "2026-10-04");
@@ -280,10 +333,14 @@ assert.equal(/hong kong|chicago cup|virginia beach/i.test(title), false);
 const tickMatches = tick.matches || [];
 const tickerLive = tickMatches.some((m) => String(m.status || "").toLowerCase() === "live");
 
-const scores = await getJson("https://www.ppatour.com/api/scores/?event=" + WORLDS);
-assert.equal(scores.tournamentId, WORLDS);
+const scoresUrl = "https://www.ppatour.com/api/scores/?event=" + WORLDS;
+const scoresPlain = await getJson(scoresUrl);
+const scoresFresh = await getJson(scoresUrl + "&fresh=" + Date.now());
+assert.equal(scoresPlain.tournamentId, WORLDS);
+// One scores read can omit a division. Compare the handler to the union.
+const scores = mergePpaScorePayloads([scoresPlain, scoresFresh], WORLDS);
 const scoreMatches = ppaScoreRows(scores);
-const mainMatches = scores.matches || [];
+const mainMatches = scoreMatches;
 assert.ok(Array.isArray(scores.divisions) && scores.divisions.length >= 10, "Worlds divisions are published");
 const mainTba = mainMatches.filter((m) => isPpaTbaDate(m.dateKey) || m.dateLabel === "Date TBA");
 for (const m of mainTba) {
@@ -394,7 +451,9 @@ function gamesWonPair(t0, t1) {
 const upstreamFinal = scoreMatches.filter((m) => String(m.status || "").toLowerCase() === "final");
 const boardById = new Map(body.matches.map((m) => [String(m.id).replace(/^ppa-/, ""), m]));
 const nov2Final = upstreamFinal.filter((m) => m.dateKey === "2026-11-02");
+const nov3Final = upstreamFinal.filter((m) => m.dateKey === "2026-11-03");
 assert.ok(nov2Final.length > 0, "scores API published day-1 finals");
+assert.ok(nov3Final.length > 0, "scores API published Nov 3 finals");
 for (const src of upstreamFinal) {
   const row = boardById.get(src.id);
   assert.ok(row, "finished scores row missing from /api/ppa " + src.id);
@@ -423,6 +482,32 @@ for (const src of upstreamFinal) {
 const ftNov2 = body.matches.filter((m) => m.status === "FT" && m.date === "2026-11-02");
 assert.ok(ftNov2.length >= nov2Final.length, "board FT on 2026-11-02");
 assert.equal(new Set(body.matches.map((m) => m.id)).size, body.matches.length, "no duplicate rows");
+for (const src of scoreMatches) {
+  const day = String(src.dateKey || "").slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || isPpaTbaDate(day)) continue;
+  const row = boardById.get(src.id);
+  if (!row) continue;
+  assert.equal(row.date, day, (src.division || "") + " " + (src.roundLabel || "") + " " + src.status + " " + src.id);
+  if (String(src.status || "").toLowerCase() !== "final" && row.status !== "LIVE") {
+    assert.notEqual(row.score, "0-0", "unplayed scheduled row " + src.id);
+  }
+}
+const mdR64 = upstreamFinal.filter((m) => m.division === "Men's Doubles" && m.roundLabel === "Round 64");
+if (mdR64.length) {
+  const srcDays = new Set(mdR64.map((m) => String(m.dateKey).slice(0, 10)));
+  const boardDays = new Set(mdR64.map((m) => boardById.get(m.id) && boardById.get(m.id).date));
+  assert.deepEqual(boardDays, srcDays, "Men's Doubles Round 64 keeps each upstream dateKey");
+}
+const msR32 = body.matches.filter((m) => (m.div || "").startsWith("Men's Singles") && m.round === "Round 32");
+const msFt = new Set(msR32.filter((m) => m.status === "FT").map((m) => m.id));
+const msNext = msR32.filter((m) => m.status === "NEXT");
+for (const m of msNext) assert.equal(msFt.has(m.id), false, "ticker Round 32 is not a scores final id");
+const msPairs = msR32.map((m) => m.a + "|" + m.b);
+assert.equal(new Set(msPairs).size, msPairs.length, "Men's Singles Round 32 FT and NEXT are different matches");
+for (const id of tickIds) {
+  const copies = body.matches.filter((m) => String(m.id).replace(/^ppa-/, "") === id);
+  assert.ok(copies.length <= 1, "ticker id duplicated " + id);
+}
 
 const hk = await getJson("https://www.ppatour.com/api/scores/?event=" + HK);
 assert.equal(hk.tournamentId, HK);
