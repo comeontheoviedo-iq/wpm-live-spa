@@ -1,7 +1,5 @@
 import { getStore } from "@netlify/blobs";
 
-const SEED_URL = "https://wpm-live.netlify.app/scores.json";
-
 function store() {
   return getStore({ name: "wpm-desk", consistency: "strong" });
 }
@@ -15,16 +13,7 @@ export async function loadDeskFeed() {
     const existing = await store().get("feed", { type: "json" });
     if (existing && existing.matches) return existing;
   } catch (_) {}
-  try {
-    const res = await fetch(SEED_URL, { cache: "no-store" });
-    if (res.ok) {
-      const data = await res.json();
-      try {
-        await s.setJSON("feed", data);
-      } catch (_) {}
-      return data;
-    }
-  } catch (_) {}
+  // No remote fallback (Netlify seed removed 2026-11-04). Empty KV degrades to an empty feed.
   return { updated: new Date().toISOString(), heroByDate: {}, matches: [] };
 }
 

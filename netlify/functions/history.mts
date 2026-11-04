@@ -1,4 +1,5 @@
 import type { Config } from "@netlify/functions";
+import { suppressionFor } from "./_shared/event-guard.mjs";
 
 const GPA_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBybmVlZGhxaW51ZGFzbmdrcXFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1NDkzMDIsImV4cCI6MjA3NjEyNTMwMn0.U6VPCpYEtyFkVwxQ7yMAbGf_huWORMg_8iyyd-WkADc";
@@ -63,7 +64,7 @@ async function gpaArchive() {
     fetch(`${GPA}/category_results?select=category_id,player_id,finishing_position,points_awarded&finishing_position=in.(winner,second)&limit=400`, { headers: hdr(GPA_KEY) }),
     fetch(`${GPA}/players_public?select=id,name,country&limit=800`, { headers: hdr(GPA_KEY) }),
   ]);
-  const events = tour.ok ? await tour.json() : [];
+  const events = (tour.ok ? await tour.json() : []).filter((r: any) => !suppressionFor(r));
   const categories = cats.ok ? await cats.json() : [];
   const rows = results.ok ? await results.json() : [];
   const plist = players.ok ? await players.json() : [];

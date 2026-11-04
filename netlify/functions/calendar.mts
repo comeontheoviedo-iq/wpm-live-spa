@@ -29,6 +29,7 @@ import {
 } from "./slate-events.mjs";
 import { applySportsSyncArm, CHONGQING_DESK_NOTE } from "./sportssync-map.mjs";
 import { OFFICIAL_SCHEDULE } from "./official-schedule.mjs";
+import { applyEventGuards, loadChecks, runOfficialCheck, suppressionFor, CHECK_MAX_AGE_MS } from "./_shared/event-guard.mjs";
 
 const GPA_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBybmVlZGhxaW51ZGFzbmdrcXFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1NDkzMDIsImV4cCI6MjA3NjEyNTMwMn0.U6VPCpYEtyFkVwxQ7yMAbGf_huWORMg_8iyyd-WkADc";
@@ -288,7 +289,8 @@ async function gpaEvents() {
     { headers: { apikey: GPA_KEY, Authorization: "Bearer " + GPA_KEY } }
   );
   if (!res.ok) return [];
-  return await res.json();
+  const rows = await res.json();
+  return Array.isArray(rows) ? rows.filter((r: any) => !suppressionFor(r)) : [];
 }
 
 function guessTour(host: string, name: string): string {
@@ -506,28 +508,55 @@ function normalizeConnector(raw: any): Connector {
   return c;
 }
 
-export default async (req: Request, _context: Context) => {
+/** Raw merged calendar (before guards). Used by GET and by the daily official-URL cron. */
+export async function buildRawCalendar() {
+  const [gpa, armedStore] = await Promise.all([gpaEvents().catch(() => []), loadArmed()]);
+  const armedEvents = applyAppCalendarCut(armedStore.events)
+    .map((row) => applySportsSyncArm(row))
+    .filter((row: any) => !suppressionFor(row));
+  return { armedStore, armedEvents, merged: mergeCalendar(gpa, armedEvents) };
+}
+
+/** Daily cron entry: check every upcoming/current officialUrl, record results in KV. */
+export async function officialUrlCron() {
+  const { merged } = await buildRawCalendar();
+  const extra = SLATE.map((s) => asCalendarRow(s, new Date().toISOString().slice(0, 10)));
+  const out = await runOfficialCheck([...merged, ...extra]);
+  const results = Object.values(out.results) as any[];
+  return Response.json({
+    ok: true,
+    checkedAt: out.checkedAt,
+    checked: results.length,
+    hidden: results.filter((r) => r.hidden).map((r) => ({ id: r.id, reason: r.reason })),
+    unverified: results.filter((r) => !r.ok && !r.hidden).map((r) => ({ id: r.id, reason: r.reason })),
+  });
+}
+
+export default async (req: Request, _context: any) => {
   if (req.method === "GET") {
-    const [gpa, armedStore] = await Promise.all([
-      gpaEvents().catch(() => []),
-      loadArmed(),
-    ]);
+    const { armedStore, armedEvents, merged } = await buildRawCalendar();
     const today = new Date().toISOString().slice(0, 10);
-    const armedEvents = applyAppCalendarCut(armedStore.events).map((row) => applySportsSyncArm(row));
-    const events = mergeCalendar(gpa, armedEvents).map(toReaderEvent);
+    let checks = await loadChecks();
+    const stale = !checks.checkedAt || Date.now() - Date.parse(checks.checkedAt) > CHECK_MAX_AGE_MS;
+    if (stale && _context && typeof _context.waitUntil === "function") {
+      // Safety net if the 06:00 cron missed: refresh checks in the background.
+      _context.waitUntil(officialUrlCron().catch((e) => console.error("[official-check]", e)));
+    }
+    const events = applyEventGuards(merged, checks).map(toReaderEvent);
     return Response.json(
       {
         updated: new Date().toISOString(),
         armedUpdated: armedStore.updated,
         events,
-        armed: armedEvents.map((row) => toReaderEvent(row)),
+        armed: applyEventGuards(armedEvents, checks).map((row) => toReaderEvent(row)),
+        officialChecksAt: checks.checkedAt,
         intake: {
           rule: "name + venue + timezone + working score path",
           doc: "/docs/coverage-intake.md",
           neverFakeScores: true,
         },
         known: KNOWN,
-        slate: SLATE.map((s) => toReaderEvent(asCalendarRow(s, today))),
+        slate: applyEventGuards(SLATE.map((s) => asCalendarRow(s, today)), checks).map(toReaderEvent),
         parkedPpa: PARKED_PPA,
         endedPpa: {
           barcelona: {

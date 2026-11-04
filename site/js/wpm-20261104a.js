@@ -1608,7 +1608,7 @@ function weekStrip(){
     }));
   }
   if(!soon.length) return '';
-  const armedLive = soon.filter(e=>e.onLive || e.status==='live-path');
+  const armedLive = soon.filter(e=>e.verification==='connector' && (e.onLive || e.status==='live-path'));
   const chrome = armedLive.length
     ? `<div class="cal-chrome"><span class="desk">ON WPM LIVE</span>${armedLive.map(e=>`<span class="cal-pill live-path">${esc(e.name)}</span>`).join('')}</div>`
     : '';
@@ -1621,6 +1621,7 @@ function statusChip(st, onLive){
   if(onLive || st==='live-path') return '<span class="cal-status live-path">live-path</span>';
   if(st==='delayed') return '<span class="cal-status delayed">scores delayed</span>';
   if(st==='ended') return '<span class="cal-status results-only">ended</span>';
+  if(st==='unconfirmed') return '<span class="cal-status results-only">unconfirmed</span>';
   return '<span class="cal-status results-only">results-only</span>';
 }
 function officialDrawCta(url, label){
@@ -1688,7 +1689,7 @@ function slateFilterMeta(filter){
 }
 function armedCalendarRows(){
   const cal = (state.calendar && state.calendar.events) || [];
-  return cal.filter(e => e && (e.onLive || e.status === "live-path"));
+  return cal.filter(e => e && e.verification === "connector" && (e.onLive || e.status === "live-path"));
 }
 function armedRowForTour(tour){
   return armedCalendarRows().find(e => e.tour === tour || (e.connector && e.connector.type === tour)) || null;

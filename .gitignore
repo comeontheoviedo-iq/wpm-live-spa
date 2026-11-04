@@ -22,3 +22,5 @@ Thumbs.db
 *.key
 credentials.json
 secrets/
+.cf-build/
+node_modules
