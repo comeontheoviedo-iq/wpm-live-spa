@@ -19,12 +19,6 @@ export function ppaLocalDayPrefix(iso) {
   return day;
 }
 
-function addIsoDay(iso, n) {
-  const [y, m, d] = String(iso || "").split("-").map(Number);
-  if (!y || !m || !d) return "";
-  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
-}
-
 /** Minutes east of UTC for an IANA zone. New York in October is -240. Chicago is -300. */
 export function tzOffsetMinutes(tz, instant = new Date()) {
   const d = instant instanceof Date ? instant : new Date(instant);
@@ -104,59 +98,31 @@ export function ppaWallInstant(plannedStart, tz) {
 
 /**
  * Board day for one row.
- * A finished scores row keeps dateKey. That is the venue day on this feed
- * (America/Chicago for Worlds). A ticker plannedStart must not move it.
- * Otherwise a ticker plannedStart wins: its date prefix is the venue day.
- * On finished rows that key is often the UTC filing date — rebasePpaLocalDates
- * pulls the late-evening spill back.
+ * A real scores dateKey is the venue day (America/Chicago for Worlds),
+ * whether the row is final or still scheduled. A ticker plannedStart must
+ * not move it. plannedStart supplies the day only when dateKey is missing
+ * or Date TBA, which is how ticker-only rows get a day.
  */
 export function ppaBoardDate(m, now = new Date()) {
   const dk = String(m?.dateKey || "").trim();
-  if (ppaScoresTerminal(m) && dk && !isPpaTbaDate(dk)) return dk;
+  if (dk && !isPpaTbaDate(dk)) return dk;
   const fromStart = ppaLocalDayPrefix(m?.plannedStart);
   if (fromStart) return fromStart;
-  if (dk && !isPpaTbaDate(dk)) return dk;
   if (isPpaTbaDate(dk)) return "9999-12-31";
   return now.toISOString().slice(0, 10);
 }
 
 /**
- * Scores dateKey on a finished row is the UTC calendar date the result was filed.
- * A US evening session crosses 00:00 UTC, so late local finishes land on the next dateKey
- * while earlier finishes of the same round keep the venue day.
- * The earliest real dateKey in that round is the event-local day.
- * Finished and LIVE rows filed on the next UTC date move back one day.
- * Scheduled rows stay — their dateKey is the planned local day and matches plannedStart.
- * Scores are not copied or changed. Zones at or east of UTC are left alone.
+ * dateKey is the event-local day. Worlds dateLabel matches it
+ * ("Tue, Nov 3" is 2026-11-03). Do not pull a later day back onto an
+ * earlier round label: "Round 64" is shared across divisions and across
+ * real session days (Men's Doubles Round 64 is both Nov 3 and Nov 4).
+ * Scores are not copied or changed.
  */
 export function rebasePpaLocalDates(matches, tz, now = new Date()) {
-  const rows = Array.isArray(matches) ? matches : [];
-  if (tzOffsetMinutes(tz, now) >= 0) return rows;
-  const byRound = new Map();
-  for (const m of rows) {
-    if (!m || (m.status !== "FT" && m.status !== "LIVE")) continue;
-    const round = String(m.round || "").trim();
-    const day = ppaLocalDayPrefix(m.date);
-    if (!round || !day) continue;
-    const set = byRound.get(round) || new Set();
-    set.add(day);
-    byRound.set(round, set);
-  }
-  const pull = new Map();
-  for (const [round, dates] of byRound) {
-    const sorted = [...dates].sort();
-    if (sorted.length < 2) continue;
-    const earliest = sorted[0];
-    const next = addIsoDay(earliest, 1);
-    if (next && dates.has(next)) pull.set(round, { from: next, to: earliest });
-  }
-  if (!pull.size) return rows;
-  return rows.map((m) => {
-    if (!m || (m.status !== "FT" && m.status !== "LIVE")) return m;
-    const rule = pull.get(String(m.round || "").trim());
-    if (!rule || m.date !== rule.from) return m;
-    return { ...m, date: rule.to };
-  });
+  void tz;
+  void now;
+  return Array.isArray(matches) ? matches : [];
 }
 
 /**

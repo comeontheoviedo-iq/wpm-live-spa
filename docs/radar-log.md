@@ -127,3 +127,11 @@
 - 2025 finals UUID `f02fa839-68e0-46d5-8b93-dc266f201a4e` is blocked. Do not wire it.
 - Client `wpm-20261102a.js`. Service worker cache name is unchanged (`site/sw.js` is `wpm-static-20261029a`). Not deployed. Redeploy Cloudflare Worker `wpm-live-spa-static` from this commit or prod `/api/ppa` stays on Hong Kong.
 
+## 2026-11-04 — Opendoor Worlds dateKey is the venue day
+
+- Scores `dateKey` matches `dateLabel` (`2026-11-03` is "Tue, Nov 3"). It is not a UTC filing date. `rebasePpaLocalDates` was pulling every later "Round 64" onto the earliest day of that label, so Mixed Doubles Round 64 and Women's Singles Round 64 (32 each, dateKey 2026-11-03) were filed as 2026-11-02. Nov 3 disappeared.
+- Men's Doubles Round 64 is two real days: some finals dateKey 2026-11-03, the rest 2026-11-04 (different match numbers). Do not collapse those.
+- Men's Singles Round 32 FT on 2026-11-02 and NEXT on 2026-11-04 are different match ids and different players. The NEXT rows are ticker-only. Keep both. Do not duplicate an id.
+- A real `dateKey` wins for final and scheduled rows. Ticker `plannedStart` fills the day only when `dateKey` is missing or Date TBA. Scores are not invented. No 0-0 for unplayed.
+- Client `site/js/wpm-20261104a.js` (same bytes as `js/wpm-20261102a.js`). `site/sw.js` cache name `wpm-static-20261104a`. Not deployed. Redeploy Cloudflare Worker `wpm-live-spa-static` from this commit (it bundles `netlify/functions/ppa.mts`). Do not change DNS. Until that deploy, prod `/api/ppa` keeps Nov 3 under Nov 2.
+

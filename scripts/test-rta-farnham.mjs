@@ -305,14 +305,14 @@ const ws = categories.find((c) => c.id === 34474);
 assert.deepEqual(ws.segments, []);
 
 const js = fs.readFileSync("js/wpm-20261102a.js", "utf8");
-const siteJs = fs.readFileSync("site/js/wpm-20261103a.js", "utf8");
+const siteJs = fs.readFileSync("site/js/wpm-20261104a.js", "utf8");
 assert.equal(siteJs, js);
 assert.ok(js.includes('tour: "rta"') || js.includes('tour:"rta"') || js.includes("tour === \"rta\""));
 assert.ok(js.includes("/api/rta"));
 assert.ok(js.includes('m.tour !== "rta"'));
 assert.ok(js.includes("RTA2000"));
 assert.equal(js.includes("PickleLive"), false);
-assert.ok(fs.readFileSync("site/index.html", "utf8").includes("wpm-20261103a.js"));
+assert.ok(fs.readFileSync("site/index.html", "utf8").includes("wpm-20261104a.js"));
 assert.ok(fs.readFileSync("netlify/functions/app.mts", "utf8").includes("18448"));
 assert.ok(fs.readFileSync("netlify/functions/ppa.mts", "utf8").includes("PPA_LIVE"));
 assert.equal(fs.readFileSync("netlify/functions/slate-events.mjs", "utf8").includes("86926aef-0566-4fbb-87cf-a48068a9f1c6"), true);

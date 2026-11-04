@@ -15,7 +15,7 @@ import {
 } from "../netlify/functions/push-lib.mjs";
 
 const js = fs.readFileSync("js/wpm-20261102a.js", "utf8");
-const siteJs = fs.readFileSync("site/js/wpm-20261103a.js", "utf8");
+const siteJs = fs.readFileSync("site/js/wpm-20261104a.js", "utf8");
 assert.equal(siteJs, js);
 
 const columbus = {

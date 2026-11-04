@@ -366,35 +366,13 @@ function tzOffsetMinutes(tz, instant){
 }
 /**
  * Same rule as netlify/functions/ppa-keep.mjs rebasePpaLocalDates.
- * Finished scores dateKey is the UTC filing date. Late venue-evening rows
- * spill onto the next date. Pull those back onto the round's earliest day.
- * Scheduled rows stay. Scores are not touched.
+ * Scores dateKey is the event-local day. Do not pull a later round day
+ * back onto an earlier one — the round name is shared across divisions
+ * and across real session days. Scores are not touched.
  */
 function rebasePpaLocalDates(matches, tz){
-  const rows = matches || [];
-  if (tzOffsetMinutes(tz) >= 0) return rows;
-  const byRound = {};
-  rows.forEach(m => {
-    if (!m || (m.status !== "FT" && m.status !== "LIVE")) return;
-    const round = String(m.round || "").trim();
-    const day = String(m.date || "").slice(0, 10);
-    if (!round || !/^\d{4}-\d{2}-\d{2}$/.test(day) || day.indexOf("9999") === 0) return;
-    (byRound[round] = byRound[round] || {})[day] = 1;
-  });
-  const pull = {};
-  Object.keys(byRound).forEach(round => {
-    const sorted = Object.keys(byRound[round]).sort();
-    if (sorted.length < 2) return;
-    const next = addDaysIso(sorted[0], 1);
-    if (next && byRound[round][next]) pull[round] = { from: next, to: sorted[0] };
-  });
-  if (!Object.keys(pull).length) return rows;
-  return rows.map(m => {
-    if (!m || (m.status !== "FT" && m.status !== "LIVE")) return m;
-    const rule = pull[String(m.round || "").trim()];
-    if (!rule || m.date !== rule.from) return m;
-    return Object.assign({}, m, { date: rule.to });
-  });
+  void tz;
+  return Array.isArray(matches) ? matches : [];
 }
 function addDaysIso(iso, n){
   if (!iso) return "";
