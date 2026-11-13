@@ -3799,7 +3799,8 @@ function fmPriorResultsHtml(all, sel){
     if (!m || m._archive || m.tour !== "ppa") return false;
     if (effectiveStatus(m) !== "FT") return false;
     const d = fmDate(m);
-    return d && d < sel && d.indexOf("9999") !== 0;
+    // Only yesterday's results, so a finished event never sits on Today.
+    return d && d === addDaysIso(sel, -1) && d.indexOf("9999") !== 0;
   });
   if (!rows.length) return "";
   const byDay = {};
