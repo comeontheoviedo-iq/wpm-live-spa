@@ -3,7 +3,7 @@
  *
  * A Cloudflare Worker cannot fetch its own custom domain. Calling
  * /api/ppa, /api/app, /api/worldcup, /api/rta, /api/sportssync,
- * /api/ppa-eu or /api/mlp-asia over
+ * /api/ppa-eu, /api/mlp-asia or /api/tpb over
  * HTTP from this host therefore fails and the desk seed is left in
  * place. Invoke the feed handlers directly instead.
  *

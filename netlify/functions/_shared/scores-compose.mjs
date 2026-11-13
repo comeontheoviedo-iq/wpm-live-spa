@@ -4,7 +4,7 @@
  * world cup, PPA, and RTA replace that tour when the feed has rows;
  * APP always replaces (an empty board is real);
  * SportsSync keeps FT rows only when a tournament is armed, otherwise clears app-asia.
- * PPA Europe and MLP Asia replace those tours when the feed has rows.
+ * PPA Europe, MLP Asia, and TOP Pickleball replace those tours when the feed has rows.
  * They never touch PPA, APP, World Cup, or RTA rows.
  * A feed that fails to load leaves that tour's desk rows in place.
  *
@@ -48,6 +48,7 @@ export function composeScores(base, overlays, now = new Date()) {
     ["rta", "rta", "if-any"],
     ["ppa-eu", "ppa-eu", "if-any"],
     ["mlp-asia", "mlp-asia", "if-any"],
+    ["tpb", "tpb", "if-any"],
   ];
 
   let freshest = "";
