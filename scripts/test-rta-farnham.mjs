@@ -16,8 +16,8 @@ import {
   wallTimeToIso,
 } from "../netlify/functions/rta-map.mjs";
 
-assert.equal(APP_LIVE.eventId, "18454");
-assert.equal(APP_LIVE.name, "Humana APP Louisville Open");
+assert.equal(APP_LIVE.eventId, "18443");
+assert.equal(APP_LIVE.name, "APP Arizona Open");
 assert.equal(PPA_LIVE.eventId, "ad262b1f-ea62-4dcc-af59-69732a97107c");
 assert.equal(PPA_LIVE.name, "2026 Opendoor Pickleball World Championships");
 assert.equal(PPA_LIVE.tz, "America/Chicago");

@@ -1,6 +1,6 @@
 # APP · Den Live tournamentId discovery
 
-**Last hunt:** 2026-10-02 · Den Live `tournament-brackets` widened past 18670 until HTTP 429; SportsSync sitemap titles 91–471  
+**Last hunt:** 2026-11-13 · APP Arizona Open found as Den **18443** via `/api/nearby-tournaments` (see below). Earlier: 2026-10-02 · Den Live `tournament-brackets` widened past 18670 until HTTP 429; SportsSync sitemap titles 91–471  
 **Rule:** never invent scores; intake needs name + venue + timezone + working Den `tournamentId`. LIVE only when Den matches are RUNNING. No phantom 0–0. Shop stays Coming soon.
 
 ## Blocked APP events (radar / GPA)
@@ -18,6 +18,7 @@
 | Den id | Name | Dates | tz profile |
 |--------|------|-------|------------|
 | 18442 | APP Detroit Open | 2026-08-19…08-23 | `America/Detroit` |
+| 18443 | APP Arizona Open | 2026-11-12…11-16 on Den (official 12–15 Nov) | `America/Phoenix` · Arizona Athletic Grounds, 6321 S Ellsworth Rd, Mesa AZ 85212 | **Live pin `APP_ARIZONA` from 13 Nov 2026.** Registration external id `3791526` is **not** the scoring id. |
 | 18448 | APP Columbus Open presented by The James | 2026-10-01…10-04 | `America/New_York` |
 | 18453 | APP Dillons Overland Park Open | 2026-09-17…09-20 | `America/Chicago` |
 | 18454 | Humana APP Louisville Open | 2026-10-15…10-18 | `America/New_York` · Kentucky International Convention Center | **Ended 18 Oct 2026.** Archive `louisville`, `current: false`. Default `/api/app` is between events. |
@@ -35,7 +36,29 @@ Den Live SPA (`denlive.pickleballden.com`) has **no public tournament list/searc
 `api.pickleballden.com/api/public/tournaments*` requires an API key (403 from public egress).  
 `external-tournament/{largeId}` is the **registration** Vaadin app id — **not** the Den Live scoring id.
 
-### Hunt method that worked
+### Fastest method (use this first): `nearby-tournaments`
+
+Den Live has a geo lookup used by its "events near you" prompt. It returns the
+scoring `tournamentId` for any Den event within **5 miles** that starts within
+**7 days** (lead window), including events already running.
+
+```bash
+curl -s -X POST https://denlive.pickleballden.com/api/nearby-tournaments \
+  -H 'Content-Type: application/json' \
+  -H 'Origin: https://denlive.pickleballden.com' -H 'Referer: https://denlive.pickleballden.com/' \
+  -d '{"latitude":33.3076,"longitude":-111.6345}'
+# → {"events":[{"tournamentId":"18443","name":"APP Arizona Open","venueName":"Arizona Athletic Grounds",
+#     "startDate":"2026-11-12","endDate":"2026-11-15",...}],"radiusMiles":5,"leadDays":7}
+```
+
+1. Take the venue from the official APP event page (theapp.global/tour-schedule/…) and geocode it (lat/lon within ~5 mi).
+2. Call `nearby-tournaments` from **≤ 7 days before** the start date. One request, no id scanning, no 429.
+3. Confirm with `tournament-brackets?tournamentId={id}&size=1`: name, venue and start date must match the official page.
+4. Add the pin (`APP_PINS`, `APP_NEXT`/`APP_LIVE` in `slate-events.mjs`, profile in `app.mts`).
+
+APP ids are **not** creation-sequential with event dates: the 2026 APP block was created together (18442 Detroit, **18443 Arizona**, 18448 Columbus, 18453 Overland, 18454 Louisville). Scanning upward past 18475 finds unrelated club events and hits 429 within ~10 requests.
+
+### Older hunt method
 
 1. Read GPA `/api/rankings` events + `docs/radar-log.md` for blocked names/dates.  
 2. Check APP tour pages for `denlive…tournamentId=` (Columbus **18448**, previously Overland) vs `external-tournament/` (registration only — not the scoring id) vs none (Chongqing/Sendai).  
@@ -63,7 +86,7 @@ Arming Chongqing (or Sendai) on `/calendar` as **live-path** stays blocked — n
 
 ## Louisville week — ended
 
-Humana APP Louisville Open, Den **18454**, ended 18 Oct 2026. Archive `louisville` is `current: false`. Default `/api/app` is between events (reader “Event ended”, no LIVE rows) until a later Den id exists. `?tournamentId=18454` still smokes the draw. APP Arizona Open (12–15 Nov) has no Den id. Do not fake LIVE.
+Humana APP Louisville Open, Den **18454**, ended 18 Oct 2026. Archive `louisville` is `current: false`. Default `/api/app` is between events (reader “Event ended”, no LIVE rows) until a later Den id exists. `?tournamentId=18454` still smokes the draw. APP Arizona Open (12–15 Nov) is Den **18443** (found 13 Nov 2026) and is the live pin.
 
 - Columbus Den Live **info** payload was still `null` at cut (venue/tz from the profile, name from `tournament-brackets`). Brackets were Pending with 0 matches — board stays empty until real rows exist.  
 - Sendai needs a **non-Den** connector if WPM wants live boards (Tournated / local feed) — out of scope for `/api/app`.  

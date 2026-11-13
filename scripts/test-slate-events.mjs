@@ -175,7 +175,7 @@ assert.equal(SLATE.some((s) => s.id === GIJON.id), true);
 assert.equal(SLATE.some((s) => s.id === BARCELONA.id), true);
 assert.ok(SLATE.length > 2);
 const during = SLATE.map((s) => asCalendarRow(s, "2026-09-18"));
-const quiet = during.filter((r) => r.id !== FARNHAM.id && r.id !== PPA_LILLE.id && r.id !== MLP_ASIA_SEASON.id);
+const quiet = during.filter((r) => r.id !== FARNHAM.id && r.id !== PPA_LILLE.id && r.id !== MLP_ASIA_SEASON.id && r.id !== "slate:app-arizona-2026");
 assert.ok(quiet.every((r) => r.onLive === false));
 assert.ok(quiet.every((r) => r.status !== "live-path"));
 const louRow = during.find((r) => r.id === "slate:app-louisville-2026");
@@ -310,19 +310,22 @@ assert.equal(APP_COLUMBUS.tz, "America/New_York");
 assert.equal(APP_COLUMBUS.start, "2026-10-01");
 assert.equal(APP_COLUMBUS.end, "2026-10-04");
 assert.equal(APP_COLUMBUS.ended, true);
-assert.equal(APP_LIVE, APP_LOUISVILLE);
-assert.equal(APP_NEXT, APP_LOUISVILLE);
-assert.equal(APP_LIVE.eventId, "18454");
-assert.equal(APP_LIVE.name, "Humana APP Louisville Open");
-assert.equal(APP_LIVE.shortName, "Humana APP Louisville Open");
-assert.equal(APP_LIVE.venue, "Kentucky International Convention Center, Louisville, KY");
-assert.equal(APP_LIVE.tz, "America/New_York");
-assert.equal(APP_LIVE.start, "2026-10-15");
-assert.equal(APP_LIVE.end, "2026-10-18");
+assert.equal(APP_LIVE, APP_NEXT);
+assert.equal(APP_LIVE.eventId, "18443");
+assert.equal(APP_LIVE.name, "APP Arizona Open");
+assert.equal(APP_LIVE.shortName, "APP Arizona Open");
+assert.equal(APP_LIVE.venue, "Arizona Athletic Grounds, Mesa, AZ");
+assert.equal(APP_LIVE.tz, "America/Phoenix");
+assert.equal(APP_LIVE.start, "2026-11-12");
+assert.equal(APP_LIVE.end, "2026-11-15");
 assert.equal(APP_LIVE.scorePath, "/api/app");
-assert.equal(APP_LIVE.calendarId, "gpa:humana%20app%20louisville%20open:2026-10-15");
+assert.equal(APP_LIVE.calendarId, "gpa:app%20arizona%20open:2026-11-12");
+assert.equal(APP_LOUISVILLE.eventId, "18454");
+assert.equal(APP_LOUISVILLE.calendarId, "gpa:humana%20app%20louisville%20open:2026-10-15");
 assert.notEqual(APP_LIVE.eventId, APP_COLUMBUS.eventId);
 assert.equal(isPreparedNextDenId("18454"), false);
+assert.equal(isPreparedNextDenId("18443", new Date("2026-11-12T06:59:00Z")), true);
+assert.equal(isPreparedNextDenId("18443", new Date("2026-11-12T07:00:00Z")), false);
 assert.equal(isPreparedNextDenId("18454", new Date("2026-10-14T15:00:00Z")), true);
 assert.equal(isPreparedNextDenId("18448"), false);
 assert.equal(isPreparedNextDenId("18453"), false);
@@ -331,33 +334,42 @@ assert.equal(ENDED_APP.overland.ended, true);
 assert.equal(isEndedAppDenId("18453"), true);
 assert.equal(isEndedAppDenId("18448"), true);
 assert.equal(isEndedAppDenId("18448", new Date("2026-10-03T16:00:00Z")), false);
-assert.equal(isEndedAppDenId("18454"), false);
+assert.equal(isEndedAppDenId("18454", new Date("2026-10-25T16:00:00Z")), false);
+assert.equal(isEndedAppDenId("18454", new Date("2026-11-13T16:00:00Z")), true);
+assert.equal(isEndedAppDenId("18443", new Date("2026-11-13T16:00:00Z")), false);
 assert.equal(selectAppLive(new Date("2026-10-14T15:00:00Z")).eventId, "18448");
 assert.equal(selectAppLive(new Date("2026-10-15T03:30:00Z")).eventId, "18448");
 assert.equal(selectAppLive(new Date("2026-10-15T04:00:00Z")).eventId, "18454");
 assert.equal(selectAppLive(new Date("2026-10-16T07:24:00Z")).eventId, "18454");
 assert.equal(selectAppLive(new Date("2026-10-19T04:00:00Z")).eventId, "18454");
+// 12 Nov midnight in Phoenix (MST, UTC-7) is 07:00 UTC.
+assert.equal(selectAppLive(new Date("2026-11-12T06:59:00Z")).eventId, "18454");
+assert.equal(selectAppLive(new Date("2026-11-12T07:00:00Z")).eventId, "18443");
+assert.equal(selectAppLive(new Date("2026-11-16T12:00:00Z")).eventId, "18443");
 const later = {
   eventId: "99999",
   name: "Speculative APP Next",
   shortName: "Speculative APP Next",
   venue: "TBD",
   tz: "America/New_York",
-  start: "2026-11-12",
-  end: "2026-11-15",
+  start: "2026-12-03",
+  end: "2026-12-06",
   scorePath: "/api/app",
   calendarId: "gpa:speculative",
 };
-assert.equal(selectAppLive(new Date("2026-11-11T16:00:00Z"), [...APP_PINS, later]).eventId, "18454");
-// 12 Nov 2026 is EST (UTC-5). Midnight in Louisville is 05:00 UTC.
-assert.equal(selectAppLive(new Date("2026-11-12T04:59:00Z"), [...APP_PINS, later]).eventId, "18454");
-assert.equal(selectAppLive(new Date("2026-11-12T05:00:00Z"), [...APP_PINS, later]).eventId, "99999");
-assert.equal(WIRED.app.eventId, "18454");
-assert.equal(WIRED.app.name, APP_LIVE.name);
-assert.equal(WIRED.app.venue, APP_LIVE.venue);
-assert.equal(WIRED.app.tz, "America/New_York");
-assert.equal(WIRED.app.ended, true);
-assert.equal(WIRED.app.scorePath, null);
+assert.equal(selectAppLive(new Date("2026-12-02T16:00:00Z"), [...APP_PINS, later]).eventId, "18443");
+// 3 Dec 2026 is EST (UTC-5). Midnight in New York is 05:00 UTC.
+assert.equal(selectAppLive(new Date("2026-12-03T04:59:00Z"), [...APP_PINS, later]).eventId, "18443");
+assert.equal(selectAppLive(new Date("2026-12-03T05:00:00Z"), [...APP_PINS, later]).eventId, "99999");
+const wiredNow = Date.now();
+if (wiredNow >= Date.parse("2026-11-12T07:00:00Z") && wiredNow < Date.parse("2026-11-16T07:00:00Z")) {
+  assert.equal(WIRED.app.eventId, "18443");
+  assert.equal(WIRED.app.name, APP_LIVE.name);
+  assert.equal(WIRED.app.venue, APP_LIVE.venue);
+  assert.equal(WIRED.app.tz, "America/Phoenix");
+  assert.equal(WIRED.app.ended, false);
+  assert.equal(WIRED.app.scorePath, "/api/app");
+}
 assert.notEqual(WIRED.app.eventId, "18448");
 assert.notEqual(WIRED.app.eventId, "18453");
 assert.equal(appPinWindowEnded(APP_LOUISVILLE, new Date("2026-10-16T16:00:00Z")), false);
@@ -369,8 +381,18 @@ assert.equal(duringLou.status, "live-path");
 assert.equal(duringLou.onLive, true);
 assert.equal(duringLou.connector.denTournamentId, "18454");
 assert.equal(duringLou.connector.scorePath, "/api/app");
-const seeded = columbusArmedRow();
-assert.equal(seeded.id, APP_LIVE.calendarId);
+const duringAz = appArmedRow(new Date("2026-11-13T18:00:00Z"));
+assert.equal(duringAz.id, "gpa:app%20arizona%20open:2026-11-12");
+assert.equal(duringAz.status, "live-path");
+assert.equal(duringAz.onLive, true);
+assert.equal(duringAz.timezone, "America/Phoenix");
+assert.equal(duringAz.connector.denTournamentId, "18443");
+assert.equal(duringAz.connector.scorePath, "/api/app");
+const afterAz = appArmedRow(new Date("2026-11-16T08:00:00Z"));
+assert.equal(afterAz.status, "ended");
+assert.equal(afterAz.onLive, false);
+const seeded = columbusArmedRow(new Date("2026-10-25T16:00:00Z"));
+assert.equal(seeded.id, APP_LOUISVILLE.calendarId);
 assert.equal(seeded.status, "ended");
 assert.equal(seeded.onLive, false);
 assert.equal(seeded.ended, true);
@@ -399,12 +421,12 @@ const cut = applyAppCalendarCut([
     status: "results-only",
     connector: { type: "none" },
   },
-]);
+], new Date("2026-10-25T16:00:00Z"));
 assert.equal(cut.some((e) => /overland/i.test(e.name)), false);
 assert.equal(cut.some((e) => String(e.connector?.denTournamentId) === "18453"), false);
 assert.equal(cut.some((e) => String(e.connector?.denTournamentId) === "18448"), false);
 assert.equal(cut.some((e) => /columbus/i.test(e.name)), false);
-const col = cut.find((e) => e.id === APP_LIVE.calendarId);
+const col = cut.find((e) => e.id === APP_LOUISVILLE.calendarId);
 assert.ok(col);
 assert.equal(col.onLive, false);
 assert.equal(col.status, "ended");
@@ -420,5 +442,22 @@ assert.equal(cq.status, "results-only");
 assert.notEqual(cq.connector?.denTournamentId, "18448");
 assert.equal(isAppAsiaName("APP Asia Chongqing Open"), true);
 assert.equal(isAppAsiaName("APP Columbus Open"), false);
+const cutAz = applyAppCalendarCut([
+  {
+    id: "gpa:app%20arizona%20open:2026-11-12",
+    name: "APP Arizona Open",
+    onLive: false,
+    status: "results-only",
+    connector: null,
+  },
+], new Date("2026-11-13T18:00:00Z"));
+const az = cutAz.find((e) => e.id === "gpa:app%20arizona%20open:2026-11-12");
+assert.ok(az);
+assert.equal(az.onLive, true);
+assert.equal(az.status, "live-path");
+assert.equal(az.timezone, "America/Phoenix");
+assert.equal(az.connector.type, "app");
+assert.equal(az.connector.denTournamentId, "18443");
+assert.equal(cutAz.filter((e) => e.id === az.id).length, 1);
 
-console.log("ok slate-events · Gijón delayed · Barcelona ended · Opendoor Worlds live · Hong Kong archived · Virginia Beach archived · Louisville ended · Columbus archived · MLP ≠ APP");
+console.log("ok slate-events · Gijón delayed · Barcelona ended · Opendoor Worlds live · Hong Kong archived · Virginia Beach archived · Arizona 18443 live · Louisville ended · Columbus archived · MLP ≠ APP");
