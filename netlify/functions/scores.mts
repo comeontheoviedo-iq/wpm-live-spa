@@ -10,6 +10,7 @@ import sportssync from "./sportssync.mts";
 import rta from "./rta.mts";
 import ppaEu from "./ppa-eu.mts";
 import mlpAsia from "./mlp-asia.mts";
+import tpb from "./tpb.mts";
 
 /**
  * GET used to return the desk blob unchanged. That blob is written only by
@@ -18,8 +19,8 @@ import mlpAsia from "./mlp-asia.mts";
  * feeds kept moving.
  *
  * GET applies the same overlay the public SPA already does in pull(), by
- * calling the worldcup, ppa, app, sportssync, rta, ppa-eu and mlp-asia
- * handlers in-process. ppa-eu and mlp-asia are extra tours. They do not
+ * calling the worldcup, ppa, app, sportssync, rta, ppa-eu, mlp-asia and tpb
+ * handlers in-process. ppa-eu, mlp-asia and tpb are extra tours. They do not
  * replace /api/ppa. A feed that throws or returns no rows leaves the
  * desk copy of that tour in place.
  * An HTTP request from this handler back to its own host fails inside the
@@ -36,6 +37,7 @@ const FEEDS = [
   { key: "rta", path: "/api/rta", handler: rta },
   { key: "ppa-eu", path: "/api/ppa-eu", handler: ppaEu },
   { key: "mlp-asia", path: "/api/mlp-asia", handler: mlpAsia },
+  { key: "tpb", path: "/api/tpb", handler: tpb },
 ];
 
 export default async (req: Request, _context: Context) => {

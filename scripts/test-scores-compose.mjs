@@ -59,6 +59,23 @@ assert.equal(withEurope.matches.some((m) => m.id === "ppa-eu-1"), true);
 assert.equal(withEurope.matches.some((m) => m.id === "mlp-asia-1"), true);
 assert.equal(withEurope.matches.filter((m) => m.tour === "ppa").length, 1);
 
+const withTpb = composeScores(
+  withEurope,
+  {
+    tpb: {
+      updated: "2026-10-25T13:00:07Z",
+      matches: [{ id: "tpb-1", tour: "tpb", a: "Aitor Aramburu", b: "Miguel Alonso", status: "NEXT", score: "" }],
+    },
+  },
+  now
+);
+assert.equal(withTpb.matches.some((m) => m.id === "tpb-1" && m.score === ""), true);
+assert.equal(withTpb.matches.some((m) => m.id === "ppa-new"), true);
+const tpbDown = composeScores(withTpb, { tpb: null }, now);
+assert.equal(tpbDown.matches.some((m) => m.id === "tpb-1"), true);
+const tpbEmpty = composeScores(withTpb, { tpb: { matches: [] } }, now);
+assert.equal(tpbEmpty.matches.some((m) => m.id === "tpb-1"), true);
+
 const europeDown = composeScores(
   withEurope,
   { "ppa-eu": null, "mlp-asia": { matches: [] } },

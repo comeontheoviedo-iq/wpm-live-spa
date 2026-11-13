@@ -464,7 +464,7 @@ function effectiveStatus(m){
   if ((m.lines || []).some(l => l.live)) return "LIVE";
   // Soft window only for tours that supply an explicit end (desk/WC windows).
   // PPA, APP, and RTA: API status is authority — never clock-promote NEXT→LIVE.
-  if (m.tour !== "ppa" && m.tour !== "ppa-eu" && m.tour !== "mlp-asia" && m.tour !== "app" && m.tour !== "app-asia" && m.tour !== "rta") {
+  if (m.tour !== "ppa" && m.tour !== "ppa-eu" && m.tour !== "mlp-asia" && m.tour !== "tpb" && m.tour !== "app" && m.tour !== "app-asia" && m.tour !== "rta") {
     const now = Date.now();
     const start = parseUtc(m.start);
     const end = parseUtc(m.end);
@@ -701,6 +701,16 @@ function competition(m){
       eventKey: eventFollowKey(m)
     };
   }
+  if (m.tour === "tpb") {
+    return {
+      id: "tpb",
+      tour: "tpb",
+      title: "TOP Pickleball · "+shortEventLabel(m.comp || "Somontes", eventFollowKey(m)),
+      place: m.venue || "Club Deportivo Somontes, Madrid",
+      rank: 4,
+      eventKey: eventFollowKey(m)
+    };
+  }
   const d = ((m.div||"")+" "+(m.cat||"")).toLowerCase();
   if (d.includes("open")) return {id:"wc-open", tour:"wc", title:"World Cup · Open", place:"Da Nang", rank:2};
   if (d.includes("junior")) return {id:"wc-jr", tour:"wc", title:"World Cup · Juniors", place:"Da Nang", rank:3};
@@ -791,6 +801,7 @@ function shortEventLabel(name, key){
   if (/penang/i.test(blob)) return "Penang";
   if (/farnham|rta2000|^ev:rta\b/i.test(blob)) return "Farnham";
   if (/gij/i.test(blob)) return "Gijón";
+  if (/somontes/i.test(blob)) return "Somontes";
   if (/barcelona/i.test(blob)) return "Barcelona";
   if (/world cup|^ev:wc$/i.test(blob)) return "World Cup";
   const first = n.split("·")[0].trim();
@@ -867,7 +878,8 @@ function passesBoardFilter(m){
     if (matchDisc(m) !== state.resultCat) return false;
   }
   // Competitions without a live path: never leak PPA/APP/WC as if they belonged here.
-  if (state.filter === "mlp-asia" || state.filter === "app-asia" || state.filter === "tpb" || state.filter === "ppa-eu" || state.filter === "gpa") return false;
+  if (state.filter === "tpb" && m.tour !== "tpb") return false;
+  if (state.filter === "mlp-asia" || state.filter === "app-asia" || state.filter === "ppa-eu" || state.filter === "gpa") return false;
   return true;
 }
 function sortMatchDay(a, b){
@@ -3330,6 +3342,7 @@ async function pull(){
   await overlay("/api/rta", "rta");
   await overlay("/api/ppa-eu", "ppa-eu");
   await overlay("/api/mlp-asia", "mlp-asia");
+  await overlay("/api/tpb", "tpb");
   state.heroByDate = state.heroByDate || {};
   const liveN = (state.matches||[]).filter(m => effectiveStatus(m)==="LIVE").length;
   const appQuiet = state.appBoard && state.appBoard.preServe && !liveN;
@@ -3565,7 +3578,7 @@ function fmDate(m){
   // PPA board day is already the event zone (America/Chicago). Do not rebucket
   // it into the viewer's zone — a London evening was landing Chicago results
   // on the wrong chip, so day-1 finals disappeared from the board.
-  if (m && (m.tour === "ppa" || m.tour === "ppa-eu" || m.tour === "mlp-asia") && m.date && String(m.date).indexOf("9999") !== 0) return String(m.date).slice(0, 10);
+  if (m && (m.tour === "ppa" || m.tour === "ppa-eu" || m.tour === "mlp-asia" || m.tour === "tpb") && m.date && String(m.date).indexOf("9999") !== 0) return String(m.date).slice(0, 10);
   if (m.start && (m.hasClock === true || m.tour === "wc")) { const d = parseUtc(m.start); if (d && !isNaN(d)) return fmLocalYmd(d); }
   return m.date || "";
 }

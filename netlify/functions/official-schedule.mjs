@@ -16,8 +16,8 @@ const row = (r) => ({
   verifiedOn: VERIFIED_ON,
   endPublished: true,
   ...r,
-  officialUrl: r.sourceUrl,
-  note: `Official schedule: ${r.sourceUrl} (verified ${VERIFIED_ON}). No score path.`,
+  officialUrl: r.officialUrl || r.sourceUrl,
+  note: r.note || `Official schedule: ${r.sourceUrl} (verified ${VERIFIED_ON}). No score path.`,
 });
 
 export const OFFICIAL_SCHEDULE = [
@@ -65,11 +65,17 @@ export const OFFICIAL_SCHEDULE = [
     tour: "tpb",
     host: "TPB",
     name: "TPB Somontes 2026",
-    venue: "Somontes, Spain",
+    venue: "Club Deportivo Somontes, Madrid",
     timezone: "Europe/Madrid",
     start: "2026-11-13",
     end: "2026-11-15",
     sourceUrl: "https://toppickleballtour.com/",
+    officialUrl: "https://toppickleballtour.com/tour/somontes/",
+    status: "live-path",
+    onLive: true,
+    connector: { type: "url", scorePath: "/api/tpb" },
+    note:
+      "TPB Somontes 2026 at Club Deportivo Somontes, Madrid, 13–15 Nov 2026. Scores come from the official Cuadros y horarios widget at /api/tpb (cuadros id 6ad5eb60945dc4e56ae2c8ad). Pending cards stay NEXT with no score. Andorra keeps its own id when that widget is published.",
   }),
   row({
     id: "official:tpb-andorra-2026",
