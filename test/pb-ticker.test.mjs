@@ -240,6 +240,6 @@ test("worker routes the new feeds and /api/ppa is untouched", () => {
   assert.doesNotMatch(ppa, /pb-ticker|ppa-eu|mlp-asia/);
   assert.match(ppa, /path: "\/api\/ppa"/);
   const client = fs.readFileSync(new URL("../site/js/wpm-20261104a.js", import.meta.url), "utf8");
-  assert.match(client, /overlay\("\/api\/ppa-eu", "ppa-eu"\)/);
-  assert.match(client, /overlay\("\/api\/mlp-asia", "mlp-asia"\)/);
+  assert.match(client, /\["\/api\/ppa-eu", "ppa-eu"\]/);
+  assert.match(client, /\["\/api\/mlp-asia", "mlp-asia"\]/);
 });
