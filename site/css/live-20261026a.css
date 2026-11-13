@@ -328,3 +328,13 @@ div.fm-tile{cursor:default}
 /* Draw: top-align later rounds on narrow screens so SF/F boxes are not pushed below the fold */
 @media (max-width:899px){.fm-bcells{justify-content:flex-start}}
 .fm-bempty{margin:8px 4px;padding:14px 12px;border:1px dashed var(--fm-line);border-radius:10px;color:var(--fm-mute);font-size:13px;text-align:center}
+
+/* Tournament roll-up */
+.fm-tourn .fm-tbody{border-top:1px solid var(--fm-line)}
+.fm-tourn.col .fm-gh{border-bottom:0}
+.fm-tourn .fm-tbody .fm-group{margin:0;border-radius:0;box-shadow:none;border-bottom:1px solid var(--fm-line)}
+.fm-tourn .fm-tbody .fm-group:last-child{border-bottom:0}
+.fm-tourn .fm-tbody .fm-gh{background:rgba(13,11,63,.03)}
+.fm-tourn .fm-tbody .fm-ghb{min-height:40px;padding-left:22px}
+.fm-tourn .fm-tbody .fm-tour{display:none}
+.fm-tourn.col > .fm-gh .fm-ghb .fm-i:last-child{transform:rotate(-90deg)}

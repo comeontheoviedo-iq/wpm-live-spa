@@ -3506,10 +3506,11 @@ document.addEventListener("click", function wpmClick(ev){
    Never invents data: every section hides when the feed has nothing.
    ====================================================================== */
 const FM = {
-  collapsed: {}, evFollows: {}, prevSig: {}, flash: {}, loaded: false,
+  collapsed: {}, tOpen: {}, evFollows: {}, prevSig: {}, flash: {}, loaded: false,
   liveOnly: false, lastPoll: 0, pickerOpen: false
 };
 try { FM.collapsed = JSON.parse(localStorage.getItem("wpm-v2-collapsed") || "{}"); } catch(e) {}
+try { FM.tOpen = JSON.parse(localStorage.getItem("wpm-v2-topen") || "{}"); } catch(e) {}
 try { FM.evFollows = JSON.parse(localStorage.getItem("wpm-follow-events") || "{}"); } catch(e) {}
 const FM_TOUR_ORDER = {ppa:1, app:2, wc:3, mlp:4, "mlp-asia":5, rta:6, "app-asia":7, asia:8, "ppa-eu":9, tpb:10, npl:11, gpa:12};
 const FM_FLAGS = {"argentina":"AR","australia":"AU","austria":"AT","belgium":"BE","brazil":"BR","cambodia":"KH","canada":"CA","chile":"CL","china":"CN","chinese taipei":"TW","taiwan":"TW","colombia":"CO","costa rica":"CR","croatia":"HR","czech republic":"CZ","czechia":"CZ","denmark":"DK","dominican republic":"DO","ecuador":"EC","egypt":"EG","england":"GB","great britain":"GB","united kingdom":"GB","finland":"FI","france":"FR","germany":"DE","greece":"GR","hong kong":"HK","hungary":"HU","india":"IN","indonesia":"ID","ireland":"IE","israel":"IL","italy":"IT","japan":"JP","kenya":"KE","korea":"KR","south korea":"KR","laos":"LA","malaysia":"MY","mexico":"MX","mongolia":"MN","netherlands":"NL","new zealand":"NZ","nigeria":"NG","norway":"NO","pakistan":"PK","panama":"PA","peru":"PE","philippines":"PH","poland":"PL","portugal":"PT","puerto rico":"PR","qatar":"QA","romania":"RO","russia":"RU","saudi arabia":"SA","scotland":"GB","serbia":"RS","singapore":"SG","slovakia":"SK","slovenia":"SI","south africa":"ZA","spain":"ES","sri lanka":"LK","sweden":"SE","switzerland":"CH","thailand":"TH","turkey":"TR","türkiye":"TR","uae":"AE","united arab emirates":"AE","ukraine":"UA","united states":"US","usa":"US","uruguay":"UY","venezuela":"VE","vietnam":"VN","viet nam":"VN","wales":"GB","macau":"MO","macao":"MO","nepal":"NP","bangladesh":"BD","brunei":"BN","myanmar":"MM","kazakhstan":"KZ","uzbekistan":"UZ","guatemala":"GT","el salvador":"SV","honduras":"HN","jamaica":"JM","bahamas":"BS","iceland":"IS","estonia":"EE","latvia":"LV","lithuania":"LT","luxembourg":"LU","malta":"MT","cyprus":"CY","morocco":"MA","tunisia":"TN","ghana":"GH","uganda":"UG","bolivia":"BO","paraguay":"PY"};
@@ -3762,13 +3763,41 @@ function fmGroupHtml(g, opts){
     <div class="fm-gh">
       <button class="fm-ghb" type="button" data-fmcol="${escAttr(g.key)}" aria-expanded="${!col}">
         ${fmTourBadge(g.tour)}
-        <span class="fm-gt"><b>${esc(shortEventLabel(g.name, g.ev))}</b>${g.div?`<span>${esc(g.div)}</span>`:""}</span>
+        <span class="fm-gt">${opts && opts.nested && g.div ? `<b>${esc(g.div)}</b>` : `<b>${esc(shortEventLabel(g.name, g.ev))}</b>${g.div?`<span>${esc(g.div)}</span>`:""}`}</span>
         ${live?`<em class="fm-glive">${live} live</em>`:""}<span class="fm-gn">${rows.length}</span>${fmIcon("chev", 18)}
       </button>
       <a class="fm-gev" href="/event/${encodeURIComponent(g.ev)}${g.div?"?div="+encodeURIComponent(g.div):""}" aria-label="Open ${escAttr(g.name)}">Draw</a>
     </div>
     ${col ? "" : `<div class="fm-rows">${rows.map(m => fmRow(m, {sub: fmRound(m)})).join("")}</div>`}
   </section>`;
+}
+/* Tournament roll-up (FotMob style): one row per tournament, tap to open. */
+function fmTournamentsHtml(groups){
+  const order = [], by = {};
+  groups.forEach(g => { if (!by[g.ev]) { by[g.ev] = []; order.push(g.ev); } by[g.ev].push(g); });
+  return order.map(ev => {
+    const gs = by[ev], first = gs[0];
+    const rows = gs.reduce((a, g) => a.concat(g.rows), []);
+    const liveRows = rows.filter(m => effectiveStatus(m)==="LIVE");
+    const ft = rows.filter(m => effectiveStatus(m)==="FT").length;
+    const open = FM.liveOnly || FM.tOpen[ev] === 1;
+    const name = shortEventLabel(first.name, ev);
+    const sub = [gs.length > 1 ? gs.length + " draws" : (first.div || ""), ft ? ft + " played" : ""].filter(Boolean).join(" · ");
+    const body = open
+      ? gs.map(g => fmGroupHtml(g, {nested:true})).join("")
+      : (liveRows.length ? `<div class="fm-rows">${fmSortMatches(liveRows).map(m => fmRow(m, {sub: [fmDivision(m), fmRound(m)].filter(Boolean).join(" · ")})).join("")}</div>` : "");
+    return `<section class="fm-group fm-tourn${open?"":" col"}">
+    <div class="fm-gh">
+      <button class="fm-ghb" type="button" data-fmtopen="${escAttr(ev)}" aria-expanded="${open}">
+        ${fmTourBadge(first.tour)}
+        <span class="fm-gt"><b>${esc(name)}</b>${sub?`<span>${esc(sub)}</span>`:""}</span>
+        ${liveRows.length?`<em class="fm-glive">${liveRows.length} live</em>`:""}<span class="fm-gn">${rows.length}</span>${fmIcon("chev", 18)}
+      </button>
+      <a class="fm-gev" href="/event/${encodeURIComponent(ev)}" aria-label="Open ${escAttr(first.name)}">Draw</a>
+    </div>
+    ${body ? `<div class="fm-tbody">${body}</div>` : ""}
+  </section>`;
+  }).join("");
 }
 /* ---------- Matches (home) ---------- */
 function fmDays(){
@@ -3842,7 +3871,7 @@ function fmHome(){
     </div>
     ${fol.length && !FM.liveOnly ? `<section class="fm-group fm-folgroup"><div class="fm-gh"><span class="fm-ghb static">${fmIcon("following",18)}<span class="fm-gt"><b>Following</b><span>Your players and events</span></span><span class="fm-gn">${fol.length}</span></span></div><div class="fm-rows">${fmSortMatches(fol).map(m => fmRow(m, {sub: shortEventLabel(fmEventName(m), fmEventKey(m))+" · "+[fmDivision(m), fmRound(m)].filter(Boolean).join(" · ")})).join("")}</div></section>` : ""}
     ${fmPriorResultsHtml(all, sel)}
-    ${groups.map(g => fmGroupHtml(g)).join("")}
+    ${fmTournamentsHtml(groups)}
     ${sched.length ? `<section class="fm-card fm-sched"><h2 class="fm-h2">Scheduled · no draw yet</h2>${sched.map(fmEvRow).join("")}</section>` : ""}
     ${list.length || sched.length ? "" : `<div class="fm-empty"><p>${FM.liveOnly ? "Nothing is live right now." : "No matches on the board for "+esc(fmDateLabel(sel))+"."}</p>${near && !FM.liveOnly ? `<button type="button" class="fm-btn" data-fmday="${near}">Go to ${esc(fmDateLabel(near))}</button>` : ""}${FM.liveOnly?`<button type="button" class="fm-btn" data-fmlive>Show all matches</button>`:""}</div>`}
     <p class="fm-foot">Times in your time zone (${esc(Intl.DateTimeFormat().resolvedOptions().timeZone || "local")}). Scores refresh every 12 seconds.${state.updated?` Feed updated ${esc(new Date(state.updated).toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit"}))}.`:""}</p>
@@ -4314,10 +4343,16 @@ document.addEventListener("click", function(ev){
   if (bj) { ev.preventDefault(); ev.stopPropagation(); if (bj.hasAttribute("data-fmjump")) fmBracketScroll(0, Number(bj.getAttribute("data-fmjump"))); else fmBracketScroll(Number(bj.getAttribute("data-fmbx"))); return; }
 }, true);
 document.addEventListener("click", function(ev){
-  const t = ev.target && ev.target.closest ? ev.target.closest("[data-fmstar],[data-fmcol],[data-fmday],[data-fmlive]") : null;
+  const t = ev.target && ev.target.closest ? ev.target.closest("[data-fmstar],[data-fmcol],[data-fmtopen],[data-fmday],[data-fmlive]") : null;
   if (!t) return;
   ev.preventDefault(); ev.stopPropagation();
   if (t.hasAttribute("data-fmstar")) return fmToggleStar(t.getAttribute("data-fmstar"), t.getAttribute("data-key"));
+  if (t.hasAttribute("data-fmtopen")) {
+    const k = t.getAttribute("data-fmtopen");
+    if (FM.tOpen[k] === 1) delete FM.tOpen[k]; else FM.tOpen[k] = 1;
+    try { localStorage.setItem("wpm-v2-topen", JSON.stringify(FM.tOpen)); } catch(e) {}
+    return render();
+  }
   if (t.hasAttribute("data-fmcol")) {
     const k = t.getAttribute("data-fmcol");
     if (FM.collapsed[k]) delete FM.collapsed[k]; else FM.collapsed[k] = 1;
