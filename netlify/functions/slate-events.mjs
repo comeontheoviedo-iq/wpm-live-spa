@@ -543,20 +543,21 @@ export const MLP_ASIA_SEASON = {
   tier: "",
   start: "2026-11-13",
   end: "2026-12-12",
-  status: "results-only",
-  onLive: false,
-  officialUrl: "https://mlp-asia.com/meet-the-six-teams-draft-sign-up-and-showdown-schedule-revealed/",
+  status: "live-path",
+  onLive: true,
+  officialUrl: "https://pickleballteamleagues.com/team-leagues/major-league-pickleball-asia",
   note:
     MLP_ASIA_NOTE +
-    " Pool nights 13–28 Nov 2026 (Tokyo 13 Nov, Hong Kong 14 Nov, Manila 20 Nov, Vietnam 21 Nov, 27–28 Nov) and playoffs 11–12 Dec. Results-only. No live path.",
-  connector: { type: "none" },
+    " Pool nights 13–28 Nov 2026 (Tokyo 13 Nov, Hong Kong 14 Nov, Manila 20 Nov, Vietnam 21 Nov, 27–28 Nov) and playoffs 11–12 Dec. Live scores from the public team-league ticker. Later stops arrive on the same season feed. Recap: https://mlp-asia.com/meet-the-six-teams-draft-sign-up-and-showdown-schedule-revealed/",
+  connector: { type: "url", scorePath: "/api/mlp-asia" },
 };
 
 /**
  * Upcoming PPA stops that are not the live Worlds pin. UUIDs were on the
  * 19 Oct 2026 ppatour.com/schedule payload and the scores API echoed the same
- * tournamentId. Ottawa, Nanjing, College, Lille, and Daytona returned 0 match
- * rows — not a live score path. The 2025 Opendoor finals UUID f02fa839 is
+ * tournamentId. Ottawa, Nanjing, College, and Daytona returned 0 match
+ * rows — not a live score path. Lille is scored on pickleballtournaments.com
+ * via /api/ppa-eu, not on /api/ppa. The 2025 Opendoor finals UUID f02fa839 is
  * blocked. None of these is /api/ppa. Do not invent a clock.
  */
 function ppaCalendarSeed(row) {
@@ -619,16 +620,23 @@ export const PPA_COLLEGE_WORLDS = ppaCalendarSeed({
 export const PPA_LILLE = ppaCalendarSeed({
   id: "slate:ppa-lille-p125-2026",
   name: "PPA Tour Europe · P125 Lille",
-  venue: "Lille, Villeneuve d'Ascq, France",
+  venue: "JOCO Pickleball, Villeneuve d'Ascq",
   timezone: "Europe/Paris",
   tour: "ppa-eu",
   tier: "P125",
-  start: "2026-11-12",
+  start: "2026-11-13",
   end: "2026-11-15",
+  status: "live-path",
+  onLive: true,
   ppaEventId: "04a30133-11cc-4280-97f7-3027404c05b3",
-  officialUrl: "https://www.ppatour.com/schedule/",
+  officialUrl: "https://pickleballtournaments.com/tournaments/ppa-tour-europe-p125-lille",
   note:
-    "Schedule name PPA TOUR EUROPE - P125 LILLE. Scores API tournamentId 04a30133-11cc-4280-97f7-3027404c05b3 echoed on 19 Oct 2026 with 0 match rows. Not Barcelona. Not the live pin. Do not cut /api/ppa here.",
+    "PPA Tour Europe P125 Lille at JOCO Pickleball, Villeneuve d'Ascq, 13–15 Nov 2026. Scores come from the Pickleball Tournaments ticker at /api/ppa-eu. The US ppatour.com scores API still has 0 rows for this module. Not Barcelona. Do not cut /api/ppa here.",
+  connector: {
+    type: "url",
+    scorePath: "/api/ppa-eu",
+    ppaEventId: "04a30133-11cc-4280-97f7-3027404c05b3",
+  },
 });
 
 export const PPA_DAYTONA = ppaCalendarSeed({
@@ -947,7 +955,16 @@ export function matchesSlateName(rowName, seedName) {
   return false;
 }
 
+function watchScorePath(seed) {
+  const c = seed?.connector;
+  if (!c || c.type === "none") return null;
+  const path = String(c.scorePath || c.scoreUrl || "").trim();
+  return path || null;
+}
+
 function watchFromSeed(seed, extra = {}) {
+  const scorePath = watchScorePath(seed);
+  const live = seed.onLive === true && seed.status === "live-path" && Boolean(scorePath);
   return {
     tour: seed.tour,
     name: seed.name,
@@ -957,20 +974,20 @@ function watchFromSeed(seed, extra = {}) {
     tz: seed.timezone,
     source: "slate-seed",
     denId: seed.denTournamentId || null,
-    ppaEventId: seed.ppaEventId || null,
+    ppaEventId: seed.ppaEventId || seed.connector?.ppaEventId || null,
     sportsSyncTournamentId: seed.sportsSyncTournamentId || null,
     officialUrl: seed.officialUrl || "",
-    scorePath: null,
-    onLive: false,
+    scorePath,
+    onLive: live,
     nextPin: seed.nextPin === true,
     intake: {
       name: true,
       venue: Boolean(seed.venue),
       timezone: Boolean(seed.timezone),
-      scorePath: false,
-      status: "fail",
+      scorePath: Boolean(scorePath),
+      status: scorePath ? "pass" : "fail",
     },
-    board: "results_only",
+    board: live ? "on_board" : "results_only",
     note: seed.note,
     ...extra,
   };

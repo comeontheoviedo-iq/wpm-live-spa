@@ -37,6 +37,7 @@ import {
   BARCELONA,
   SLATE,
   MLP_ASIA_NOTE,
+  MLP_ASIA_SEASON,
   FILTER_COPY,
   applyAppCalendarCut,
   appArmedRow,
@@ -174,7 +175,7 @@ assert.equal(SLATE.some((s) => s.id === GIJON.id), true);
 assert.equal(SLATE.some((s) => s.id === BARCELONA.id), true);
 assert.ok(SLATE.length > 2);
 const during = SLATE.map((s) => asCalendarRow(s, "2026-09-18"));
-const quiet = during.filter((r) => r.id !== FARNHAM.id);
+const quiet = during.filter((r) => r.id !== FARNHAM.id && r.id !== PPA_LILLE.id && r.id !== MLP_ASIA_SEASON.id);
 assert.ok(quiet.every((r) => r.onLive === false));
 assert.ok(quiet.every((r) => r.status !== "live-path"));
 const louRow = during.find((r) => r.id === "slate:app-louisville-2026");
@@ -215,8 +216,15 @@ assert.notEqual(mlp.tour, "app");
 assert.match(mlp.note, /≠ APP/);
 assert.match(mlp.note, /never chip MLP Asia as APP/);
 assert.match(MLP_ASIA_NOTE, /never chip MLP Asia as APP/);
-assert.equal(mlp.onLive, false);
-assert.equal(mlp.board, "results_only");
+assert.equal(mlp.onLive, true);
+assert.equal(mlp.board, "on_board");
+assert.equal(mlp.scorePath, "/api/mlp-asia");
+assert.equal(MLP_ASIA_SEASON.status, "live-path");
+assert.equal(MLP_ASIA_SEASON.onLive, true);
+assert.equal(MLP_ASIA_SEASON.connector.type, "url");
+assert.equal(MLP_ASIA_SEASON.connector.scorePath, "/api/mlp-asia");
+assert.equal(MLP_ASIA_SEASON.officialUrl, "https://pickleballteamleagues.com/team-leagues/major-league-pickleball-asia");
+assert.match(MLP_ASIA_SEASON.note, /mlp-asia\.com\/meet-the-six-teams/);
 assert.equal(watch.some((e) => /louisville/i.test(e.name)), false);
 const lou = SLATE.find((e) => /louisville/i.test(e.name));
 assert.ok(lou);
@@ -252,8 +260,20 @@ assert.deepEqual(
     "12a61e43-1dc7-4d48-a926-10d3aa1a66cb",
   ]
 );
-assert.ok(PPA_UPCOMING.every((s) => s.onLive === false && s.status === "results-only"));
-assert.ok(PPA_UPCOMING.every((s) => s.connector.scorePath == null));
+const unwiredPpa = PPA_UPCOMING.filter((s) => s.id !== PPA_LILLE.id);
+assert.ok(unwiredPpa.every((s) => s.onLive === false && s.status === "results-only"));
+assert.ok(unwiredPpa.every((s) => s.connector.scorePath == null));
+assert.equal(PPA_LILLE.status, "live-path");
+assert.equal(PPA_LILLE.onLive, true);
+assert.equal(PPA_LILLE.start, "2026-11-13");
+assert.equal(PPA_LILLE.end, "2026-11-15");
+assert.equal(PPA_LILLE.venue, "JOCO Pickleball, Villeneuve d'Ascq");
+assert.equal(PPA_LILLE.timezone, "Europe/Paris");
+assert.equal(PPA_LILLE.officialUrl, "https://pickleballtournaments.com/tournaments/ppa-tour-europe-p125-lille");
+assert.equal(PPA_LILLE.connector.type, "url");
+assert.equal(PPA_LILLE.connector.scorePath, "/api/ppa-eu");
+assert.equal(PPA_LILLE.connector.ppaEventId, "04a30133-11cc-4280-97f7-3027404c05b3");
+assert.equal(PPA_LILLE.connector.scorePath === "/api/ppa", false);
 assert.equal(PPA_OPENDOOR_WORLDS.eventId, WORLDS);
 assert.equal(watch.some((e) => /opendoor/i.test(e.name)), false);
 assert.equal(PPA_NANJING.tour, "asia");

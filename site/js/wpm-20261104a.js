@@ -463,8 +463,8 @@ function effectiveStatus(m){
   if (m.status === "LIVE") return "LIVE";
   if ((m.lines || []).some(l => l.live)) return "LIVE";
   // Soft window only for tours that supply an explicit end (desk/WC windows).
-  // PPA, APP, and RTA: API status is authority — never clock-promote NEXT→LIVE.
-  if (m.tour !== "ppa" && m.tour !== "app" && m.tour !== "app-asia" && m.tour !== "rta") {
+  // PPA, PPA Europe, MLP Asia, APP, and RTA: API status is authority — never clock-promote NEXT→LIVE.
+  if (m.tour !== "ppa" && m.tour !== "ppa-eu" && m.tour !== "mlp-asia" && m.tour !== "app" && m.tour !== "app-asia" && m.tour !== "rta") {
     const now = Date.now();
     const start = parseUtc(m.start);
     const end = parseUtc(m.end);
@@ -3328,6 +3328,8 @@ async function pull(){
   await overlay("/api/app", "app");
   await overlay("/api/sportssync", "app-asia");
   await overlay("/api/rta", "rta");
+  await overlay("/api/ppa-eu", "ppa-eu");
+  await overlay("/api/mlp-asia", "mlp-asia");
   state.heroByDate = state.heroByDate || {};
   const liveN = (state.matches||[]).filter(m => effectiveStatus(m)==="LIVE").length;
   const appQuiet = state.appBoard && state.appBoard.preServe && !liveN;
@@ -3563,7 +3565,7 @@ function fmDate(m){
   // PPA board day is already the event zone (America/Chicago). Do not rebucket
   // it into the viewer's zone — a London evening was landing Chicago results
   // on the wrong chip, so day-1 finals disappeared from the board.
-  if (m && m.tour === "ppa" && m.date && String(m.date).indexOf("9999") !== 0) return String(m.date).slice(0, 10);
+  if (m && (m.tour === "ppa" || m.tour === "ppa-eu" || m.tour === "mlp-asia") && m.date && String(m.date).indexOf("9999") !== 0) return String(m.date).slice(0, 10);
   if (m.start && (m.hasClock === true || m.tour === "wc")) { const d = parseUtc(m.start); if (d && !isNaN(d)) return fmLocalYmd(d); }
   return m.date || "";
 }

@@ -619,10 +619,10 @@ export async function buildRadarReport(opts = {}) {
   if (barcelona.event) events.push(barcelona.event);
   if (sportssync.event) events.push(sportssync.event);
   for (const w of staticWatchEvents()) {
-    if (w.tour === "tpb" || w.tour === "ppa-eu") continue;
+    if (w.tour === "tpb" || w.ended) continue;
     if (events.some((e) => matchesSlateName(e.name, w.name))) continue;
     const probed = (upcomingPpa || []).find((p) => p.ppaEventId && p.ppaEventId === w.ppaEventId);
-    if (probed) {
+    if (probed && !w.scorePath) {
       events.push({
         ...w,
         scoreMatches: probed.scoreMatches,
@@ -631,6 +631,13 @@ export async function buildRadarReport(opts = {}) {
         board: "results_only",
         scorePath: null,
         onLive: false,
+      });
+    } else if (probed) {
+      events.push({
+        ...w,
+        scoreMatches: probed.scoreMatches,
+        scoresOk: probed.scoresOk,
+        note: `${w.note} US ppatour.com scores probe: ${probed.scoreMatches} rows. Score path ${w.scorePath}.`,
       });
     } else {
       events.push(w);
@@ -706,7 +713,7 @@ export async function buildRadarReport(opts = {}) {
         "Barcelona 1655a7c9 ended 27 Sep 2026 with no scores — unparked; do not cut /api/ppa there",
         "Do not wire the April Las Vegas UUID 92d37566-…",
         "Date TBA (9999-12-31) is not LIVE and is not a clock. Ticker rows are stamped with the pin only when the ticker title contains the pin name",
-        "Ottawa, Nanjing, College Worlds, Lille, and Daytona have verified UUIDs and 0 score rows. Results-only. Opendoor schedule UUID f02fa839 is 2025 finals — blocked, do not wire it. The 2026 Worlds id is ad262b1f",
+        "Ottawa, Nanjing, College Worlds, and Daytona have verified UUIDs and 0 score rows on ppatour.com. Results-only. Lille is /api/ppa-eu (Pickleball Tournaments), not /api/ppa. Opendoor schedule UUID f02fa839 is 2025 finals — blocked, do not wire it. The 2026 Worlds id is ad262b1f",
         "Watch Gijón for Den/Tournated — until then scores delayed + draw PDF only",
         "APP Columbus Den 18448 ended 4 Oct. Archive columbus, current false. Overland 18453 ended — disarmed, not onLive.",
         "Chongqing has no Den id and no SportsSync id (hunt 2026-10-02: organizer 1645900 still 89/222; sitemap titles 91–471 have no Chongqing; 390/391 are unresolved Taipei/Bangkok links). Do not invent an id. Do not fake LIVE.",

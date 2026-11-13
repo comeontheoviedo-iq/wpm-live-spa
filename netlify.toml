@@ -25,6 +25,7 @@
     "netlify/functions/ppa-keep.mjs",
     "netlify/functions/sportssync-map.mjs",
     "netlify/functions/rta-map.mjs",
+    "netlify/functions/pb-ticker.mjs",
     "netlify/functions/official-schedule.mjs"
   ]
 
@@ -41,6 +42,12 @@
   timeout = 26
 
 [functions.rta]
+  timeout = 26
+
+[functions.ppa-eu]
+  timeout = 26
+
+[functions.mlp-asia]
   timeout = 26
 
 [functions.scores]
@@ -76,6 +83,16 @@
 [[redirects]]
   from = "/api/rta"
   to = "/.netlify/functions/rta"
+  status = 200
+
+[[redirects]]
+  from = "/api/ppa-eu"
+  to = "/.netlify/functions/ppa-eu"
+  status = 200
+
+[[redirects]]
+  from = "/api/mlp-asia"
+  to = "/.netlify/functions/mlp-asia"
   status = 200
 
 [[redirects]]

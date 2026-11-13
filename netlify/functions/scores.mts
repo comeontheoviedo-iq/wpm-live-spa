@@ -8,6 +8,8 @@ import ppa from "./ppa.mts";
 import app from "./app.mts";
 import sportssync from "./sportssync.mts";
 import rta from "./rta.mts";
+import ppaEu from "./ppa-eu.mts";
+import mlpAsia from "./mlp-asia.mts";
 
 /**
  * GET used to return the desk blob unchanged. That blob is written only by
@@ -16,7 +18,10 @@ import rta from "./rta.mts";
  * feeds kept moving.
  *
  * GET applies the same overlay the public SPA already does in pull(), by
- * calling the worldcup, ppa, app, sportssync and rta handlers in-process.
+ * calling the worldcup, ppa, app, sportssync, rta, ppa-eu and mlp-asia
+ * handlers in-process. ppa-eu and mlp-asia are extra tours. They do not
+ * replace /api/ppa. A feed that throws or returns no rows leaves the
+ * desk copy of that tour in place.
  * An HTTP request from this handler back to its own host fails inside the
  * Cloudflare Worker that serves the custom domain, which left `updated` on
  * the 4 Sep seed. The internal Request carries no query string, matching a
@@ -29,6 +34,8 @@ const FEEDS = [
   { key: "app", path: "/api/app", handler: app },
   { key: "sportssync", path: "/api/sportssync", handler: sportssync },
   { key: "rta", path: "/api/rta", handler: rta },
+  { key: "ppa-eu", path: "/api/ppa-eu", handler: ppaEu },
+  { key: "mlp-asia", path: "/api/mlp-asia", handler: mlpAsia },
 ];
 
 export default async (req: Request, _context: Context) => {

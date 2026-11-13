@@ -36,10 +36,10 @@ Optional later: MLP, PPA Asia, club opens — **results_only** until intake pass
 | **PPA Asia 125 Skechers Nanjing Challenger 2026** | 28–31 Oct · Asia/Shanghai | **results-only** · UUID `49004a6d-fb3b-4a64-81a5-6468df8ec39d` · 0 rows | Not the live pin. Not APP Asia |
 | **College World Championship** | 30 Oct–1 Nov · America/Chicago | **results-only** · UUID `95602192-b649-420f-a8ff-0887fddfe1e7` · 0 rows | Brookhaven Country Club. Not the Opendoor UUID |
 | **2026 Opendoor Pickleball World Championships** | 2–8 Nov · America/Chicago | **on board** · UUID `ad262b1f-ea62-4dcc-af59-69732a97107c` | Brookhaven Country Club, Farmers Branch, TX. Ticker title must contain this full name. `8:00 AM CST` stored as `08:00Z` is 14:00 UTC. Date TBA is not LIVE. Do not wire 2025 finals `f02fa839-…` |
-| **PPA Tour Europe · P125 Lille** | 12–15 Nov · Europe/Paris | **results-only** · UUID `04a30133-11cc-4280-97f7-3027404c05b3` · 0 rows | Not Barcelona. Not the live pin |
+| **PPA Tour Europe · P125 Lille** | 13–15 Nov · Europe/Paris | **on board** · `/api/ppa-eu` · UUID `04a30133-11cc-4280-97f7-3027404c05b3` | JOCO Pickleball, Villeneuve d'Ascq. US scores API has 0 rows. Do not cut `/api/ppa` |
 | **Proton Daytona Beach Open** | 16–22 Nov · America/New_York | **results-only** · UUID `12a61e43-1dc7-4d48-a926-10d3aa1a66cb` · 0 rows | Not the live pin |
 | **APP Asia Bangkok Open** | 2–7 Nov · Asia/Bangkok | **results-only** · SportsSync 391 does not resolve | Official page dates. GPA had 26 Oct. Not Chongqing. Not MLP |
-| **MLP Asia 2026** | 13 Nov–12 Dec · Asia/Tokyo opener | **results-only** · tour `mlp-asia` | Not APP. Pool nights then playoffs 11–12 Dec |
+| **MLP Asia 2026** | 13 Nov–12 Dec · Asia/Tokyo opener | **on board** · `/api/mlp-asia` · tour `mlp-asia` | Not APP. Season ticker includes later stops. Recap stays on mlp-asia.com |
 
 See [`slate-europe.md`](./slate-europe.md). Seeded in `netlify/functions/slate-events.mjs`.
 
@@ -76,10 +76,10 @@ Desk tick boxes before shipping a tour chip:
    - **Louisville** Den **18454** ended 18 Oct. Archive `louisville`, `current: false`. `/api/app` is between events (reader “Event ended”, no LIVE rows). Arizona Open has no Den id. Do not fake LIVE. `?tournamentId=18454` still smokes the draw.
    - **Hong Kong Slam** `c7e4fd72-…` ended 25 Oct. Archive `hong-kong`, `current: false`. Do not cut `/api/ppa` back there.
    - **Virginia Beach** `429c7980-…` ended 18 Oct. Archive `virginia-beach`, `current: false`. Do not cut `/api/ppa` back there. Date TBA rows are not LIVE and do not get an invented clock.
-   - Ottawa, Nanjing, College Worlds, Lille, and Daytona have verified scores-API UUIDs and 0 rows. Results-only. Opendoor schedule UUID `f02fa839-…` is 2025 finals and is blocked. The 2026 Worlds id is `ad262b1f-…`.
+   - Ottawa, Nanjing, College Worlds, and Daytona have verified scores-API UUIDs and 0 rows. Results-only. Lille is `/api/ppa-eu`, not `/api/ppa`. Opendoor schedule UUID `f02fa839-…` is 2025 finals and is blocked. The 2026 Worlds id is `ad262b1f-…`.
    - New APP on GPA without Den id → find `tournamentId` on Den Live → fill intake → ship `/api/app` id. Do not invent one.
 4. **P1** (`missing`, or a new SportsSync id on organizer 1645900): connector/feed down, or a new `/tournament/{id}` to name-check. Do not invent lines and do not assume the new id is Chongqing.
-5. Quiet **results_only**: Gijón (scores delayed + draw PDF), Barcelona ended (no scores, do not cut), Chongqing until a real SportsSync id, MLP Asia label guard. Watch; do not invent LIVE.
+5. Quiet **results_only**: Gijón (scores delayed + draw PDF), Barcelona ended (no scores, do not cut), Chongqing until a real SportsSync id. MLP Asia is `/api/mlp-asia` and is not APP. Watch; do not invent LIVE.
 6. Append a one-liner to `docs/radar-log.md` when something changed; skip if no P0/P1.
 7. Do **not** open shop; do **not** regress APP / Web Push. **MLP Asia ≠ APP.**
 
