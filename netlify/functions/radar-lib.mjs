@@ -76,6 +76,7 @@ export const WIRED = {
 
 /** Live Louisville first. Columbus 18448 and Overland 18453 stay known so radar can see them; both are ended. */
 export const KNOWN_APP_DEN_IDS = [
+  "18443",
   APP_LOUISVILLE.eventId,
   APP_COLUMBUS.eventId,
   ENDED_APP.overland.denTournamentId,
@@ -225,7 +226,7 @@ async function probeGpa(today) {
         note =
           "Ended 18 Oct 2026. Den " +
           LOUISVILLE.denTournamentId +
-          " is archive-only. Next US APP is Arizona Open, no Den id. Between events. Do not fake LIVE.";
+          " is archive-only. Next US APP is Arizona Open, Den 18443.";
       } else if (/arizona open/i.test(name)) {
         board = "results_only";
         tz = ARIZONA_APP.timezone;

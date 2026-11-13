@@ -127,7 +127,7 @@ export const APP_COLUMBUS = {
 /**
  * Humana APP Louisville Open. Den 18454, 15–18 Oct 2026. Ended 18 Oct.
  * Archive id louisville, current false. The next US APP stop is Arizona
- * (no Den id). /api/app does not paint this week as LIVE after the end date.
+ * (Den 18443). /api/app does not paint this week as LIVE after the end date.
  * ?tournamentId=18454 still smokes the draw. Pending is not a 0–0.
  */
 export const APP_LOUISVILLE = {
@@ -143,22 +143,40 @@ export const APP_LOUISVILLE = {
 };
 
 /**
+ * APP Arizona Open. Den Live 18443 (found 13 Nov 2026 via Den Live
+ * /api/nearby-tournaments at the venue: name, venue and 12 Nov start match
+ * the official APP page). Official dates 12–15 Nov 2026, Arizona Athletic
+ * Grounds, Mesa. Den lists endDate 16 Nov; the pin keeps the official end.
+ */
+export const APP_ARIZONA = {
+  eventId: "18443",
+  name: "APP Arizona Open",
+  shortName: "APP Arizona Open",
+  venue: "Arizona Athletic Grounds, Mesa, AZ",
+  tz: "America/Phoenix",
+  start: "2026-11-12",
+  end: "2026-11-15",
+  scorePath: "/api/app",
+  /** eventId("APP Arizona Open", "2026-11-12") — gpa:app arizona open / 2026-11-12 */
+  calendarId: "gpa:app%20arizona%20open:2026-11-12",
+};
+
+/**
  * Chronological Den pins. selectAppLive picks the latest one whose start
  * date has arrived in that pin's venue timezone. Add the next stop here
  * (and point APP_NEXT at it) so the board moves on the start date.
  */
-export const APP_PINS = [APP_COLUMBUS, APP_LOUISVILLE];
+export const APP_PINS = [APP_COLUMBUS, APP_LOUISVILLE, APP_ARIZONA];
 
 /**
- * No week after Louisville has a Den id. Same object as the coded pin.
- * After the end date the board is between events (Arizona has no Den id).
- * A later distinct APP_NEXT is appended by selectAppLive and flips on its
- * venue-local start date. Do not invent a Den id.
+ * Arizona is the current and latest Den pin. A later distinct APP_NEXT is
+ * appended by selectAppLive and flips on its venue-local start date.
+ * Do not invent a Den id.
  */
-export const APP_NEXT = APP_LOUISVILLE;
+export const APP_NEXT = APP_ARIZONA;
 
 /** Coded pin. After its end date, /api/app is between events, not a LIVE board. */
-export const APP_LIVE = APP_LOUISVILLE;
+export const APP_LIVE = APP_ARIZONA;
 
 /** True once the pin's venue-local end date is in the past. Not a score. */
 export function appPinWindowEnded(pin, now = new Date()) {
@@ -197,7 +215,7 @@ export function ymdInVenueTz(tz, now = new Date()) {
 export function selectAppLive(now = new Date(), pins = APP_PINS) {
   const list = [...(pins || [])].filter((p) => p && p.eventId && p.start);
   if (APP_NEXT && !list.some((p) => String(p.eventId) === String(APP_NEXT.eventId))) list.push(APP_NEXT);
-  if (!list.length) return APP_LOUISVILLE;
+  if (!list.length) return APP_ARIZONA;
   let chosen = null;
   for (const pin of list) {
     const today = ymdInVenueTz(pin.tz, now);
@@ -433,28 +451,28 @@ export const LOUISVILLE = {
   denTournamentId: APP_LOUISVILLE.eventId,
   officialUrl: "https://theapp.global/tour-schedule/2026-app-louisville",
   note:
-    "Ended 18 Oct 2026. Den 18454 is archive louisville, current false. All pro brackets Completed or Pending — not RUNNING. /api/app with no params is between events (reader Event ended, no LIVE rows). ?tournamentId=18454 still smokes the draw. Next US APP is APP Arizona Open, no Den id. Do not fake LIVE.",
+    "Ended 18 Oct 2026. Den 18454 is archive louisville, current false. All pro brackets Completed or Pending — not RUNNING. /api/app with no params is between events (reader Event ended, no LIVE rows). ?tournamentId=18454 still smokes the draw. Next US APP is APP Arizona Open, Den 18443. Do not fake LIVE.",
   connector: { type: "none" },
 };
 
-/** Next APP Pro after Louisville. No published Den scoring id. */
+/** APP Arizona Open, Den 18443. Live path while the pin window is open. */
 export const ARIZONA_APP = {
   id: "slate:app-arizona-2026",
-  name: "APP Arizona Open",
-  venue: "Arizona Athletic Grounds, Mesa, AZ",
-  timezone: "America/Phoenix",
+  name: APP_ARIZONA.name,
+  venue: APP_ARIZONA.venue,
+  timezone: APP_ARIZONA.tz,
   tour: "app",
   host: "APP",
   tier: "",
-  start: "2026-11-12",
-  end: "2026-11-15",
-  status: "results-only",
-  onLive: false,
-  denTournamentId: null,
+  start: APP_ARIZONA.start,
+  end: APP_ARIZONA.end,
+  status: "live-path",
+  onLive: true,
+  denTournamentId: APP_ARIZONA.eventId,
   officialUrl: "https://theapp.global/tour-schedule/2026-app-arizona",
   note:
-    "APP Arizona Open at Arizona Athletic Grounds, Mesa (official page 12–15 Nov 2026). No Den Live tournamentId published. Results-only. Do not invent a Den id. Do not mark LIVE. Not the PPA Arizona event.",
-  connector: { type: "none" },
+    "APP Arizona Open at Arizona Athletic Grounds, Mesa (official page 12–15 Nov 2026). Den Live 18443 via /api/app. LIVE only from Den RUNNING matches. Not the PPA Arizona event.",
+  connector: { type: "app", denTournamentId: APP_ARIZONA.eventId, scorePath: "/api/app" },
 };
 
 /** APP Asia. No Den id and no SportsSync id after the 2026-10-02 hunt. */

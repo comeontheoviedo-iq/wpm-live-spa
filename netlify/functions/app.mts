@@ -6,6 +6,7 @@ import {
   APP_COLUMBUS,
   APP_LIVE,
   APP_LOUISVILLE,
+  APP_ARIZONA,
   APP_NEXT,
   ENDED_APP,
   applyAppCalendarCut,
@@ -31,6 +32,11 @@ const PROFILES: Record<
   string,
   { name: string; venue: string; tz: string }
 > = {
+  [APP_ARIZONA.eventId]: {
+    name: APP_ARIZONA.name,
+    venue: APP_ARIZONA.venue,
+    tz: APP_ARIZONA.tz,
+  },
   [APP_LOUISVILLE.eventId]: {
     name: APP_LOUISVILLE.name,
     venue: APP_LOUISVILLE.venue,
@@ -196,7 +202,7 @@ async function readCalendarArmed(): Promise<ActiveEvent | null> {
 }
 
 function withKnownDates(ev: ActiveEvent): ActiveEvent {
-  const pin = [APP_LIVE, APP_LOUISVILLE, APP_COLUMBUS, APP_NEXT].find((p) => String(p.eventId) === String(ev.id));
+  const pin = [APP_LIVE, APP_ARIZONA, APP_LOUISVILLE, APP_COLUMBUS, APP_NEXT].find((p) => String(p.eventId) === String(ev.id));
   if (!pin) return ev;
   return { ...ev, startDate: ev.startDate || pin.start, endDate: ev.endDate || pin.end };
 }

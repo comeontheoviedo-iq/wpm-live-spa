@@ -123,8 +123,8 @@ assert.ok(cal.includes("Calendar/results-only only") || fs.readFileSync("netlify
 assert.ok(cal.includes(".map(toReaderEvent)"));
 assert.ok(cal.includes("readerStatusLine({ status: \"ended\", ended: true })"));
 
-const liveColumbus = toReaderEvent(columbusArmedRow());
-assert.equal(liveColumbus.id, APP_LIVE.calendarId);
+const liveColumbus = toReaderEvent(columbusArmedRow(new Date("2026-10-25T16:00:00Z")));
+assert.equal(liveColumbus.id, "gpa:humana%20app%20louisville%20open:2026-10-15");
 assert.equal(liveColumbus.onLive, false);
 assert.equal(liveColumbus.status, "ended");
 assert.equal(liveColumbus.note, "Event ended");
@@ -137,6 +137,12 @@ assert.equal(duringLou.onLive, true);
 assert.equal(duringLou.status, "live-path");
 assert.equal(duringLou.note, "");
 assert.equal(duringLou.connector.denTournamentId, "18454");
+const duringAz = toReaderEvent(columbusArmedRow(new Date("2026-11-13T18:00:00Z")));
+assert.equal(duringAz.id, APP_LIVE.calendarId);
+assert.equal(duringAz.onLive, true);
+assert.equal(duringAz.status, "live-path");
+assert.equal(duringAz.connector.denTournamentId, "18443");
+assert.equal(duringAz.venue, "Arizona Athletic Grounds, Mesa, AZ");
 
 const chongqing = toReaderEvent({
   name: "APP Asia Chongqing Open",
