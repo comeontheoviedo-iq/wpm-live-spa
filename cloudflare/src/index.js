@@ -9,6 +9,8 @@ import magazine_default from "../api/magazine.mts";
 import history_default from "../api/history.mts";
 import radar_default from "../api/radar.mts";
 import rta_default from "../api/rta.mts";
+import ppa_eu_default from "../api/ppa-eu.mts";
+import mlp_asia_default from "../api/mlp-asia.mts";
 import push_subscribe_default from "../api/push-subscribe.mts";
 import sportssync_default from "../api/sportssync.mts";
 import dossier_default from "../api/dossier.mts";
@@ -28,6 +30,8 @@ var ROUTES = {
   "/api/history": history_default,
   "/api/radar": radar_default,
   "/api/rta": rta_default,
+  "/api/ppa-eu": ppa_eu_default,
+  "/api/mlp-asia": mlp_asia_default,
   "/api/push-subscribe": push_subscribe_default,
   "/api/sportssync": sportssync_default,
   "/api/dossier": dossier_default

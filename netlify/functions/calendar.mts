@@ -406,6 +406,11 @@ function mergeCalendar(gpaRows: any[], armed: ArmedEvent[]) {
       if (seedHit.status === "delayed") status = "delayed";
       else if (status !== "live-path") status = seedHit.status;
       if (seedHit.onLive === false) onLive = false;
+      if (seedHit.onLive === true && seedHit.status === "live-path" && seedHit.connector) {
+        onLive = true;
+        status = "live-path";
+        connector = seedHit.connector;
+      }
     }
     return {
       id,

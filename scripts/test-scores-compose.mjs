@@ -40,6 +40,34 @@ assert.deepEqual(ids, ["manual", "ppa-new", "rta-new", "wc-new"]);
 assert.equal(out.matches.some((m) => m.tour === "app"), false);
 assert.equal(out.matches.some((m) => m.tour === "app-asia"), false);
 
+const withEurope = composeScores(
+  out,
+  {
+    "ppa-eu": {
+      updated: "2026-10-25T13:00:05Z",
+      matches: [{ id: "ppa-eu-1", tour: "ppa-eu", a: "Enmer", b: "Kanichova", status: "LIVE" }],
+    },
+    "mlp-asia": {
+      updated: "2026-10-25T13:00:06Z",
+      matches: [{ id: "mlp-asia-1", tour: "mlp-asia", a: "THE DOTS TOKYO", b: "Manila Helios", status: "FT", score: "4-0" }],
+    },
+  },
+  now
+);
+assert.equal(withEurope.matches.some((m) => m.id === "ppa-new" && m.tour === "ppa"), true);
+assert.equal(withEurope.matches.some((m) => m.id === "ppa-eu-1"), true);
+assert.equal(withEurope.matches.some((m) => m.id === "mlp-asia-1"), true);
+assert.equal(withEurope.matches.filter((m) => m.tour === "ppa").length, 1);
+
+const europeDown = composeScores(
+  withEurope,
+  { "ppa-eu": null, "mlp-asia": { matches: [] } },
+  now
+);
+assert.equal(europeDown.matches.some((m) => m.id === "ppa-eu-1"), true);
+assert.equal(europeDown.matches.some((m) => m.id === "mlp-asia-1"), true);
+assert.equal(europeDown.matches.some((m) => m.id === "ppa-new"), true);
+
 const kept = composeScores(seed, { wc: null, ppa: { matches: [] }, app: null, sportssync: null, rta: null }, now);
 assert.equal(kept.updated, seed.updated);
 assert.equal(kept.matches.length, seed.matches.length);

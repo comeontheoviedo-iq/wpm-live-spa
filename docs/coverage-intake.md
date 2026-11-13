@@ -33,7 +33,11 @@ MLP, PPA Asia, club opens as **live** boards. GPA calendar / history may show th
 
 **APP Asia Chongqing Open** has **no Den id** and **no SportsSync id** (2026-10-02 hunt: organizer `1645900` still KL 89 and Penang 222; sitemap titles 91–471 have no Chongqing). Calendar/results-only. `/api/sportssync` can attach a real numeric id later and still stays **FT / results-only** — do not fake LIVE or 0–0. See [`sportssync-asia.md`](./sportssync-asia.md).
 
-**Next on the slate (not live pins):** Ottawa 125, Nanjing Challenger, College World Championship, Lille P125, and Proton Daytona Beach Open have scores-API UUIDs that returned 0 rows on 19 Oct 2026. They stay results-only. The 2025 Opendoor finals UUID `f02fa839-…` is blocked. APP Arizona Open has no Den id. APP Asia Bangkok / Taipei / India / HCMC results-only, MLP Asia 2026 labeled **MLP Asia**.
+**Next on the slate (not live pins):** Ottawa 125, Nanjing Challenger, College World Championship, and Proton Daytona Beach Open have scores-API UUIDs that returned 0 rows on 19 Oct 2026. They stay results-only. The 2025 Opendoor finals UUID `f02fa839-…` is blocked. APP Arizona Open has no Den id. APP Asia Taipei / India / HCMC results-only.
+
+**PPA Tour Europe · P125 Lille** (13–15 Nov 2026, JOCO Pickleball, Villeneuve d'Ascq) is `/api/ppa-eu`. The US scores API has 0 rows for `04a30133-11cc-4280-97f7-3027404c05b3`. Do not cut `/api/ppa` there.
+
+**MLP Asia 2026** is `/api/mlp-asia` (team-league ticker, tour `mlp-asia`, not APP). The season feed picks up later stops. Recap stays on mlp-asia.com.
 
 ## Desk calendar
 

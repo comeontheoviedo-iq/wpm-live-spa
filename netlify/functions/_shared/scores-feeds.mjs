@@ -2,7 +2,8 @@
  * In-process tour overlays for GET /api/scores.
  *
  * A Cloudflare Worker cannot fetch its own custom domain. Calling
- * /api/ppa, /api/app, /api/worldcup, /api/rta or /api/sportssync over
+ * /api/ppa, /api/app, /api/worldcup, /api/rta, /api/sportssync,
+ * /api/ppa-eu or /api/mlp-asia over
  * HTTP from this host therefore fails and the desk seed is left in
  * place. Invoke the feed handlers directly instead.
  *
