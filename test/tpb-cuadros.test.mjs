@@ -204,7 +204,7 @@ test("worker route and the client overlay include /api/tpb", () => {
   assert.match(worker, /"\/api\/tpb":/);
   const client = fs.readFileSync(new URL("../site/js/wpm-20261104a.js", import.meta.url), "utf8");
   const legacy = fs.readFileSync(new URL("../js/wpm-20261102a.js", import.meta.url), "utf8");
-  assert.match(client, /overlay\("\/api\/tpb", "tpb"\)/);
+  assert.match(client, /\["\/api\/tpb", "tpb"\]/);
   assert.match(legacy, /overlay\("\/api\/tpb", "tpb"\)/);
   const scores = fs.readFileSync(new URL("../netlify/functions/scores.mts", import.meta.url), "utf8");
   assert.match(scores, /\/api\/tpb/);

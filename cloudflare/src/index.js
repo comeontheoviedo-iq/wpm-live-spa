@@ -19,6 +19,19 @@ import push_live_check_default from "../api/push-live-check.mts";
 import wave_snap_refresh_default from "../api/wave-snap-refresh.mts";
 import desk_default from "../api/desk.mts";
 import { officialUrlCron } from "../api/calendar.mts";
+import { cachedResponse, cacheKeyFor } from "../api/_shared/edge-cache.mjs";
+// Public score feeds served through the short edge cache (see edge-cache.mjs).
+var CACHED_GET = new Set([
+  "/api/scores",
+  "/api/worldcup",
+  "/api/ppa",
+  "/api/app",
+  "/api/sportssync",
+  "/api/rta",
+  "/api/ppa-eu",
+  "/api/mlp-asia",
+  "/api/tpb"
+]);
 var ROUTES = {
   "/api/app": app_default,
   "/api/archive": archive_default,
@@ -102,7 +115,9 @@ export default {
       const handler = ROUTES[path] || (path.startsWith("/api/dossier/") ? dossier_default : void 0);
       if (handler) {
         try {
-          const res = await handler(request, ctx);
+          const res = request.method === "GET" && CACHED_GET.has(path)
+            ? await cachedResponse(cacheKeyFor(request.url), () => handler(request, ctx), { ctx })
+            : await handler(request, ctx);
           const headers = new Headers(res.headers);
           if (!headers.has("access-control-allow-origin")) {
             headers.set("access-control-allow-origin", "*");

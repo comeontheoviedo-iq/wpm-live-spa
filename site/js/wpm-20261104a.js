@@ -3267,7 +3267,25 @@ async function pullArchiveIndex(){
     if (data && Array.isArray(data.events) && data.events.length) state.archiveCatalog = data.events;
   } catch(e) {}
 }
+// Tour feeds, applied in this order. Fetched in parallel so one slow feed
+// (RTA, TPB) no longer delays the others; rows are still applied in order.
+const PULL_FEEDS = [
+  ["/api/worldcup", "wc"],
+  ["/api/ppa", "ppa"],
+  ["/api/app", "app"],
+  ["/api/sportssync", "app-asia"],
+  ["/api/rta", "rta"],
+  ["/api/ppa-eu", "ppa-eu"],
+  ["/api/mlp-asia", "mlp-asia"],
+  ["/api/tpb", "tpb"]
+];
+function fetchFeedJson(url){
+  return fetch(url+"?t="+Date.now(), {cache:"no-store"})
+    .then(res => res.ok ? res.json() : null)
+    .catch(() => null);
+}
 async function pull(){
+  const pendingFeeds = PULL_FEEDS.map(([url]) => fetchFeedJson(url));
   let file = null;
   try {
     const res = await fetch("/scores.json?t="+Date.now(), {cache:"no-store"});
@@ -3278,11 +3296,10 @@ async function pull(){
     state.heroByDate = file.heroByDate || {};
     state.updated = file.updated;
   }
-  async function overlay(url, tour){
+  async function overlay(pending, tour){
     try {
-      const res = await fetch(url+"?t="+Date.now(), {cache:"no-store"});
-      if (!res.ok) return;
-      const data = await res.json();
+      const data = await pending;
+      if (!data) return;
       if (tour === "app" && data && data.event) state.appEvent = data.event;
       if (tour === "ppa" && data && data.event) state.ppaEvent = data.event;
       if (tour === "app" && data) {
@@ -3335,14 +3352,9 @@ async function pull(){
       if (tour === "app" && data.brackets) state.appBrackets = data.brackets;
     } catch(e) {}
   }
-  await overlay("/api/worldcup", "wc");
-  await overlay("/api/ppa", "ppa");
-  await overlay("/api/app", "app");
-  await overlay("/api/sportssync", "app-asia");
-  await overlay("/api/rta", "rta");
-  await overlay("/api/ppa-eu", "ppa-eu");
-  await overlay("/api/mlp-asia", "mlp-asia");
-  await overlay("/api/tpb", "tpb");
+  for (let i = 0; i < PULL_FEEDS.length; i++) {
+    await overlay(pendingFeeds[i], PULL_FEEDS[i][1]);
+  }
   state.heroByDate = state.heroByDate || {};
   const liveN = (state.matches||[]).filter(m => effectiveStatus(m)==="LIVE").length;
   const appQuiet = state.appBoard && state.appBoard.preServe && !liveN;

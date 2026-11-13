@@ -3,6 +3,7 @@ import { requestAuthorized } from "./_shared/desk-auth.mjs";
 import { loadDeskFeed, saveDeskFeed } from "./_shared/desk-feed.mjs";
 import { composeScores } from "./_shared/scores-compose.mjs";
 import { collectFeedOverlays } from "./_shared/scores-feeds.mjs";
+import { forget } from "./_shared/edge-cache.mjs";
 import worldcup from "./worldcup.mts";
 import ppa from "./ppa.mts";
 import app from "./app.mts";
@@ -40,10 +41,18 @@ const FEEDS = [
   { key: "tpb", path: "/api/tpb", handler: tpb },
 ];
 
-export default async (req: Request, _context: Context) => {
+// A feed slower than this keeps its desk rows for this response only.
+// RTA GraphQL takes ~7 s cold; a hung TPB widget would take its full 12 s.
+const FEED_BUDGET_MS = 9000;
+
+export default async (req: Request, context?: any) => {
   if (req.method === "GET") {
     const base = await loadDeskFeed();
-    const overlays = await collectFeedOverlays(FEEDS);
+    const overlays = await collectFeedOverlays(FEEDS, {
+      cache: true,
+      budgetMs: FEED_BUDGET_MS,
+      ctx: context && typeof context.waitUntil === "function" ? context : undefined,
+    });
     const feed = composeScores(base, overlays);
     return Response.json(feed, {
       headers: { "Cache-Control": "no-store" },
@@ -82,6 +91,7 @@ export default async (req: Request, _context: Context) => {
     }
     feed.updated = new Date().toISOString();
     await saveDeskFeed(feed);
+    await forget("/api/scores");
     return Response.json({ ok: true, updated: feed.updated, match: body.id || "all" });
   }
 
