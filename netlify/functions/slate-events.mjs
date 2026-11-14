@@ -496,23 +496,7 @@ export const CHONGQING_SLATE = {
 
 /* APP Asia Bangkok Open removed 2026-11-04: official page 404, not scheduled. See api/_shared/event-guard.mjs SUPPRESSED. */
 
-export const TAIPEI = {
-  id: "slate:app-asia-taipei-2026",
-  name: "TCI APP Asia Taipei City Open",
-  venue: "Taipei City, Taiwan",
-  timezone: "Asia/Taipei",
-  tour: "app-asia",
-  host: "APP",
-  tier: "",
-  start: "2026-11-12",
-  end: "2026-11-15",
-  status: "results-only",
-  onLive: false,
-  sportsSyncTournamentId: null,
-  note:
-    "GPA window 2026-11-12–2026-11-15. SportsSync 390 is a label on theapp.asia and /tournament/390 does not resolve (2026-10-02). Not Chongqing. Not MLP. Results-only. Do not fake LIVE.",
-  connector: { type: "none" },
-};
+/* TCI APP Asia Taipei City Open (12–15 Nov 2026) removed 2026-11-14: event cancelled. See api/_shared/event-guard.mjs SUPPRESSED. */
 
 export const INDIA_APP = {
   id: "slate:app-asia-india-2026",
@@ -707,7 +691,6 @@ export const SLATE = [
   PPA_COLLEGE_WORLDS,
   ARIZONA_APP,
   PPA_LILLE,
-  TAIPEI,
   PPA_DAYTONA,
   MLP_ASIA_SEASON,
   INDIA_APP,
@@ -1091,7 +1074,6 @@ export function staticWatchEvents() {
     },
     watchFromSeed(CHONGQING_SLATE),
     watchFromSeed(ARIZONA_APP),
-    watchFromSeed(TAIPEI),
     watchFromSeed(MLP_ASIA_SEASON),
     watchFromSeed(INDIA_APP),
     watchFromSeed(HCMC),
