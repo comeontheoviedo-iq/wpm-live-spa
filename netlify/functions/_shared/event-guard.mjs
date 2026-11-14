@@ -25,6 +25,12 @@ export const SUPPRESSED = [
     reason:
       "APP Asia Bangkok Open: official page theapp.global/tour-schedule/2026-app-bangkok-open returns 404 (checked 2026-11-04); not scheduled anywhere. Removed.",
   },
+  {
+    // Specific enough not to match World Cup "Chinese Taipei" team names.
+    match: /(?:tci\s+)?app(?:\s+asia)?\s+taipei|taipei\s+city\s+open|taipei\s+open|slate:app-asia-taipei/i,
+    reason:
+      "TCI APP Asia Taipei City Open (12–15 Nov 2026) was cancelled (confirmed 2026-11-14). Removed from the LIVE calendar, featured events and Today board.",
+  },
 ];
 
 export function suppressionFor(e) {

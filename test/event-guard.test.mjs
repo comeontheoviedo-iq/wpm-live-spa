@@ -13,6 +13,27 @@ test("Bangkok is gone from slate and watches and suppressed for GPA rows", () =>
   assert.equal(applyEventGuards([ev({ id: "gpa:app%20bangkok%20open:2026-10-26", name: "APP Bangkok Open" })], {}, NOW).length, 0);
 });
 
+test("cancelled Taipei City Open is gone from slate and watches and suppressed", () => {
+  assert.equal(SLATE.some((s) => /taipei/i.test(s.name)), false);
+  assert.equal(staticWatchEvents().some((s) => /taipei/i.test(s.name)), false);
+  assert.ok(suppressionFor({ name: "TCI APP Asia Taipei City Open", id: "slate:app-asia-taipei-2026" }));
+  assert.ok(suppressionFor({ name: "APP Asia Taipei Open", id: "gpa:app%20asia%20taipei%20open:2026-11-12" }));
+  assert.equal(
+    applyEventGuards(
+      [ev({ id: "slate:app-asia-taipei-2026", name: "TCI APP Asia Taipei City Open", start: "2026-11-12", end: "2026-11-15" })],
+      {},
+      Date.parse("2026-11-14T09:00:00Z"),
+    ).length,
+    0,
+  );
+  // World Cup team names must not be swallowed by the Taipei suppression.
+  assert.equal(suppressionFor({ name: "Chinese Taipei vs Brazil Masters", id: "wc:chinese-taipei-vs-brazil" }), null);
+  assert.equal(
+    applyEventGuards([ev({ id: "wc:chinese-taipei-vs-brazil", name: "Chinese Taipei vs Brazil Masters" })], {}, NOW).length,
+    1,
+  );
+});
+
 test("404/410 hides; date mismatch hides; match ok", () => {
   assert.equal(judgeCheck(ev(), 404, "", NOW).hidden, true);
   assert.equal(judgeCheck(ev(), 410, "", NOW).hidden, true);
