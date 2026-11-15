@@ -135,3 +135,4 @@
 - A real `dateKey` wins for final and scheduled rows. Ticker `plannedStart` fills the day only when `dateKey` is missing or Date TBA. Scores are not invented. No 0-0 for unplayed.
 - Client `site/js/wpm-20261104a.js` (same bytes as `js/wpm-20261102a.js`). `site/sw.js` cache name `wpm-static-20261104a`. Not deployed. Redeploy Cloudflare Worker `wpm-live-spa-static` from this commit (it bundles `netlify/functions/ppa.mts`). Do not change DNS. Until that deploy, prod `/api/ppa` keeps Nov 3 under Nov 2.
 
+- 2026-11-15: Proton Daytona Beach Open 12a61e43 had draw rows on the PPA scores API; cut live /api/ppa pin from Opendoor Worlds (archived).

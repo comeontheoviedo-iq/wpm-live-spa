@@ -84,8 +84,24 @@ export const PPA_OPENDOOR_WORLDS = {
   officialUrl: "https://www.ppatour.com/events/2026/pickleball-world-championships/",
 };
 
+/**
+ * Proton Daytona Beach Open, 16-22 Nov 2026, Pictona at Holly Hill, FL.
+ * Scores API tournamentId 12a61e43-... returned draw rows (scheduled, Date TBA)
+ * on 15 Nov 2026. Opendoor Worlds finished 8 Nov and moves to the archive.
+ */
+export const PPA_DAYTONA_PIN = {
+  eventId: "12a61e43-1dc7-4d48-a926-10d3aa1a66cb",
+  name: "Proton Daytona Beach Open",
+  venue: "Pictona at Holly Hill, Holly Hill, FL",
+  tz: "America/New_York",
+  start: "2026-11-16",
+  end: "2026-11-22",
+  scorePath: "/api/ppa",
+  officialUrl: "https://www.ppatour.com/events/2026/proton-daytona-beach-open/",
+};
+
 /** Live /api/ppa event. Week flip is this binding. */
-export const PPA_NEXT = PPA_OPENDOOR_WORLDS;
+export const PPA_NEXT = PPA_DAYTONA_PIN;
 export const PPA_LIVE = PPA_NEXT;
 export const PPA_LIVE_EVENT_ID = PPA_LIVE.eventId;
 
@@ -382,7 +398,7 @@ export const ENDED_PPA = {
     ended: true,
     parked: false,
     note:
-      "Window ended 27 Sep 2026 with no scores on the official PPA scores API. Unparked \u2014 do not cut /api/ppa to this UUID. Live board is 2026 Opendoor Pickleball World Championships (" +
+      "Window ended 27 Sep 2026 with no scores on the official PPA scores API. Unparked \u2014 do not cut /api/ppa to this UUID. Live board is Proton Daytona Beach Open (" +
       PPA_LIVE_EVENT_ID +
       ").",
   },
@@ -648,10 +664,17 @@ export const PPA_DAYTONA = ppaCalendarSeed({
   timezone: "America/New_York",
   start: "2026-11-16",
   end: "2026-11-22",
+  status: "live-path",
+  onLive: true,
   ppaEventId: "12a61e43-1dc7-4d48-a926-10d3aa1a66cb",
   officialUrl: "https://www.ppatour.com/events/2026/proton-daytona-beach-open/",
   note:
-    "Scores API tournamentId 12a61e43-1dc7-4d48-a926-10d3aa1a66cb echoed on 19 Oct 2026 with 0 match rows. Not the live pin. Do not cut /api/ppa here.",
+    "Live PPA pin from 15 Nov 2026. Scores API tournamentId 12a61e43-1dc7-4d48-a926-10d3aa1a66cb has draw rows (scheduled, Date TBA). Real scores via /api/ppa. Unplayed rows are NEXT, never 0-0.",
+  connector: {
+    type: "url",
+    scorePath: "/api/ppa",
+    ppaEventId: "12a61e43-1dc7-4d48-a926-10d3aa1a66cb",
+  },
 });
 
 /** Radar probes these. A verified UUID with no rows is not a live path. */
@@ -659,7 +682,7 @@ export const PPA_UPCOMING = [PPA_OTTAWA, PPA_NANJING, PPA_COLLEGE_WORLDS, PPA_LI
 
 /**
  * RTA2000 Farnham. Tournated 8510. Own tour — not an APP or PPA chip.
- * APP Louisville ended 18 Oct. Live PPA is the 2026 Opendoor Worlds.
+ * APP Louisville ended 18 Oct. Live PPA is Proton Daytona Beach Open.
  */
 export const FARNHAM = {
   id: "slate:rta-farnham-2026",
@@ -676,7 +699,7 @@ export const FARNHAM = {
   officialUrl:
     "https://play.rtapickleballtour.com/tournament/8510/draws?category=34477&segment=MD",
   note:
-    "Tournated tournament 8510 at Hurlands. Window ended 4 Oct 2026. /api/rta reads drawsDetail. Unplayed rows after the window are not NEXT. Not APP and not PPA. Do not cut /api/app back onto Humana APP Louisville Open Den 18454. Do not cut /api/ppa off 2026 Opendoor Pickleball World Championships ad262b1f-ea62-4dcc-af59-69732a97107c. Do not cut /api/ppa back to Hong Kong Slam c7e4fd72-d159-4211-82a2-21adbb21defe. Do not wire the 2025 finals UUID f02fa839-68e0-46d5-8b93-dc266f201a4e.",
+    "Tournated tournament 8510 at Hurlands. Window ended 4 Oct 2026. /api/rta reads drawsDetail. Unplayed rows after the window are not NEXT. Not APP and not PPA. Do not cut /api/app back onto Humana APP Louisville Open Den 18454. Do not cut /api/ppa off Proton Daytona Beach Open 12a61e43-1dc7-4d48-a926-10d3aa1a66cb. Do not cut /api/ppa back to Opendoor Worlds ad262b1f-ea62-4dcc-af59-69732a97107c. Do not cut /api/ppa back to Hong Kong Slam c7e4fd72-d159-4211-82a2-21adbb21defe. Do not wire the 2025 finals UUID f02fa839-68e0-46d5-8b93-dc266f201a4e.",
   connector: { type: "url", scoreUrl: "/api/rta" },
 };
 
@@ -705,7 +728,7 @@ export function coverageSeedFor(name) {
 export const FILTER_COPY = {
   tpb: "TOP Pickleball Tour (powered by APP, not APP Den). Scores delayed \u2014 no live path. Official draw PDF only.",
   "ppa-eu":
-    "PPA Tour Europe. Barcelona window ended 27 Sep 2026 with no scores. Not the live board \u2014 2026 Opendoor Pickleball World Championships is /api/ppa.",
+    "PPA Tour Europe. Barcelona window ended 27 Sep 2026 with no scores. Not the live board \u2014 Proton Daytona Beach Open is /api/ppa.",
   "app-asia": "APP Asia Tour \u2014 not MLP Asia. No Den Live id. SportsSync /api/sportssync is results-only once a real tournamentId is listed. Not LIVE.",
   "mlp-asia": MLP_ASIA_NOTE,
   asia: "PPA Asia \u2014 results-only until a working ticker is wired. Not APP Asia, not MLP Asia.",
