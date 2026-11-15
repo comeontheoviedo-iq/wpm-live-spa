@@ -8,7 +8,7 @@
 import { discFromAppBracket, discFromDivName, isKnockoutBracket, polishAppRound } from "./app-rounds.mjs";
 import { matchBoardDate } from "./app-dates.mjs";
 import { rosterText, tagsFor } from "./follow-tags.mjs";
-import { APP_COLUMBUS, APP_LOUISVILLE, ENDED_APP, PPA_CHICAGO, PPA_HONG_KONG, PPA_LAS_VEGAS, PPA_OPENDOOR_WORLDS, PPA_VIRGINIA_BEACH } from "./slate-events.mjs";
+import { APP_COLUMBUS, APP_LOUISVILLE, ENDED_APP, PPA_CHICAGO, PPA_HONG_KONG, PPA_LAS_VEGAS, PPA_OPENDOOR_WORLDS, PPA_DAYTONA_PIN, PPA_VIRGINIA_BEACH } from "./slate-events.mjs";
 
 const DEN = "https://denlive.pickleballden.com";
 const UA = { "User-Agent": "WPM-LIVE/1.0", Accept: "application/json" };
@@ -37,7 +37,7 @@ const GRAND_RAPIDS_ID = "d31aaa25-050c-4b4b-8537-0c69b7ea674a";
  * Charlotte Challenger (2006a790-…) still had scheduled rows on 2026-10-02, so it stays off.
  * Columbus 18448, Las Vegas 86926aef, Chicago Cup 203e1164, Virginia Beach
  * 429c7980, Louisville 18454, and Hong Kong c7e4fd72 are finished (current false).
- * Opendoor Worlds stays on CURRENT_PINS until that week ends.
+ * Opendoor Worlds finished 8 Nov 2026 (current false). Daytona is on CURRENT_PINS.
  */
 export const FINISHED_EVENTS = [
   {
@@ -208,10 +208,6 @@ export const FINISHED_EVENTS = [
     ppaEventId: PPA_HONG_KONG.eventId,
     current: false,
   },
-];
-
-/** Live pin. Listed so the client can offer it once the week has actually finished. */
-export const CURRENT_PINS = [
   {
     id: "opendoor",
     tour: "ppa",
@@ -222,6 +218,22 @@ export const CURRENT_PINS = [
     start: PPA_OPENDOOR_WORLDS.start,
     end: PPA_OPENDOOR_WORLDS.end,
     ppaEventId: PPA_OPENDOOR_WORLDS.eventId,
+    current: false,
+  },
+];
+
+/** Live pin. Listed so the client can offer it once the week has actually finished. */
+export const CURRENT_PINS = [
+  {
+    id: "daytona",
+    tour: "ppa",
+    label: "Daytona",
+    name: PPA_DAYTONA_PIN.name,
+    venue: PPA_DAYTONA_PIN.venue,
+    tz: PPA_DAYTONA_PIN.tz,
+    start: PPA_DAYTONA_PIN.start,
+    end: PPA_DAYTONA_PIN.end,
+    ppaEventId: PPA_DAYTONA_PIN.eventId,
     current: true,
   },
 ];

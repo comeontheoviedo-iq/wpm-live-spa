@@ -792,6 +792,7 @@ function shortEventLabel(name, key){
   if (/overland/i.test(blob) || /18453/.test(k)) return "Overland";
   if (/arizona|mesa/i.test(n) || /62c01642/i.test(k)) return "Arizona";
   if (/opendoor|world championships|ad262b1f/i.test(blob)) return "Worlds";
+  if (/daytona|12a61e43/i.test(blob)) return "Daytona";
   if (/hong kong|hang seng|c7e4fd72/i.test(blob)) return "Hong Kong";
   if (/virginia beach|429c7980/i.test(blob)) return "Virginia Beach";
   if (/veolia chicago|chicago cup|203e1164/i.test(blob)) return "Chicago";
@@ -1327,7 +1328,8 @@ const ARCHIVE_FALLBACK = [
   {id:"chicago-cup", tour:"ppa", label:"Chicago", name:"Veolia Chicago Cup", venue:"Life Time North Shore Sport & Racquetball, Chicago, IL", tz:"America/Chicago", start:"2026-10-05", end:"2026-10-11", current:false},
   {id:"virginia-beach", tour:"ppa", label:"Virginia Beach", name:"Mojo Energy Pouches Virginia Beach Open", venue:"Pickleball Virginia Beach, Virginia Beach, VA", tz:"America/New_York", start:"2026-10-12", end:"2026-10-18", current:false},
   {id:"hong-kong", tour:"ppa", label:"Hong Kong", name:"PPA Asia 1500 Hang Seng Bank Hong Kong Slam 2026", venue:"Kai Tak Arena, Hong Kong", tz:"Asia/Hong_Kong", start:"2026-10-19", end:"2026-10-25", ppaEventId:"c7e4fd72-d159-4211-82a2-21adbb21defe", current:false},
-  {id:"opendoor", tour:"ppa", label:"Worlds", name:"2026 Opendoor Pickleball World Championships", venue:"Brookhaven Country Club, Farmers Branch, TX", tz:"America/Chicago", start:"2026-11-02", end:"2026-11-08", current:true}
+  {id:"opendoor", tour:"ppa", label:"Worlds", name:"2026 Opendoor Pickleball World Championships", venue:"Brookhaven Country Club, Farmers Branch, TX", tz:"America/Chicago", start:"2026-11-02", end:"2026-11-08", current:false},
+  {id:"daytona", tour:"ppa", label:"Daytona", name:"Proton Daytona Beach Open", venue:"Pictona at Holly Hill, Holly Hill, FL", tz:"America/New_York", start:"2026-11-16", end:"2026-11-22", ppaEventId:"12a61e43-1dc7-4d48-a926-10d3aa1a66cb", current:true}
 ];
 const DISC_LABEL = {MS:"Men's singles", WS:"Women's singles", XD:"Mixed doubles", MD:"Men's doubles", WD:"Women's doubles"};
 function weekIsFinished(matches, today){
@@ -1420,7 +1422,7 @@ function ensureFinishedBoard(){
     state.archiveId = /18448|columbus/i.test(id) ? "columbus" : "louisville";
     if (state.boardMode === "live" || state.boardMode === "matches") state.boardMode = "results";
   } else if (state.filter === "ppa" && ppaFeedFinished()) {
-    state.archiveId = "opendoor";
+    state.archiveId = /daytona|12a61e43/i.test(String((state.ppaEvent||{}).id||"")+" "+String((state.ppaEvent||{}).name||"")) ? "daytona" : "opendoor";
     if (state.boardMode === "live" || state.boardMode === "matches") state.boardMode = "results";
   }
 }

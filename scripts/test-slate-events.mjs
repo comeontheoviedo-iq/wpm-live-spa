@@ -59,6 +59,7 @@ import {
 
 const CHI = "203e1164-b4f9-47e9-bacf-ff81f8748025";
 const WORLDS = "ad262b1f-ea62-4dcc-af59-69732a97107c";
+const DAYTONA = "12a61e43-1dc7-4d48-a926-10d3aa1a66cb";
 const HK = "c7e4fd72-d159-4211-82a2-21adbb21defe";
 const Y2025 = "f02fa839-68e0-46d5-8b93-dc266f201a4e";
 const VB = "429c7980-e1b9-4800-805f-dfb160781cd9";
@@ -66,14 +67,13 @@ const LV = "86926aef-0566-4fbb-87cf-a48068a9f1c6";
 const BCN = "1655a7c9-904a-44c9-aa29-b279fca900e8";
 const MESA = "62c01642-1bb2-4f9a-9998-599f8fdefe5c";
 
-assert.equal(PPA_LIVE_EVENT_ID, WORLDS);
-assert.equal(PPA_LIVE, PPA_OPENDOOR_WORLDS);
-assert.equal(PPA_LIVE.eventId, WORLDS);
-assert.equal(PPA_LIVE.name, "2026 Opendoor Pickleball World Championships");
-assert.equal(PPA_LIVE.venue, "Brookhaven Country Club, Farmers Branch, TX");
-assert.equal(PPA_LIVE.tz, "America/Chicago");
-assert.equal(PPA_LIVE.start, "2026-11-02");
-assert.equal(PPA_LIVE.end, "2026-11-08");
+assert.equal(PPA_LIVE_EVENT_ID, DAYTONA);
+assert.equal(PPA_LIVE.eventId, DAYTONA);
+assert.equal(PPA_LIVE.name, "Proton Daytona Beach Open");
+assert.equal(PPA_LIVE.venue, "Pictona at Holly Hill, Holly Hill, FL");
+assert.equal(PPA_LIVE.tz, "America/New_York");
+assert.equal(PPA_LIVE.start, "2026-11-16");
+assert.equal(PPA_LIVE.end, "2026-11-22");
 assert.equal(PPA_LIVE.scorePath, "/api/ppa");
 assert.equal(PPA_LIVE.firstServe, undefined);
 assert.equal(PPA_HONG_KONG.eventId, HK);
@@ -124,7 +124,7 @@ assert.equal(isBlockedPpaEventId(Y2025), true);
 assert.equal(isBlockedPpaEventId(LV), false);
 assert.equal(isBlockedPpaEventId(CHI), false);
 assert.equal(isBlockedPpaEventId(HK), false);
-assert.equal(isLivePpaEventId(WORLDS), true);
+assert.equal(isLivePpaEventId(DAYTONA), true);
 assert.equal(isLivePpaEventId(HK), false);
 assert.equal(isLivePpaEventId(Y2025), false);
 assert.equal(isLivePpaEventId(VB), false);
@@ -132,7 +132,7 @@ assert.equal(isLivePpaEventId(CHI), false);
 assert.equal(isLivePpaEventId(LV), false);
 assert.equal(isLivePpaEventId(BCN), false);
 
-assert.equal(ppaTickerTitleAligned("2026 Opendoor Pickleball World Championships"), true);
+assert.equal(ppaTickerTitleAligned("Proton Daytona Beach Open"), true);
 assert.equal(
   ppaTickerTitleAligned("PPA Tour: PPA Asia 1500 Hang Seng Bank Hong Kong Slam 2026"),
   false
@@ -141,7 +141,7 @@ assert.equal(
   ppaTickerTitleAligned("PPA Tour: PPA Asia 1500 Hang Seng Bank Hong Kong Slam 2026", PPA_HONG_KONG),
   true
 );
-assert.equal(ppaTickerTitleAligned("Opendoor"), false);
+assert.equal(ppaTickerTitleAligned("2026 Opendoor Pickleball World Championships"), false);
 assert.equal(ppaTickerTitleAligned("PPA Tour: Mojo Energy Pouches Virginia Beach Open"), false);
 assert.equal(
   ppaTickerTitleAligned("PPA Tour: Mojo Energy Pouches Virginia Beach Open", PPA_VIRGINIA_BEACH),
@@ -175,7 +175,7 @@ assert.equal(SLATE.some((s) => s.id === GIJON.id), true);
 assert.equal(SLATE.some((s) => s.id === BARCELONA.id), true);
 assert.ok(SLATE.length > 2);
 const during = SLATE.map((s) => asCalendarRow(s, "2026-09-18"));
-const quiet = during.filter((r) => r.id !== FARNHAM.id && r.id !== PPA_LILLE.id && r.id !== MLP_ASIA_SEASON.id && r.id !== "slate:app-arizona-2026");
+const quiet = during.filter((r) => r.id !== FARNHAM.id && r.id !== PPA_LILLE.id && r.id !== PPA_DAYTONA.id && r.id !== MLP_ASIA_SEASON.id && r.id !== "slate:app-arizona-2026");
 assert.ok(quiet.every((r) => r.onLive === false));
 assert.ok(quiet.every((r) => r.status !== "live-path"));
 const louRow = during.find((r) => r.id === "slate:app-louisville-2026");
@@ -240,12 +240,12 @@ assert.equal(watch.some((e) => /chicago cup/i.test(e.name)), false);
 assert.equal(watch.some((e) => /virginia beach/i.test(e.name)), false);
 assert.equal(SLATE.some((s) => /virginia beach/i.test(s.name) && s.nextPin), false);
 assert.equal(SLATE.some((s) => /virginia beach/i.test(s.name)), false);
-assert.equal(PPA_NEXT.eventId, WORLDS);
-assert.equal(PPA_NEXT.name, "2026 Opendoor Pickleball World Championships");
-assert.equal(PPA_NEXT.venue, "Brookhaven Country Club, Farmers Branch, TX");
-assert.equal(PPA_NEXT.tz, "America/Chicago");
-assert.equal(PPA_NEXT.start, "2026-11-02");
-assert.equal(PPA_NEXT.end, "2026-11-08");
+assert.equal(PPA_NEXT.eventId, DAYTONA);
+assert.equal(PPA_NEXT.name, "Proton Daytona Beach Open");
+assert.equal(PPA_NEXT.venue, "Pictona at Holly Hill, Holly Hill, FL");
+assert.equal(PPA_NEXT.tz, "America/New_York");
+assert.equal(PPA_NEXT.start, "2026-11-16");
+assert.equal(PPA_NEXT.end, "2026-11-22");
 assert.equal(PPA_NEXT.scorePath, "/api/ppa");
 assert.equal(PPA_LIVE, PPA_NEXT);
 assert.equal(SLATE.some((s) => s.id === PPA_OTTAWA.id), true);
@@ -260,7 +260,7 @@ assert.deepEqual(
     "12a61e43-1dc7-4d48-a926-10d3aa1a66cb",
   ]
 );
-const unwiredPpa = PPA_UPCOMING.filter((s) => s.id !== PPA_LILLE.id);
+const unwiredPpa = PPA_UPCOMING.filter((s) => s.id !== PPA_LILLE.id && s.id !== PPA_DAYTONA.id);
 assert.ok(unwiredPpa.every((s) => s.onLive === false && s.status === "results-only"));
 assert.ok(unwiredPpa.every((s) => s.connector.scorePath == null));
 assert.equal(PPA_LILLE.status, "live-path");
@@ -295,10 +295,10 @@ assert.equal(isAppAsiaName("APP Arizona Open"), false);
 assert.equal(isAppAsiaName("MLP Asia 2026"), false);
 
 import { WIRED } from "../netlify/functions/radar-lib.mjs";
-assert.equal(WIRED.ppa.eventId, WORLDS);
+assert.equal(WIRED.ppa.eventId, DAYTONA);
 assert.equal(WIRED.ppa.name, PPA_LIVE.name);
 assert.equal(WIRED.ppa.venue, PPA_LIVE.venue);
-assert.equal(WIRED.ppa.tz, "America/Chicago");
+assert.equal(WIRED.ppa.tz, "America/New_York");
 assert.equal(WIRED.ppa.scorePath, "/api/ppa");
 assert.notEqual(WIRED.ppa.eventId, BCN);
 assert.equal(String(WIRED.ppa.eventId).startsWith(PPA_APRIL_LAS_VEGAS_PREFIX), false);

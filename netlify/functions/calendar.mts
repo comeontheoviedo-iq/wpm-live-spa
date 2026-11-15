@@ -11,6 +11,7 @@ import {
   PPA_CHICAGO,
   PPA_HONG_KONG,
   PPA_OPENDOOR_WORLDS,
+  PPA_DAYTONA_PIN,
   PPA_LAS_VEGAS,
   PPA_LIVE,
   PPA_LIVE_EVENT_ID,
@@ -86,13 +87,24 @@ const KNOWN = {
     live: false,
     ended: true,
   },
+  /** Finished 8 Nov 2026. Archive only — not the live /api/ppa path. */
   ppaOpendoorWorlds: {
     type: "ppa",
     ppaEventId: PPA_OPENDOOR_WORLDS.eventId,
-    scorePath: "/api/ppa",
+    scorePath: null,
     timezone: PPA_OPENDOOR_WORLDS.tz,
     name: PPA_OPENDOOR_WORLDS.name,
     venue: PPA_OPENDOOR_WORLDS.venue,
+    live: false,
+    ended: true,
+  },
+  ppaDaytona: {
+    type: "ppa",
+    ppaEventId: PPA_DAYTONA_PIN.eventId,
+    scorePath: "/api/ppa",
+    timezone: PPA_DAYTONA_PIN.tz,
+    name: PPA_DAYTONA_PIN.name,
+    venue: PPA_DAYTONA_PIN.venue,
     live: true,
   },
   /** Finished 18 Oct 2026. Archive only — not the live /api/ppa path. */

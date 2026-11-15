@@ -37,7 +37,7 @@ Optional later: MLP, PPA Asia, club opens — **results_only** until intake pass
 | **College World Championship** | 30 Oct–1 Nov · America/Chicago | **results-only** · UUID `95602192-b649-420f-a8ff-0887fddfe1e7` · 0 rows | Brookhaven Country Club. Not the Opendoor UUID |
 | **2026 Opendoor Pickleball World Championships** | 2–8 Nov · America/Chicago | **on board** · UUID `ad262b1f-ea62-4dcc-af59-69732a97107c` | Brookhaven Country Club, Farmers Branch, TX. Ticker title must contain this full name. `8:00 AM CST` stored as `08:00Z` is 14:00 UTC. Date TBA is not LIVE. Do not wire 2025 finals `f02fa839-…` |
 | **PPA Tour Europe · P125 Lille** | 13–15 Nov · Europe/Paris | **on board** · `/api/ppa-eu` · UUID `04a30133-11cc-4280-97f7-3027404c05b3` | JOCO Pickleball, Villeneuve d'Ascq. US scores API has 0 rows. Do not cut `/api/ppa` |
-| **Proton Daytona Beach Open** | 16–22 Nov · America/New_York | **results-only** · UUID `12a61e43-1dc7-4d48-a926-10d3aa1a66cb` · 0 rows | Not the live pin |
+| **Proton Daytona Beach Open** | 16–22 Nov · America/New_York | **LIVE pin (15 Nov)** · UUID `12a61e43-1dc7-4d48-a926-10d3aa1a66cb` · /api/ppa | Cut from Opendoor Worlds (ended 8 Nov) |
 | **APP Asia Bangkok Open** | 2–7 Nov · Asia/Bangkok | **results-only** · SportsSync 391 does not resolve | Official page dates. GPA had 26 Oct. Not Chongqing. Not MLP |
 | **MLP Asia 2026** | 13 Nov–12 Dec · Asia/Tokyo opener | **on board** · `/api/mlp-asia` · tour `mlp-asia` | Not APP. Season ticker includes later stops. Recap stays on mlp-asia.com |
 
