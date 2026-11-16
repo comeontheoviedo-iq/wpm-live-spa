@@ -21,6 +21,13 @@ import desk_default from "../api/desk.mts";
 import finished_default from "../api/finished.mts";
 import { LILLE, MLP_ASIA, loadMlpAsia, loadPpaEu } from "../api/pb-ticker.mjs";
 import { officialUrlCron } from "../api/calendar.mts";
+import { getStore } from "@netlify/blobs";
+import { finishedKeys } from "../api/finished-store.mjs";
+import { archiveBoard, archiveEvent, dayInWindow } from "../api/finished-board.mjs";
+import { FINISHED_EVENTS, loadFinished } from "../api/finished-archive.mjs";
+import { invokeFeed } from "../api/_shared/scores-feeds.mjs";
+import { APP_LIVE, PPA_LIVE } from "../api/slate-events.mjs";
+import { SOMONTES } from "../api/tpb-cuadros.mjs";
 import { cachedResponse, cacheKeyFor } from "../api/_shared/edge-cache.mjs";
 // Public score feeds served through the short edge cache (see edge-cache.mjs).
 var CACHED_GET = new Set([
@@ -76,10 +83,98 @@ async function persistTickers(now = new Date()) {
   }
   return out.join(",");
 }
+// Every other feed LIVE shows is kept from its board rows (finished-board.mjs), so results
+// stay after an upstream feed clears. Three slots per 15 minutes, one job each, so no single
+// cron run makes many requests:
+//   :00–:04  feeds whose event is on (calendar dates, a day either side), plus the tickers above
+//   :05–:09  /api/archive events not stored yet, two per run, until all are kept
+//   :10–:14  once a day, every feed and the desk rows through /api/scores (ended events too)
+var BOARD_FEEDS = [
+  { key: "ppa", path: "/api/ppa", handler: ppa_default, pin: PPA_LIVE },
+  { key: "app", path: "/api/app", handler: app_default, pin: APP_LIVE },
+  { key: "tpb", path: "/api/tpb", handler: tpb_default, pin: SOMONTES }
+];
+var FINISHED_META = "wpm-finished-meta";
+async function archiveFeed(feed, now, source = feed.key) {
+  const data = await invokeFeed(feed.handler, feed.path, { cache: true, budgetMs: 20000 });
+  if (!data) return [`${source}:unavailable`];
+  const added = await archiveBoard(data.matches || [], { source, now });
+  const keys = Object.keys(added);
+  return keys.length ? keys.map((k) => `${k}+${added[k]}`) : [`${source}:0ft`];
+}
+async function persistBoards(now) {
+  const out = [];
+  for (const feed of BOARD_FEEDS) {
+    const start = feed.pin.start || feed.pin.startDate || "";
+    const end = feed.pin.end || feed.pin.endDate || start;
+    if (!dayInWindow(start, end, now)) continue;
+    try {
+      out.push(...await archiveFeed(feed, now));
+    } catch (err) {
+      out.push(`${feed.key}:failed`);
+    }
+  }
+  return out;
+}
+async function readMeta() {
+  try {
+    return await getStore({ name: FINISHED_META, consistency: "strong" }).get("state", { type: "json" }) || {};
+  } catch {
+    return {};
+  }
+}
+async function writeMeta(meta) {
+  await getStore({ name: FINISHED_META, consistency: "strong" }).setJSON("state", meta);
+}
+async function backfillArchive(now) {
+  const meta = await readMeta();
+  const day = now.toISOString().slice(0, 10);
+  const empty = meta.archiveDay === day ? meta.archiveEmpty || [] : [];
+  const stored = await finishedKeys();
+  const todo = FINISHED_EVENTS.filter((ev) => !ev.current).filter((ev) => {
+    const e = archiveEvent(ev);
+    return !stored.has(`${e.tour}:${e.id}`) && !empty.includes(ev.id);
+  }).slice(0, 2);
+  if (!todo.length) return [];
+  const out = [];
+  const newEmpty = [...empty];
+  for (const ev of todo) {
+    const data = await loadFinished(ev.id);
+    const rows = Array.isArray(data?.matches) ? data.matches : [];
+    const e = archiveEvent(ev);
+    const added = await archiveBoard(rows, { source: "archive", now, eventFor: () => e });
+    const n = Object.values(added).reduce((a, b) => a + b, 0);
+    out.push(`archive:${ev.id}+${n}`);
+    if (!n && !stored.has(`${e.tour}:${e.id}`)) newEmpty.push(ev.id);
+  }
+  if (newEmpty.length !== empty.length || meta.archiveDay !== day) {
+    await writeMeta({ ...meta, archiveDay: day, archiveEmpty: newEmpty });
+  }
+  return out;
+}
+async function dailyBoards(now) {
+  const meta = await readMeta();
+  const day = now.toISOString().slice(0, 10);
+  if (meta.scoresDay === day) return [];
+  const out = await archiveFeed({ key: "scores", path: "/api/scores", handler: scores_default }, now, "scores");
+  // Only mark the day done when the composite answered, so a failed run retries in 15 minutes.
+  if (!out.some((x) => x.endsWith(":unavailable"))) await writeMeta({ ...await readMeta(), scoresDay: day });
+  return out;
+}
+async function persistFinishedSlot(now = new Date()) {
+  const slot = Math.floor(now.getUTCMinutes() % 15 / 5);
+  try {
+    if (slot === 0) return [await persistTickers(now), ...await persistBoards(now)].filter(Boolean).join(",");
+    if (slot === 1) return (await backfillArchive(now)).join(",");
+    return (await dailyBoards(now)).join(",");
+  } catch (err) {
+    return `slot${slot}:failed:${String(err && err.message ? err.message : err).slice(0, 120)}`;
+  }
+}
 var CRON_HANDLERS = {
   "*/5 * * * *": async () => {
     const res = await push_live_check_default();
-    const persisted = await persistTickers();
+    const persisted = await persistFinishedSlot();
     if (persisted) console.log("[wpm-spa] finished-store", persisted);
     return res;
   },

@@ -119,6 +119,22 @@ export function finishedFromMatchups(rows, pin) {
   return out;
 }
 
+/** A stored result was corrected upstream (scores, winner or played flag changed). */
+function resultChanged(prev, next) {
+  return (
+    JSON.stringify(prev.games || []) !== JSON.stringify(next.games || []) ||
+    prev.winner !== next.winner ||
+    (prev.played ?? true) !== (next.played ?? true)
+  );
+}
+
+/** Stored event keys (one KV list call). */
+export async function finishedKeys({ store = null } = {}) {
+  const s = store || getStore({ name: FINISHED_STORE, consistency: "strong" });
+  const listed = await s.list({ prefix: "" });
+  return new Set((listed.blobs || []).map((b) => b.key));
+}
+
 export function storeKey(pin) {
   return `${pin.tour}:${pin.id || pin.seasonUuid}`;
 }
@@ -138,7 +154,7 @@ function eventMeta(pin) {
 }
 
 /** Merge new finished records into the store. Returns how many were new. Never throws. */
-export async function persistFinished(pin, records, { store = null, now = new Date() } = {}) {
+export async function persistFinished(pin, records, { store = null, now = new Date(), replaceChanged = false } = {}) {
   if (!records?.length) return 0;
   try {
     const s = store || getStore({ name: FINISHED_STORE, consistency: "strong" });
@@ -149,15 +165,25 @@ export async function persistFinished(pin, records, { store = null, now = new Da
       if (!doc.matches || typeof doc.matches !== "object") doc.matches = {};
     }
     let added = 0;
+    const iso = now.toISOString();
     for (const r of records) {
-      if (doc.matches[r.id]) continue;
-      doc.matches[r.id] = { ...r, firstSeen: now.toISOString() };
+      const prev = doc.matches[r.id];
+      if (prev && !(replaceChanged && resultChanged(prev, r))) continue;
+      doc.matches[r.id] = prev ? { ...r, firstSeen: prev.firstSeen || iso, corrected: iso } : { ...r, firstSeen: iso };
       added += 1;
     }
     memory.set(key, doc);
     if (!added) return 0;
-    doc.event = eventMeta(pin);
-    doc.updated = now.toISOString();
+    // Another isolate may have written since this copy was read: merge its matches
+    // back in so a write never drops a stored result.
+    try {
+      const fresh = await s.get(key, { type: "json" });
+      for (const [id, r] of Object.entries(fresh?.matches || {})) if (!doc.matches[id]) doc.matches[id] = r;
+    } catch {
+      /* write what we have */
+    }
+    doc.event = { ...eventMeta(pin), ...(doc.event?.start && !pin.start ? { start: doc.event.start, end: doc.event.end } : {}) };
+    doc.updated = iso;
     await s.setJSON(key, doc);
     return added;
   } catch (e) {
@@ -167,11 +193,12 @@ export async function persistFinished(pin, records, { store = null, now = new Da
 }
 
 /** All stored events, optionally for one tour. Matches are returned as a list, oldest first. */
-export async function readFinished({ tour = "", store = null } = {}) {
+export async function readFinished({ tour = "", event = "", store = null } = {}) {
   const s = store || getStore({ name: FINISHED_STORE, consistency: "strong" });
-  const listed = await s.list({ prefix: tour ? `${tour}:` : "" });
+  const listed = await s.list({ prefix: tour ? `${tour}:${event}` : "" });
   const events = [];
   for (const b of listed.blobs || []) {
+    if (event && b.key !== `${tour}:${event}`) continue;
     const doc = await s.get(b.key, { type: "json" });
     if (!doc) continue;
     const matches = Object.values(doc.matches || {}).sort(
