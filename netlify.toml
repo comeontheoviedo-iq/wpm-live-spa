@@ -64,6 +64,9 @@
 [functions.archive]
   timeout = 26
 
+[functions.finished]
+  timeout = 26
+
 [[redirects]]
   from = "/api/worldcup"
   to = "/.netlify/functions/worldcup"
@@ -144,6 +147,11 @@
 [[redirects]]
   from = "/api/archive"
   to = "/.netlify/functions/archive"
+  status = 200
+
+[[redirects]]
+  from = "/api/finished"
+  to = "/.netlify/functions/finished"
   status = 200
 
 # Private desk. Before the SPA splat so /desk is not index.html.
