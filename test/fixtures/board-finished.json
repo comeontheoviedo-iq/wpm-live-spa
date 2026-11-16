@@ -1,0 +1,981 @@
+{
+ "archive_opendoor": [
+  {
+   "id": "ppa-4d1698be-2e86-4ac2-ad54-f1b316ff8ff6",
+   "date": "2026-11-08",
+   "tour": "ppa",
+   "tier": "pro",
+   "comp": "2026 Opendoor Pickleball World Championships",
+   "div": "Women's Doubles · Finals",
+   "round": "Finals",
+   "disc": "WD",
+   "a": "Bright / Waters",
+   "b": "Sewing / Parenteau",
+   "roster": "Anna Bright / Anna Leigh Waters vs Sofia Sewing / Catherine Parenteau",
+   "tags": [
+    "Waters",
+    "Bright",
+    "Parenteau",
+    "Sewing"
+   ],
+   "status": "FT",
+   "start": "",
+   "hasClock": false,
+   "score": "3-0",
+   "games": "G1 11–4 · G2 11–9 · G3 11–5",
+   "lines": [
+    {
+     "disc": "G1",
+     "score": "11–4",
+     "winner": "Bright / Waters",
+     "live": false
+    },
+    {
+     "disc": "G2",
+     "score": "11–9",
+     "winner": "Bright / Waters",
+     "live": false
+    },
+    {
+     "disc": "G3",
+     "score": "11–5",
+     "winner": "Bright / Waters",
+     "live": false
+    }
+   ],
+   "court": "Court CC",
+   "note": "Sun, Nov 8",
+   "eventKey": "archive:ppa:opendoor",
+   "venue": "Brookhaven Country Club, Farmers Branch, TX",
+   "tz": "America/Chicago",
+   "archive": true
+  },
+  {
+   "id": "ppa-dde231bf-59b4-42f5-b89c-e68ed675265f",
+   "date": "2026-11-08",
+   "tour": "ppa",
+   "tier": "pro",
+   "comp": "2026 Opendoor Pickleball World Championships",
+   "div": "Men's Doubles · Finals",
+   "round": "Finals",
+   "disc": "MD",
+   "a": "Daescu / Alshon",
+   "b": "Shimabukuro / Johnson",
+   "roster": "Andrei Daescu / Christian Alshon vs Tama Shimabukuro / JW Johnson",
+   "tags": [
+    "Alshon",
+    "Johnson",
+    "Christian",
+    "Daescu"
+   ],
+   "status": "FT",
+   "start": "",
+   "hasClock": false,
+   "score": "2-3",
+   "games": "G1 11–5 · G2 11–5 · G3 4–11 · G4 8–11 · G5 4–11",
+   "lines": [
+    {
+     "disc": "G1",
+     "score": "11–5",
+     "winner": "Daescu / Alshon",
+     "live": false
+    },
+    {
+     "disc": "G2",
+     "score": "11–5",
+     "winner": "Daescu / Alshon",
+     "live": false
+    },
+    {
+     "disc": "G3",
+     "score": "4–11",
+     "winner": "Shimabukuro / Johnson",
+     "live": false
+    },
+    {
+     "disc": "G4",
+     "score": "8–11",
+     "winner": "Shimabukuro / Johnson",
+     "live": false
+    },
+    {
+     "disc": "G5",
+     "score": "4–11",
+     "winner": "Shimabukuro / Johnson",
+     "live": false
+    }
+   ],
+   "court": "Court CC",
+   "note": "Sun, Nov 8",
+   "eventKey": "archive:ppa:opendoor",
+   "venue": "Brookhaven Country Club, Farmers Branch, TX",
+   "tz": "America/Chicago",
+   "archive": true
+  },
+  {
+   "id": "ppa-624f2bcb-0275-4af2-9bd3-a3a7b7f1a4ee",
+   "date": "2026-11-08",
+   "tour": "ppa",
+   "tier": "pro",
+   "comp": "2026 Opendoor Pickleball World Championships",
+   "div": "Mixed Doubles · Finals",
+   "round": "Finals",
+   "disc": "XD",
+   "a": "Johns / Waters",
+   "b": "Johnson / Johnson",
+   "roster": "Ben Johns / Anna Leigh Waters vs Jorja Johnson / JW Johnson",
+   "tags": [
+    "Waters",
+    "Johns",
+    "Johnson"
+   ],
+   "status": "FT",
+   "start": "",
+   "hasClock": false,
+   "score": "3-2",
+   "games": "G1 9–11 · G2 11–6 · G3 11–9 · G4 3–11 · G5 11–4",
+   "lines": [
+    {
+     "disc": "G1",
+     "score": "9–11",
+     "winner": "Johnson / Johnson",
+     "live": false
+    },
+    {
+     "disc": "G2",
+     "score": "11–6",
+     "winner": "Johns / Waters",
+     "live": false
+    },
+    {
+     "disc": "G3",
+     "score": "11–9",
+     "winner": "Johns / Waters",
+     "live": false
+    },
+    {
+     "disc": "G4",
+     "score": "3–11",
+     "winner": "Johnson / Johnson",
+     "live": false
+    },
+    {
+     "disc": "G5",
+     "score": "11–4",
+     "winner": "Johns / Waters",
+     "live": false
+    }
+   ],
+   "court": "Court CC",
+   "note": "Sun, Nov 8",
+   "eventKey": "archive:ppa:opendoor",
+   "venue": "Brookhaven Country Club, Farmers Branch, TX",
+   "tz": "America/Chicago",
+   "archive": true
+  },
+  {
+   "id": "ppa-e287656e-0572-4904-af51-2d93ebe05328",
+   "date": "2026-11-04",
+   "tour": "ppa",
+   "tier": "pro",
+   "comp": "2026 Opendoor Pickleball World Championships",
+   "div": "Women's Doubles · Round 32",
+   "round": "Round 32",
+   "disc": "WD",
+   "a": "Jones / Smith",
+   "b": "Trevino / Dunlap",
+   "roster": "Allyce Jones / Callie Smith vs Carlota Trevino / Isabella Dunlap",
+   "tags": [],
+   "status": "FT",
+   "start": "",
+   "hasClock": false,
+   "score": "",
+   "games": "",
+   "lines": [],
+   "court": "",
+   "note": "Wed, Nov 4",
+   "eventKey": "archive:ppa:opendoor",
+   "venue": "Brookhaven Country Club, Farmers Branch, TX",
+   "tz": "America/Chicago",
+   "archive": true
+  },
+  {
+   "id": "ppa-3d16e580-4f2d-4669-b8e4-855f5fe5741f",
+   "date": "2026-11-03",
+   "tour": "ppa",
+   "tier": "pro",
+   "comp": "2026 Opendoor Pickleball World Championships",
+   "div": "Men's Doubles · Round 64",
+   "round": "Round 64",
+   "disc": "MD",
+   "a": "Miyoshi / Delgado",
+   "b": "Phillips / Smith",
+   "roster": "Kenta Miyoshi / James Delgado vs Daniel Phillips / Patrick Smith",
+   "tags": [],
+   "status": "FT",
+   "start": "",
+   "hasClock": false,
+   "score": "",
+   "games": "",
+   "lines": [],
+   "court": "",
+   "note": "Tue, Nov 3",
+   "eventKey": "archive:ppa:opendoor",
+   "venue": "Brookhaven Country Club, Farmers Branch, TX",
+   "tz": "America/Chicago",
+   "archive": true
+  }
+ ],
+ "app": [
+  {
+   "id": "app-623354",
+   "date": "2026-11-15",
+   "tour": "app",
+   "tier": "pro",
+   "comp": "APP Arizona Open",
+   "div": "AARP  Champions (50+) Men's Pro Doubles · R32",
+   "round": "R32",
+   "disc": "MD",
+   "format": "ko",
+   "pool": null,
+   "poolCount": null,
+   "session": "Court 20",
+   "a": "Salmela / Wilton",
+   "b": "Satuito / Farnsworth",
+   "roster": "Paul Salmela / Chris Wilton vs Jonas Satuito / Christopher Farnsworth",
+   "tags": [],
+   "status": "FT",
+   "denStatus": "COMPLETED",
+   "start": "2026-11-15T16:48:00.000Z",
+   "score": "2-0",
+   "games": "G1 11–7 · G2 11–3",
+   "lines": [
+    {
+     "disc": "G1",
+     "score": "11–7",
+     "winner": "Salmela / Wilton",
+     "live": false,
+     "court": ""
+    },
+    {
+     "disc": "G2",
+     "score": "11–3",
+     "winner": "Salmela / Wilton",
+     "live": false,
+     "court": ""
+    }
+   ],
+   "court": "Court 20",
+   "hasClock": true,
+   "eventKey": "ev:app:18443",
+   "note": "Court 20",
+   "watch": "",
+   "venue": "Arizona Athletic Grounds, Mesa, AZ",
+   "tz": "America/Phoenix"
+  },
+  {
+   "id": "app-623355",
+   "date": "2026-11-15",
+   "tour": "app",
+   "tier": "pro",
+   "comp": "APP Arizona Open",
+   "div": "AARP  Champions (50+) Men's Pro Doubles · R32",
+   "round": "R32",
+   "disc": "MD",
+   "format": "ko",
+   "pool": null,
+   "poolCount": null,
+   "session": "Court 27",
+   "a": "Graziani / Arrant",
+   "b": "Moon / Koo",
+   "roster": "Tomer Graziani / Blake Arrant vs Michael Moon / Samuel Koo",
+   "tags": [],
+   "status": "FT",
+   "denStatus": "COMPLETED",
+   "start": "2026-11-15T16:48:00.000Z",
+   "score": "0-2",
+   "games": "G1 9–11 · G2 10–12",
+   "lines": [
+    {
+     "disc": "G1",
+     "score": "9–11",
+     "winner": "Moon / Koo",
+     "live": false,
+     "court": ""
+    },
+    {
+     "disc": "G2",
+     "score": "10–12",
+     "winner": "Moon / Koo",
+     "live": false,
+     "court": ""
+    }
+   ],
+   "court": "Court 27",
+   "hasClock": true,
+   "eventKey": "ev:app:18443",
+   "note": "Court 27",
+   "watch": "",
+   "venue": "Arizona Athletic Grounds, Mesa, AZ",
+   "tz": "America/Phoenix"
+  },
+  {
+   "id": "app-623356",
+   "date": "2026-11-15",
+   "tour": "app",
+   "tier": "pro",
+   "comp": "APP Arizona Open",
+   "div": "AARP  Champions (50+) Men's Pro Doubles · R32",
+   "round": "R32",
+   "disc": "MD",
+   "format": "ko",
+   "pool": null,
+   "poolCount": null,
+   "session": "Chex Mix Court 2",
+   "a": "Kabacinski / Porcelli",
+   "b": "Kowalski / Coppel",
+   "roster": "Joel Kabacinski / Mario Porcelli vs David Kowalski / Ricardo Coppel",
+   "tags": [],
+   "status": "FT",
+   "denStatus": "COMPLETED",
+   "start": "2026-11-15T16:48:00.000Z",
+   "score": "2-0",
+   "games": "G1 11–3 · G2 11–8",
+   "lines": [
+    {
+     "disc": "G1",
+     "score": "11–3",
+     "winner": "Kabacinski / Porcelli",
+     "live": false,
+     "court": ""
+    },
+    {
+     "disc": "G2",
+     "score": "11–8",
+     "winner": "Kabacinski / Porcelli",
+     "live": false,
+     "court": ""
+    }
+   ],
+   "court": "Chex Mix Court 2",
+   "hasClock": true,
+   "eventKey": "ev:app:18443",
+   "note": "Chex Mix Court 2",
+   "watch": "",
+   "venue": "Arizona Athletic Grounds, Mesa, AZ",
+   "tz": "America/Phoenix"
+  },
+  {
+   "id": "app-623357",
+   "date": "2026-11-15",
+   "tour": "app",
+   "tier": "pro",
+   "comp": "APP Arizona Open",
+   "div": "AARP  Champions (50+) Men's Pro Doubles · R32",
+   "round": "R32",
+   "disc": "MD",
+   "format": "ko",
+   "pool": null,
+   "poolCount": null,
+   "session": "Court 14",
+   "a": "George / Hedberg",
+   "b": "Osorio / Ray",
+   "roster": "David George / John Hedberg vs Ken Osorio / Dan Ray",
+   "tags": [],
+   "status": "FT",
+   "denStatus": "COMPLETED",
+   "start": "2026-11-15T16:48:00.000Z",
+   "score": "2-0",
+   "games": "G1 11–4 · G2 11–9",
+   "lines": [
+    {
+     "disc": "G1",
+     "score": "11–4",
+     "winner": "George / Hedberg",
+     "live": false,
+     "court": ""
+    },
+    {
+     "disc": "G2",
+     "score": "11–9",
+     "winner": "George / Hedberg",
+     "live": false,
+     "court": ""
+    }
+   ],
+   "court": "Court 14",
+   "hasClock": true,
+   "eventKey": "ev:app:18443",
+   "note": "Court 14",
+   "watch": "",
+   "venue": "Arizona Athletic Grounds, Mesa, AZ",
+   "tz": "America/Phoenix"
+  }
+ ],
+ "tpb": [
+  {
+   "id": "tpb-5d49366b",
+   "date": "2026-11-13",
+   "tour": "tpb",
+   "comp": "TPB Somontes 2026",
+   "div": "Individual Masculino 3.5 · Grupo B",
+   "round": "Grupo B",
+   "disc": "MS",
+   "session": "Pista 4",
+   "a": "Alberto Sarrasin",
+   "b": "Javier García",
+   "roster": "Alberto Sarrasin vs Javier García",
+   "status": "FT",
+   "tickerLive": false,
+   "start": "2026-11-13T15:00:00.000Z",
+   "hasClock": true,
+   "clock": "",
+   "score": "0-1",
+   "games": "G1 21–22",
+   "lines": [
+    {
+     "disc": "G1",
+     "score": "21–22",
+     "winner": "Javier García",
+     "live": false,
+     "court": ""
+    }
+   ],
+   "court": "Pista 4",
+   "note": "Finalizado",
+   "watch": "",
+   "tz": "Europe/Madrid",
+   "venue": "Club Deportivo Somontes, Madrid",
+   "eventKey": "ev:tpb:somontes-2026",
+   "tags": [
+    "Sarrasin",
+    "Garc"
+   ]
+  },
+  {
+   "id": "tpb-9a1b27bc",
+   "date": "2026-11-13",
+   "tour": "tpb",
+   "comp": "TPB Somontes 2026",
+   "div": "Individual Masculino 3.5 · Grupo A",
+   "round": "Grupo A",
+   "disc": "MS",
+   "session": "Pista 3",
+   "a": "José Diz",
+   "b": "Fernando Sarrasin",
+   "roster": "José Diz vs Fernando Sarrasin",
+   "status": "FT",
+   "tickerLive": false,
+   "start": "2026-11-13T15:00:00.000Z",
+   "hasClock": true,
+   "clock": "",
+   "score": "0-1",
+   "games": "G1 10–21",
+   "lines": [
+    {
+     "disc": "G1",
+     "score": "10–21",
+     "winner": "Fernando Sarrasin",
+     "live": false,
+     "court": ""
+    }
+   ],
+   "court": "Pista 3",
+   "note": "Finalizado",
+   "watch": "",
+   "tz": "Europe/Madrid",
+   "venue": "Club Deportivo Somontes, Madrid",
+   "eventKey": "ev:tpb:somontes-2026",
+   "tags": [
+    "Diz",
+    "Sarrasin"
+   ]
+  },
+  {
+   "id": "tpb-a003db44",
+   "date": "2026-11-13",
+   "tour": "tpb",
+   "comp": "TPB Somontes 2026",
+   "div": "Individual Masculino 3.5 · Grupo A",
+   "round": "Grupo A",
+   "disc": "MS",
+   "session": "Pista 2",
+   "a": "Miguel Reina",
+   "b": "Eduardo Grassa",
+   "roster": "Miguel Reina vs Eduardo Grassa",
+   "status": "FT",
+   "tickerLive": false,
+   "start": "2026-11-13T15:00:00.000Z",
+   "hasClock": true,
+   "clock": "",
+   "score": "1-0",
+   "games": "G1 21–10",
+   "lines": [
+    {
+     "disc": "G1",
+     "score": "21–10",
+     "winner": "Miguel Reina",
+     "live": false,
+     "court": ""
+    }
+   ],
+   "court": "Pista 2",
+   "note": "Finalizado",
+   "watch": "",
+   "tz": "Europe/Madrid",
+   "venue": "Club Deportivo Somontes, Madrid",
+   "eventKey": "ev:tpb:somontes-2026",
+   "tags": [
+    "Reina",
+    "Grassa"
+   ]
+  },
+  {
+   "id": "tpb-a0e0ee5b",
+   "date": "2026-11-13",
+   "tour": "tpb",
+   "comp": "TPB Somontes 2026",
+   "div": "Individual Masculino 3.5 · Grupo B",
+   "round": "Grupo B",
+   "disc": "MS",
+   "session": "Pista 1",
+   "a": "Aitor Aramburu",
+   "b": "Miguel Alonso",
+   "roster": "Aitor Aramburu vs Miguel Alonso",
+   "status": "FT",
+   "tickerLive": false,
+   "start": "2026-11-13T15:00:00.000Z",
+   "hasClock": true,
+   "clock": "",
+   "score": "0-1",
+   "games": "G1 18–21",
+   "lines": [
+    {
+     "disc": "G1",
+     "score": "18–21",
+     "winner": "Miguel Alonso",
+     "live": false,
+     "court": ""
+    }
+   ],
+   "court": "Pista 1",
+   "note": "Finalizado",
+   "watch": "",
+   "tz": "Europe/Madrid",
+   "venue": "Club Deportivo Somontes, Madrid",
+   "eventKey": "ev:tpb:somontes-2026",
+   "tags": [
+    "Aramburu",
+    "Alonso"
+   ]
+  }
+ ],
+ "rta": [
+  {
+   "id": "rta-1269917",
+   "date": "2026-10-02",
+   "tour": "rta",
+   "comp": "RTA2000 Farnham",
+   "div": "Men's singles · UB R1",
+   "round": "UB R1",
+   "disc": "MS",
+   "format": "ko",
+   "a": "Barney Maddock",
+   "b": "Eashan Raja",
+   "roster": "Barney Maddock vs Eashan Raja",
+   "tags": [],
+   "status": "FT",
+   "start": "2026-10-02T08:00:00.000Z",
+   "end": "",
+   "score": "2-0",
+   "games": "G1 11–4 · G2 11–2",
+   "lines": [
+    {
+     "disc": "G1",
+     "score": "11–4",
+     "winner": "Barney Maddock",
+     "live": false,
+     "court": ""
+    },
+    {
+     "disc": "G2",
+     "score": "11–2",
+     "winner": "Barney Maddock",
+     "live": false,
+     "court": ""
+    }
+   ],
+   "court": "CCourt",
+   "hasClock": true,
+   "eventKey": "ev:rta:8510",
+   "note": "CCourt",
+   "watch": "",
+   "venue": "Hurlands Pickleball + Padel Club, Farnham, England",
+   "tz": "Europe/London",
+   "categoryId": 34475,
+   "segment": "MD",
+   "rtaStatus": "completed",
+   "rtaLive": false
+  },
+  {
+   "id": "rta-1269921",
+   "date": "2026-10-02",
+   "tour": "rta",
+   "comp": "RTA2000 Farnham",
+   "div": "Men's singles · UB R1",
+   "round": "UB R1",
+   "disc": "MS",
+   "format": "ko",
+   "a": "Alex Mcdonald",
+   "b": "Gabriel Hilbert",
+   "roster": "Alex Mcdonald vs Gabriel Hilbert",
+   "tags": [],
+   "status": "FT",
+   "start": "2026-10-02T08:00:00.000Z",
+   "end": "",
+   "score": "2-0",
+   "games": "G1 11–3 · G2 11–3",
+   "lines": [
+    {
+     "disc": "G1",
+     "score": "11–3",
+     "winner": "Alex Mcdonald",
+     "live": false,
+     "court": ""
+    },
+    {
+     "disc": "G2",
+     "score": "11–3",
+     "winner": "Alex Mcdonald",
+     "live": false,
+     "court": ""
+    }
+   ],
+   "court": "Court 2",
+   "hasClock": true,
+   "eventKey": "ev:rta:8510",
+   "note": "Court 2",
+   "watch": "",
+   "venue": "Hurlands Pickleball + Padel Club, Farnham, England",
+   "tz": "Europe/London",
+   "categoryId": 34475,
+   "segment": "MD",
+   "rtaStatus": "completed",
+   "rtaLive": false
+  },
+  {
+   "id": "rta-1269923",
+   "date": "2026-10-02",
+   "tour": "rta",
+   "comp": "RTA2000 Farnham",
+   "div": "Men's singles · UB R1",
+   "round": "UB R1",
+   "disc": "MS",
+   "format": "ko",
+   "a": "Brayden Peck",
+   "b": "Harvey Ravenscroft",
+   "roster": "Brayden Peck vs Harvey Ravenscroft",
+   "tags": [],
+   "status": "FT",
+   "start": "2026-10-02T08:00:00.000Z",
+   "end": "",
+   "score": "2-1",
+   "games": "G1 6–11 · G2 11–6 · G3 11–9",
+   "lines": [
+    {
+     "disc": "G1",
+     "score": "6–11",
+     "winner": "Harvey Ravenscroft",
+     "live": false,
+     "court": ""
+    },
+    {
+     "disc": "G2",
+     "score": "11–6",
+     "winner": "Brayden Peck",
+     "live": false,
+     "court": ""
+    },
+    {
+     "disc": "G3",
+     "score": "11–9",
+     "winner": "Brayden Peck",
+     "live": false,
+     "court": ""
+    }
+   ],
+   "court": "Court 3",
+   "hasClock": true,
+   "eventKey": "ev:rta:8510",
+   "note": "Court 3",
+   "watch": "",
+   "venue": "Hurlands Pickleball + Padel Club, Farnham, England",
+   "tz": "Europe/London",
+   "categoryId": 34475,
+   "segment": "MD",
+   "rtaStatus": "completed",
+   "rtaLive": false
+  },
+  {
+   "id": "rta-1269927",
+   "date": "2026-10-02",
+   "tour": "rta",
+   "comp": "RTA2000 Farnham",
+   "div": "Men's singles · UB R1",
+   "round": "UB R1",
+   "disc": "MS",
+   "format": "ko",
+   "a": "Harry Feast",
+   "b": "Michaël Goris",
+   "roster": "Harry Feast vs Michaël Goris",
+   "tags": [],
+   "status": "FT",
+   "start": "2026-10-02T08:00:00.000Z",
+   "end": "",
+   "score": "",
+   "games": "",
+   "lines": [],
+   "court": "Court 4",
+   "hasClock": true,
+   "eventKey": "ev:rta:8510",
+   "note": "Court 4",
+   "watch": "",
+   "venue": "Hurlands Pickleball + Padel Club, Farnham, England",
+   "tz": "Europe/London",
+   "categoryId": 34475,
+   "segment": "MD",
+   "rtaStatus": "completed",
+   "rtaLive": false
+  }
+ ],
+ "worldcup": [
+  {
+   "id": "st-seniors-team-coed-default-m30",
+   "date": "2026-09-03",
+   "tour": "wc",
+   "comp": "World Cup · Da Nang",
+   "div": "Seniors · Round 3",
+   "round": "Round 3",
+   "roundNum": 3,
+   "session": "TUYEN SON A&D",
+   "a": "Singapore",
+   "b": "Chinese Taipei",
+   "tags": [],
+   "status": "FT",
+   "start": "2026-09-03T19:12:00.000Z",
+   "score": "4-0",
+   "games": "WD 14–5 Singapore · MD 20–10 Singapore · XD 1 20–10 Singapore · XD 2 20–10 Singapore · Dreambreaker",
+   "lines": [
+    {
+     "disc": "WD",
+     "score": "14–5",
+     "winner": "Singapore",
+     "live": false,
+     "court": "A2"
+    },
+    {
+     "disc": "MD",
+     "score": "20–10",
+     "winner": "Singapore",
+     "live": false,
+     "court": "A2"
+    },
+    {
+     "disc": "XD 1",
+     "score": "20–10",
+     "winner": "Singapore",
+     "live": false,
+     "court": "A2"
+    },
+    {
+     "disc": "XD 2",
+     "score": "20–10",
+     "winner": "Singapore",
+     "live": false,
+     "court": "A2"
+    },
+    {
+     "disc": "Dreambreaker",
+     "score": "",
+     "winner": "",
+     "live": false,
+     "court": "A2"
+    }
+   ],
+   "note": "Order of play · Sporttora.",
+   "watch": "wcyoutube"
+  },
+  {
+   "id": "st-juniors-team-coed-default-m0",
+   "date": "2026-09-04",
+   "tour": "wc",
+   "comp": "World Cup · Da Nang",
+   "div": "Juniors · Round 3",
+   "round": "Round 3",
+   "roundNum": 3,
+   "session": "",
+   "a": "Vietnam",
+   "b": "Malaysia",
+   "tags": [
+    "Vietnam"
+   ],
+   "status": "FT",
+   "start": "2026-09-04T19:12:00.000Z",
+   "score": "4-0",
+   "games": "WD 20–13 Vietnam · MD 20–15 Vietnam · XD 1 20–11 Vietnam · XD 2 20–13 Vietnam · Dreambreaker",
+   "lines": [
+    {
+     "disc": "WD",
+     "score": "20–13",
+     "winner": "Vietnam",
+     "live": false,
+     "court": "B4 - CC"
+    },
+    {
+     "disc": "MD",
+     "score": "20–15",
+     "winner": "Vietnam",
+     "live": false,
+     "court": "B4 - CC"
+    },
+    {
+     "disc": "XD 1",
+     "score": "20–11",
+     "winner": "Vietnam",
+     "live": false,
+     "court": "B4 - CC"
+    },
+    {
+     "disc": "XD 2",
+     "score": "20–13",
+     "winner": "Vietnam",
+     "live": false,
+     "court": "B4 - CC"
+    },
+    {
+     "disc": "Dreambreaker",
+     "score": "",
+     "winner": "",
+     "live": false,
+     "court": "B4 - CC"
+    }
+   ],
+   "note": "Order of play · Sporttora.",
+   "watch": "wcyoutube"
+  },
+  {
+   "id": "st-juniors-team-coed-default-m1",
+   "date": "2026-09-04",
+   "tour": "wc",
+   "comp": "World Cup · Da Nang",
+   "div": "Juniors · Round 3",
+   "round": "Round 3",
+   "roundNum": 3,
+   "session": "",
+   "a": "Costa Rica",
+   "b": "South Korea",
+   "tags": [],
+   "status": "FT",
+   "start": "2026-09-04T19:12:00.000Z",
+   "score": "3-1",
+   "games": "WD 22–23 South Korea · MD 20–16 Costa Rica · XD 1 19–13 Costa Rica · XD 2 20–16 Costa Rica · Dreambreaker",
+   "lines": [
+    {
+     "disc": "WD",
+     "score": "22–23",
+     "winner": "South Korea",
+     "live": false,
+     "court": "B3"
+    },
+    {
+     "disc": "MD",
+     "score": "20–16",
+     "winner": "Costa Rica",
+     "live": false,
+     "court": "B3"
+    },
+    {
+     "disc": "XD 1",
+     "score": "19–13",
+     "winner": "Costa Rica",
+     "live": false,
+     "court": "B3"
+    },
+    {
+     "disc": "XD 2",
+     "score": "20–16",
+     "winner": "Costa Rica",
+     "live": false,
+     "court": "B3"
+    },
+    {
+     "disc": "Dreambreaker",
+     "score": "",
+     "winner": "",
+     "live": false,
+     "court": "B3"
+    }
+   ],
+   "note": "Order of play · Sporttora.",
+   "watch": "wcyoutube"
+  },
+  {
+   "id": "st-juniors-team-coed-default-m10",
+   "date": "2026-09-04",
+   "tour": "wc",
+   "comp": "World Cup · Da Nang",
+   "div": "Juniors · Round 1",
+   "round": "Round 1",
+   "roundNum": 1,
+   "session": "",
+   "a": "USA",
+   "b": "Northern Mariana",
+   "tags": [
+    "USA"
+   ],
+   "status": "FT",
+   "start": "2026-09-04T15:12:00.000Z",
+   "score": "4-0",
+   "games": "WD 20–5 USA · MD 20–12 USA · XD 1 20–3 USA · XD 2 20–3 USA · Dreambreaker",
+   "lines": [
+    {
+     "disc": "WD",
+     "score": "20–5",
+     "winner": "USA",
+     "live": false,
+     "court": "B6"
+    },
+    {
+     "disc": "MD",
+     "score": "20–12",
+     "winner": "USA",
+     "live": false,
+     "court": "B6"
+    },
+    {
+     "disc": "XD 1",
+     "score": "20–3",
+     "winner": "USA",
+     "live": false,
+     "court": "B6"
+    },
+    {
+     "disc": "XD 2",
+     "score": "20–3",
+     "winner": "USA",
+     "live": false,
+     "court": "B6"
+    },
+    {
+     "disc": "Dreambreaker",
+     "score": "",
+     "winner": "",
+     "live": false,
+     "court": "B6"
+    }
+   ],
+   "note": "Order of play · Sporttora.",
+   "watch": "wcyoutube"
+  }
+ ]
+}
