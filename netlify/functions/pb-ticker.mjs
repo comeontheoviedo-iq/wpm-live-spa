@@ -24,6 +24,7 @@ import {
   ppaResultNote,
   ppaWallInstant,
 } from "./ppa-keep.mjs";
+import { finishedFromMatchups, finishedFromTicker, persistFinished } from "./finished-store.mjs";
 
 export const LILLE = {
   id: "04a30133-11cc-4280-97f7-3027404c05b3",
@@ -520,7 +521,7 @@ function cachedOrEmpty(key, pin, source) {
   };
 }
 
-export async function loadPpaEu({ fetchImpl = fetch, now = new Date() } = {}) {
+export async function loadPpaEu({ fetchImpl = fetch, now = new Date(), persist = true } = {}) {
   const pin = LILLE;
   const fetched = await fetchPaged(
     (page) => `${pin.ticker}?current_page=${page}&tournament_slug=${pin.slug}`,
@@ -528,6 +529,7 @@ export async function loadPpaEu({ fetchImpl = fetch, now = new Date() } = {}) {
     { fetchImpl, referer: pin.officialUrl }
   );
   if (!fetched.ok) return cachedOrEmpty("ppa-eu", pin, "pickleballtournaments-ticker");
+  if (persist) await persistFinished(pin, finishedFromTicker(fetched.rows, pin), { now });
   const matches = buildMatchBoard(fetched.rows, pin, now);
   const body = {
     updated: new Date().toISOString(),
@@ -543,7 +545,7 @@ export async function loadPpaEu({ fetchImpl = fetch, now = new Date() } = {}) {
   return body;
 }
 
-export async function loadMlpAsia({ fetchImpl = fetch, now = new Date() } = {}) {
+export async function loadMlpAsia({ fetchImpl = fetch, now = new Date(), persist = true } = {}) {
   const pin = MLP_ASIA;
   const q = new URLSearchParams({
     season_uuid: pin.seasonUuid,
@@ -556,6 +558,7 @@ export async function loadMlpAsia({ fetchImpl = fetch, now = new Date() } = {}) 
     { fetchImpl, referer: pin.officialUrl }
   );
   if (!fetched.ok) return cachedOrEmpty("mlp-asia", pin, "pickleballteamleagues-ticker");
+  if (persist) await persistFinished(pin, finishedFromMatchups(fetched.rows, pin), { now });
   const matches = buildMatchupBoard(fetched.rows, pin, now);
   const body = {
     updated: new Date().toISOString(),

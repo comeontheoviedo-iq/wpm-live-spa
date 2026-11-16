@@ -18,6 +18,8 @@ import dossier_default from "../api/dossier.mts";
 import push_live_check_default from "../api/push-live-check.mts";
 import wave_snap_refresh_default from "../api/wave-snap-refresh.mts";
 import desk_default from "../api/desk.mts";
+import finished_default from "../api/finished.mts";
+import { LILLE, MLP_ASIA, loadMlpAsia, loadPpaEu } from "../api/pb-ticker.mjs";
 import { officialUrlCron } from "../api/calendar.mts";
 import { cachedResponse, cacheKeyFor } from "../api/_shared/edge-cache.mjs";
 // Public score feeds served through the short edge cache (see edge-cache.mjs).
@@ -49,10 +51,38 @@ var ROUTES = {
   "/api/tpb": tpb_default,
   "/api/push-subscribe": push_subscribe_default,
   "/api/sportssync": sportssync_default,
-  "/api/dossier": dossier_default
+  "/api/dossier": dossier_default,
+  "/api/finished": finished_default
 };
+// Keep finished ticker matches even when nobody has LIVE open: every 15 minutes while
+// the pinned PPA Europe event or the MLP Asia season is on (a day either side).
+function inWindow(pin, now) {
+  const day = now.toISOString().slice(0, 10);
+  const lo = new Date(Date.parse(pin.start) - 864e5).toISOString().slice(0, 10);
+  const hi = new Date(Date.parse(pin.end) + 864e5).toISOString().slice(0, 10);
+  return day >= lo && day <= hi;
+}
+async function persistTickers(now = new Date()) {
+  if (now.getUTCMinutes() % 15 >= 5) return "";
+  const out = [];
+  for (const [pin, load] of [[LILLE, loadPpaEu], [MLP_ASIA, loadMlpAsia]]) {
+    if (!inWindow(pin, now)) continue;
+    try {
+      const body = await load({ now });
+      out.push(`${pin.tour}:${(body.matches || []).length}`);
+    } catch (err) {
+      out.push(`${pin.tour}:failed`);
+    }
+  }
+  return out.join(",");
+}
 var CRON_HANDLERS = {
-  "*/5 * * * *": push_live_check_default,
+  "*/5 * * * *": async () => {
+    const res = await push_live_check_default();
+    const persisted = await persistTickers();
+    if (persisted) console.log("[wpm-spa] finished-store", persisted);
+    return res;
+  },
   "0 6 * * *": async () => {
     // Daily: wave snapshot + official-URL verification (auto-hides 404/410/date-mismatch events).
     let waveText = "";
