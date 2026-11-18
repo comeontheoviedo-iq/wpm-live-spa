@@ -4,8 +4,9 @@
  * not Friday 18. Soft-fail on Den 429.
  */
 import { keepAppMatch, matchBoardDate, matchHasClock } from "../netlify/functions/app-dates.mjs";
+import { denUrl } from "../netlify/functions/den-live.mjs";
 
-const DEN = "https://denlive.pickleballden.com";
+// Paused: denUrl() throws while Den Live is paused (netlify/functions/den-live.mjs).
 const ID = "18453";
 const TODAY = "2026-09-18";
 const SUN = "2026-09-20";
@@ -27,7 +28,7 @@ function sideName(team) {
 async function main() {
   let br;
   try {
-    br = await fetchJson(`${DEN}/api/tournament-brackets?tournamentId=${ID}`);
+    br = await fetchJson(denUrl(`/api/tournament-brackets?tournamentId=${ID}`));
   } catch (e) {
     console.log(JSON.stringify({ ok: false, residual: "Den 429/soft-fail", error: String(e.message || e) }, null, 2));
     process.exit(0);
@@ -39,7 +40,7 @@ async function main() {
   for (const b of want) {
     let payload;
     try {
-      payload = await fetchJson(`${DEN}/api/bracket-matches?bracketId=${b.bracketId}&size=200`);
+      payload = await fetchJson(denUrl(`/api/bracket-matches?bracketId=${b.bracketId}&size=200`));
     } catch (e) {
       console.log(JSON.stringify({ ok: false, residual: "Den 429/soft-fail", bracket: b.bracketName, error: String(e.message || e) }, null, 2));
       process.exit(0);

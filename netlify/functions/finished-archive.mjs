@@ -10,7 +10,7 @@ import { matchBoardDate } from "./app-dates.mjs";
 import { rosterText, tagsFor } from "./follow-tags.mjs";
 import { APP_COLUMBUS, APP_LOUISVILLE, ENDED_APP, PPA_CHICAGO, PPA_HONG_KONG, PPA_LAS_VEGAS, PPA_OPENDOOR_WORLDS, PPA_DAYTONA_PIN, PPA_VIRGINIA_BEACH } from "./slate-events.mjs";
 
-const DEN = "https://denlive.pickleballden.com";
+import { DEN_PAUSED_READER, denLiveEnabled, denUrl } from "./den-live.mjs";
 const UA = { "User-Agent": "WPM-LIVE/1.0", Accept: "application/json" };
 
 /**
@@ -499,12 +499,12 @@ export function mapPpaArchiveMatch(m, ev) {
 
 async function loadAppFinished(ev) {
   const today = ymdToday(ev.tz);
-  const brRes = await fetchJson(`${DEN}/api/tournament-brackets?tournamentId=${encodeURIComponent(ev.denTournamentId)}`);
+  const brRes = await fetchJson(denUrl(`/api/tournament-brackets?tournamentId=${encodeURIComponent(ev.denTournamentId)}`));
   const brackets = selectProBrackets(brRes?.brackets?.content || []);
   const settled = await Promise.all(
     brackets.map(async (b) => {
       const payload = await fetchJson(
-        `${DEN}/api/bracket-matches?bracketId=${encodeURIComponent(String(b.bracketId))}&size=200`
+        denUrl(`/api/bracket-matches?bracketId=${encodeURIComponent(String(b.bracketId))}&size=200`)
       );
       const content = payload?.payload?.content || payload?.content || [];
       return { bracket: b, matches: content };
@@ -539,7 +539,13 @@ export async function loadFinished(id) {
   const ev = eventById(id);
   if (!ev) return { unknown: true, id: String(id || ""), matches: [], finished: false };
   try {
-    if (ev.tour === "app" && ev.denTournamentId) return await loadAppFinished(ev);
+    if (ev.tour === "app" && ev.denTournamentId) {
+      // Den Live is paused (licence pending). No re-fetch from Den; saved matches stay at /api/finished.
+      if (!denLiveEnabled()) {
+        return { ...pack(ev), finished: !ev.current, matches: [], unavailable: true, paused: true, reader: DEN_PAUSED_READER };
+      }
+      return await loadAppFinished(ev);
+    }
     if (ev.tour === "ppa" && ev.ppaEventId) return await loadPpaFinished(ev);
     return { ...pack(ev), finished: false, matches: [], unavailable: true, reader: "Results will appear when available" };
   } catch (e) {

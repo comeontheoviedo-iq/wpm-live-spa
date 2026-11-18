@@ -27,6 +27,8 @@ import { archiveBoard, archiveEvent, dayInWindow } from "../api/finished-board.m
 import { FINISHED_EVENTS, loadFinished } from "../api/finished-archive.mjs";
 import { invokeFeed } from "../api/_shared/scores-feeds.mjs";
 import { APP_LIVE, PPA_LIVE } from "../api/slate-events.mjs";
+import { denLiveEnabled } from "../api/den-live.mjs";
+import { LIVE_OFFLINE, offlineResponse } from "./live-offline.js";
 import { SOMONTES } from "../api/tpb-cuadros.mjs";
 import { cachedResponse, cacheKeyFor } from "../api/_shared/edge-cache.mjs";
 // Public score feeds served through the short edge cache (see edge-cache.mjs).
@@ -105,6 +107,8 @@ async function archiveFeed(feed, now, source = feed.key) {
 async function persistBoards(now) {
   const out = [];
   for (const feed of BOARD_FEEDS) {
+    // Den Live is paused (licence pending, see api/den-live.mjs): no APP board polling.
+    if (feed.key === "app" && !denLiveEnabled()) continue;
     const start = feed.pin.start || feed.pin.startDate || "";
     const end = feed.pin.end || feed.pin.endDate || start;
     if (!dayInWindow(start, end, now)) continue;
@@ -131,7 +135,8 @@ async function backfillArchive(now) {
   const day = now.toISOString().slice(0, 10);
   const empty = meta.archiveDay === day ? meta.archiveEmpty || [] : [];
   const stored = await finishedKeys();
-  const todo = FINISHED_EVENTS.filter((ev) => !ev.current).filter((ev) => {
+  // APP archive events come from Den Live, which is paused: skip them (nothing to fetch).
+  const todo = FINISHED_EVENTS.filter((ev) => !ev.current).filter((ev) => denLiveEnabled() || !(ev.tour === "app" && ev.denTournamentId)).filter((ev) => {
     const e = archiveEvent(ev);
     return !stored.has(`${e.tour}:${e.id}`) && !empty.includes(ev.id);
   }).slice(0, 2);
@@ -223,6 +228,8 @@ function bindEnv(env) {
 }
 export default {
   async fetch(request, env, ctx) {
+    // Master switch (live-offline.js): 503 for every route, no handler runs, nothing goes upstream.
+    if (LIVE_OFFLINE) return offlineResponse(request);
     const url = new URL(request.url);
     const path = url.pathname.replace(/\/$/, "") || "/";
     if (path === "/api" || path.startsWith("/api/")) {
@@ -288,6 +295,11 @@ export default {
     return new Response("Not found", { status: 404 });
   },
   async scheduled(event, env, ctx) {
+    // Master switch (live-offline.js): no cron work at all, so no upstream requests.
+    if (LIVE_OFFLINE) {
+      console.log("[wpm-spa] cron skipped: LIVE_OFFLINE", event.cron || "");
+      return;
+    }
     bindEnv(env);
     const cron = event.cron || "";
     const handler = CRON_HANDLERS[cron];

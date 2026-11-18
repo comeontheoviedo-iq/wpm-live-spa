@@ -35,10 +35,10 @@ import {
 const UA = { "User-Agent": "WPM-LIVE-radar/1.0", Accept: "application/json" };
 
 import { suppressionFor } from "./_shared/event-guard.mjs";
+import { denLiveEnabled, denUrl } from "./den-live.mjs";
 const GPA_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBybmVlZGhxaW51ZGFzbmdrcXFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1NDkzMDIsImV4cCI6MjA3NjEyNTMwMn0.U6VPCpYEtyFkVwxQ7yMAbGf_huWORMg_8iyyd-WkADc";
 const GPA = "https://prneedhqinudasngkqqi.supabase.co/rest/v1";
-const DEN = "https://denlive.pickleballden.com";
 
 /** Shipped live connectors — keep in sync with ppa.mts / app.mts / worldcup.mts */
 export const WIRED = {
@@ -399,11 +399,33 @@ async function probeGijon() {
 
 async function probeAppDen() {
   const wired = WIRED.app;
+  // Den Live is paused (licence pending, see den-live.mjs): no probe, no request.
+  if (!denLiveEnabled()) {
+    return {
+      ok: false,
+      event: {
+        tour: "app",
+        name: wired.name,
+        eventId: wired.eventId,
+        denId: wired.eventId,
+        venue: wired.venue,
+        tz: wired.tz,
+        end: wired.end,
+        source: "den-live",
+        bracketCount: 0,
+        scorePath: null,
+        intake: intake({ name: wired.name, venue: wired.venue, tz: wired.tz, scoreOk: false }),
+        board: "results_only",
+        note: "Den Live is paused (Pickleball Den terms; licence pending). No requests are made to Den.",
+        discoveredExtra: [],
+      },
+    };
+  }
   const info = await fetchJson(
-    `${DEN}/api/tournament-info?tournamentId=${encodeURIComponent(wired.eventId)}`
+    denUrl(`/api/tournament-info?tournamentId=${encodeURIComponent(wired.eventId)}`)
   );
   const brackets = await fetchJson(
-    `${DEN}/api/tournament-brackets?tournamentId=${encodeURIComponent(wired.eventId)}`
+    denUrl(`/api/tournament-brackets?tournamentId=${encodeURIComponent(wired.eventId)}`)
   );
   const venueName = info.body?.info?.venue?.name || wired.venue;
   const rawBrackets =
@@ -426,7 +448,7 @@ async function probeAppDen() {
   const discovered = [];
   for (const id of KNOWN_APP_DEN_IDS) {
     if (id === wired.eventId) continue;
-    const r = await fetchJson(`${DEN}/api/tournament-info?tournamentId=${encodeURIComponent(id)}`);
+    const r = await fetchJson(denUrl(`/api/tournament-info?tournamentId=${encodeURIComponent(id)}`));
     const v = r.body?.info?.venue?.name;
     if (r.ok && v) discovered.push({ tournamentId: id, venue: v });
   }
