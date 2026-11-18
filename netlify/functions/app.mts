@@ -20,9 +20,9 @@ import {
   selectAppLive,
 } from "./slate-events.mjs";
 import { getStore } from "@netlify/blobs";
+import { DEN_PAUSED_READER, denLiveEnabled, denUrl } from "./den-live.mjs";
 
 /** APP (Association of Pickleball Professionals) via Den Live proxies. */
-const DEN = "https://denlive.pickleballden.com";
 const UA = { "User-Agent": "WPM-LIVE/1.0", Accept: "application/json" };
 const BLOB_STORE = "wpm-app";
 const DESK_STORE = "wpm-desk";
@@ -305,7 +305,7 @@ async function cachedBracketMatches(tournamentId: string, bracketId: string): Pr
   }
   try {
     const payload = await fetchJson(
-      `${DEN}/api/bracket-matches?bracketId=${encodeURIComponent(bracketId)}&size=200`
+      denUrl(`/api/bracket-matches?bracketId=${encodeURIComponent(bracketId)}&size=200`)
     );
     const content = payload?.payload?.content || payload?.content || [];
     if (store) {
@@ -516,14 +516,41 @@ function toMatch(m: any, bracket: any, ev: ActiveEvent) {
 export default async (req: Request, _context?: Context) => {
   const degraded: string[] = [];
   const active = await resolveActive(req);
+  // Den Live is paused (licence pending, see den-live.mjs). No request goes to Den.
+  // 200, no `matches` key: the board and /api/scores keep their other rows, nothing
+  // reads as an error, and finished APP matches already saved stay at /api/finished.
+  if (!denLiveEnabled()) {
+    return Response.json(
+      {
+        updated: new Date().toISOString(),
+        source: "paused",
+        paused: true,
+        delayed: false,
+        preServe: false,
+        reader: DEN_PAUSED_READER,
+        liveCount: 0,
+        event: {
+          id: active.id,
+          name: active.name,
+          venue: active.venue,
+          tz: active.tz,
+          startDate: active.startDate || "",
+          endDate: active.endDate || "",
+          idSource: active.source,
+          eventKey: "ev:app:" + active.id,
+        },
+      },
+      { headers: { "Cache-Control": "public, max-age=60" } }
+    );
+  }
   const TOURNAMENT_ID = active.id;
   let COMP = active.name;
   let VENUE = active.venue;
   let TZ = active.tz;
   try {
     const [infoRes, brRes] = await Promise.all([
-      fetchJson(`${DEN}/api/tournament-info?tournamentId=${TOURNAMENT_ID}`, 10000),
-      fetchJson(`${DEN}/api/tournament-brackets?tournamentId=${TOURNAMENT_ID}`, 10000),
+      fetchJson(denUrl(`/api/tournament-info?tournamentId=${TOURNAMENT_ID}`), 10000),
+      fetchJson(denUrl(`/api/tournament-brackets?tournamentId=${TOURNAMENT_ID}`), 10000),
     ]);
     const denName = brRes?.tournament?.name;
     if (denName) COMP = denName;

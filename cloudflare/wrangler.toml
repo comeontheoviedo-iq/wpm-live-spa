@@ -11,7 +11,9 @@ directory = "./site"
 binding = "ASSETS"
 html_handling = "auto-trailing-slash"
 not_found_handling = "single-page-application"
-run_worker_first = ["/api", "/api/*", "/desk", "/desk/*"]
+# true while LIVE_OFFLINE (src/live-offline.js) so pages get the 503 page too.
+# Restore to ["/api", "/api/*", "/desk", "/desk/*"] when LIVE comes back online.
+run_worker_first = true
 [vars]
 URL = "https://wpm-live-spa-static.comeontheoviedo.workers.dev"
 DEPLOY_PRIME_URL = "https://wpm-live-spa-static.comeontheoviedo.workers.dev"
